@@ -1,6 +1,7 @@
 import type { AbilityDefinition, CharacterDefinition, MatchConfig } from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
 import { matchPostStep, matchPreStep, startMatch } from '../match/matchSystem';
+import { spawnPositionFor } from '../match/spawns';
 import type { Vec2 } from '../math/vec2';
 import type { PlayerState } from '../player/state';
 import { createPlayerState } from '../player/state';
@@ -76,9 +77,13 @@ export class GameSimulation {
       id: params.id,
       teamId: params.teamId,
       character,
-      position: params.position ?? this.defaultSpawn(),
+      position: params.position ?? { x: 0, y: 0 },
     });
     this.worldState.players[params.id] = player;
+    // Le joueur est inséré avant le calcul: son rang dans l'équipe choisit le spawn.
+    if (params.position === undefined) {
+      player.position = spawnPositionFor(this.loadedMap, this.match, player, this.worldState);
+    }
     return player;
   }
 
@@ -126,13 +131,6 @@ export class GameSimulation {
       config: this.simulationConfig,
       matchConfig: this.match,
     });
-  }
-
-  private defaultSpawn(): Vec2 {
-    // Placement provisoire: la tâche 10 remplace ceci par spawnPositionFor.
-    const spawn = this.loadedMap.spawns[0];
-    if (spawn === undefined) throw new Error(`map "${this.loadedMap.id}" has no spawn point`);
-    return { x: spawn.x, y: spawn.y };
   }
 }
 

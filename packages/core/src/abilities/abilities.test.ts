@@ -13,6 +13,7 @@ const idle = (aim = { x: 1, y: 0 }) => ({ ...neutralInput(), aim });
 describe('ability validation', () => {
   it('starts a cast on press, deducts energy and starts the cooldown', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -27,6 +28,7 @@ describe('ability validation', () => {
 
   it('rejects a press while on cooldown, out of energy, or busy', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -56,6 +58,7 @@ describe('ability validation', () => {
 
   it('requires a new press: holding the button does not recast', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -71,6 +74,7 @@ describe('ability validation', () => {
 
   it('follows the timeline startup → activation → recovery → NORMAL', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -89,6 +93,7 @@ describe('ability validation', () => {
 
   it('dash moves the caster along the aim and is stopped by walls', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -113,6 +118,7 @@ describe('ability validation', () => {
 
   it('melee hits targets inside the arc and applies knockback', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     sim.addPlayer({
       id: 'a',
       teamId: 'team-0',
@@ -140,6 +146,7 @@ describe('ability validation', () => {
 
   it('does not damage teammates without friendly fire', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     sim.addPlayer({
       id: 'a',
       teamId: 'team-0',

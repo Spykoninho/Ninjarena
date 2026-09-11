@@ -8,6 +8,7 @@ const idle = { ...neutralInput(), aim: { x: 1, y: 0 } };
 describe('projectileSystem', () => {
   it('hits an enemy in its path, applies hit effects and disappears', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 60, y: 200 } });
     const target = sim.addPlayer({
       id: 'b',
@@ -25,6 +26,7 @@ describe('projectileSystem', () => {
 
   it('is destroyed by walls', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     sim.addPlayer({
       id: 'a',
       teamId: 'team-0',
@@ -42,6 +44,7 @@ describe('projectileSystem', () => {
 
   it('expires at the end of its lifetime', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     // Row 2 is open from x=16 to x=464: 300 units/s for 1000 ms never reaches a wall.
     sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 40, y: 40 } });
     sim.step({ a: shoot });
@@ -56,6 +59,7 @@ describe('projectileSystem', () => {
 
   it('never hits its owner', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const a = sim.addPlayer({
       id: 'a',
       teamId: 'team-0',

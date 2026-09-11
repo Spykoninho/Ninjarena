@@ -8,6 +8,7 @@ const moveRight = () => ({ ...neutralInput(), move: { x: 1, y: 0 } });
 describe('movementSystem', () => {
   it('moves at moveSpeed units per second regardless of how steps are grouped', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -20,6 +21,7 @@ describe('movementSystem', () => {
 
   it('normalizes diagonal movement', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -33,6 +35,7 @@ describe('movementSystem', () => {
 
   it('is stopped by a wall and slides along it', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     // wall column 10 → x in [160, 176); rows 3-8 → y in [48, 144)
     const p = sim.addPlayer({
       id: 'p1',
@@ -47,6 +50,7 @@ describe('movementSystem', () => {
 
   it('is slowed by water', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     // water rows 10-12, columns 3-6 → x in [48, 112), y in [160, 208)
     const p = sim.addPlayer({
       id: 'p1',
@@ -60,6 +64,7 @@ describe('movementSystem', () => {
 
   it('does not move while ROOTED, STUNNED or DEAD', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -80,6 +85,7 @@ describe('movementSystem', () => {
 
   it('keeps players from overlapping each other', () => {
     const sim = createTestSimulation();
+    sim.startMatch();
     const a = sim.addPlayer({
       id: 'a',
       teamId: 'team-0',
