@@ -1,4 +1,5 @@
 import type { EffectRef } from '../abilities/effects/activationEffects';
+import type { HitEffect } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import { add, normalize, scale } from '../math/vec2';
 import type { PlayerState } from '../player/state';
@@ -45,4 +46,13 @@ export function spawnProjectile(
   };
   ctx.world.projectiles[id] = projectile;
   return projectile;
+}
+
+export function projectileHitEffects(
+  ctx: SimulationContext,
+  projectile: ProjectileState,
+): readonly HitEffect[] {
+  const ability = ctx.abilities.get(projectile.source.abilityId);
+  const effect = ability.effects[projectile.source.effectIndex];
+  return effect?.type === 'projectile' ? effect.onHit : [];
 }
