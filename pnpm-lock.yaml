@@ -54,18 +54,29 @@ importers:
       vite:
         specifier: ^7.1.0
         version: 7.3.6(@types/node@22.20.2)(tsx@4.23.13)
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(tsx@4.23.13))
 
   packages/content:
     dependencies:
       '@ninjarena/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(tsx@4.23.13))
 
   packages/core:
     dependencies:
       zod:
         specifier: ^4.1.0
         version: 4.6.2
+    devDependencies:
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(tsx@4.23.13))
 
   packages/protocol:
     dependencies:
@@ -75,6 +86,10 @@ importers:
       zod:
         specifier: ^4.1.0
         version: 4.6.2
+    devDependencies:
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(tsx@4.23.13))
 
   packages/server:
     dependencies:
@@ -94,6 +109,9 @@ importers:
         specifier: ^4.1.0
         version: 4.6.2
     devDependencies:
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.2
       '@types/ws':
         specifier: ^8.18.0
         version: 8.18.1
@@ -103,6 +121,9 @@ importers:
       tsx:
         specifier: ^4.20.0
         version: 4.23.13
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(tsx@4.23.13))
 
 packages:
 

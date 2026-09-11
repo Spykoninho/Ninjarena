@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.25.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @ninjarena/server dev\" \"pnpm --filter @ninjarena/client dev\"",
     "build": "pnpm -r --if-present build",
