@@ -71,10 +71,10 @@ describe('movementSystem', () => {
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    // Un adversaire vivant et distant garde la manche ouverte quand p1 meurt.
+    // Un coéquipier vivant garde la manche ouverte quand p1 meurt: aucune équipe n'est éliminée.
     sim.addPlayer({
       id: 'p2',
-      teamId: 'team-1',
+      teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 400, y: 200 },
     });
@@ -88,6 +88,7 @@ describe('movementSystem', () => {
     p.phase = { kind: 'DEAD', diedAt: 0 };
     sim.step({ p1: moveRight() });
     expect(p.position.x).toBe(200);
+    expect(sim.world.match.phase).toBe('IN_ROUND');
   });
 
   it('keeps players from overlapping each other', () => {

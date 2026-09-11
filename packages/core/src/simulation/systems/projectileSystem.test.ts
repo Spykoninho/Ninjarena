@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { spawnProjectile } from '../../projectile/state';
 import { abilityMask, neutralInput } from '../input';
-import { createTestSimulation } from '../../testing/fixtures';
+import { contextOf, createTestSimulation } from '../../testing/fixtures';
+import { projectileSystem } from './projectileSystem';
 
 const shoot = { ...neutralInput(), aim: { x: 1, y: 0 }, abilityHeld: abilityMask([3]) }; // seal: no startup
 const idle = { ...neutralInput(), aim: { x: 1, y: 0 } };
@@ -80,6 +82,42 @@ describe('projectileSystem', () => {
     expect(mate.statuses).toHaveLength(0);
     expect(enemy.phase.kind).toBe('STUNNED');
     expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
+  });
+
+  it('hits the nearest player in reach rather than the first one added', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    const owner = sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+    });
+    const far = sim.addPlayer({
+      id: 'far',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 216, y: 200 },
+    });
+    const near = sim.addPlayer({
+      id: 'near',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 212, y: 200 },
+    });
+    const ctx = contextOf(sim);
+    // Le tir naît à x = 209 et avance d'une unité: les deux cibles sont dans la portée du sous-pas.
+    spawnProjectile(ctx, {
+      owner,
+      direction: { x: 1, y: 0 },
+      speed: 60,
+      radius: 3,
+      lifetimeMs: 1000,
+      source: { abilityId: 'shuriken', effectIndex: 0 },
+    });
+    projectileSystem(ctx);
+    expect(near.health).toBe(near.stats.maxHealth - 18);
+    expect(far.health).toBe(far.stats.maxHealth);
   });
 
   it('never hits its owner', () => {

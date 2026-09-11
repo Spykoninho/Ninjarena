@@ -1,7 +1,7 @@
 import { applyHitEffects } from '../../abilities/effects/hitEffects';
 import { circleBounds, circlePenetration } from '../../collision';
 import { canAffect } from '../../combat/damage';
-import { add, distance, length, normalize, scale } from '../../math/vec2';
+import { add, distanceSq, length, normalize, scale } from '../../math/vec2';
 import { isDamageable } from '../../player/rules';
 import type { PlayerState } from '../../player/state';
 import type { ProjectileState } from '../../projectile/state';
@@ -36,7 +36,7 @@ function advance(ctx: SimulationContext, projectile: ProjectileState): void {
       destroy(ctx, projectile, 'wall');
       return;
     }
-    const target = firstPlayerHit(ctx, projectile, owner);
+    const target = nearestPlayerHit(ctx, projectile, owner);
     if (target === undefined) continue;
     applyHitEffects(ctx, target, projectileHitEffects(ctx, projectile), {
       sourceId: projectile.ownerId,
@@ -55,17 +55,23 @@ function hitsWall(ctx: SimulationContext, projectile: ProjectileState): boolean 
   return false;
 }
 
-function firstPlayerHit(
+function nearestPlayerHit(
   ctx: SimulationContext,
   projectile: ProjectileState,
   owner: PlayerState | undefined,
 ): PlayerState | undefined {
+  // Deux cibles dans la portée du même sous-pas: la plus proche encaisse, pas la première ajoutée.
+  let nearest: PlayerState | undefined;
+  let nearestGapSq = Infinity;
   for (const player of playersOf(ctx.world)) {
     if (!canBeHit(ctx, projectile, owner, player)) continue;
     const reach = projectile.radius + player.stats.colliderRadius;
-    if (distance(projectile.position, player.position) <= reach) return player;
+    const gapSq = distanceSq(projectile.position, player.position);
+    if (gapSq > reach * reach || gapSq >= nearestGapSq) continue;
+    nearest = player;
+    nearestGapSq = gapSq;
   }
-  return undefined;
+  return nearest;
 }
 
 function canBeHit(
