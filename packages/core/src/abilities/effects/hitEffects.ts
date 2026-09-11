@@ -42,11 +42,9 @@ export function applyHitEffects(
   effects: readonly HitEffect[],
   hit: HitInfo,
 ): void {
-  for (const effect of effects) {
-    // Un effet létal arrête la suite: un cadavre ne subit ni stun ni statut.
-    if (!isDamageable(target)) return;
-    handlerFor(effect)(ctx, target, effect, hit);
-  }
+  // Une cible morte ou invulnérable ne subit aucun effet de la liste.
+  if (!isDamageable(target)) return;
+  for (const effect of effects) handlerFor(effect)(ctx, target, effect, hit);
 }
 
 type AnyHitHandler = (

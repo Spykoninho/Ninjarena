@@ -57,6 +57,31 @@ describe('projectileSystem', () => {
     expect(sim.world.tick).toBeGreaterThanOrEqual(60);
   });
 
+  it('keeps the friendly-fire rules after its owner leaves the world', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 60, y: 200 } });
+    const mate = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 120, y: 200 },
+    });
+    const enemy = sim.addPlayer({
+      id: 'c',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 180, y: 200 },
+    });
+    sim.step({ a: shoot });
+    sim.removePlayer('a');
+    for (let i = 0; i < 30; i++) sim.step({});
+    expect(mate.phase.kind).toBe('NORMAL');
+    expect(mate.statuses).toHaveLength(0);
+    expect(enemy.phase.kind).toBe('STUNNED');
+    expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
+  });
+
   it('never hits its owner', () => {
     const sim = createTestSimulation();
     sim.startMatch();

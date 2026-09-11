@@ -2,6 +2,7 @@ import { applyHitEffects } from '../../abilities/effects/hitEffects';
 import { circleBounds, circlePenetration } from '../../collision';
 import { canAffect } from '../../combat/damage';
 import { add, distance, length, normalize, scale } from '../../math/vec2';
+import { isDamageable } from '../../player/rules';
 import type { PlayerState } from '../../player/state';
 import type { ProjectileState } from '../../projectile/state';
 import { projectileHitEffects } from '../../projectile/state';
@@ -60,11 +61,23 @@ function firstPlayerHit(
   owner: PlayerState | undefined,
 ): PlayerState | undefined {
   for (const player of playersOf(ctx.world)) {
-    if (!canAffect(ctx, owner, player)) continue;
+    if (!canBeHit(ctx, projectile, owner, player)) continue;
     const reach = projectile.radius + player.stats.colliderRadius;
     if (distance(projectile.position, player.position) <= reach) return player;
   }
   return undefined;
+}
+
+function canBeHit(
+  ctx: SimulationContext,
+  projectile: ProjectileState,
+  owner: PlayerState | undefined,
+  player: PlayerState,
+): boolean {
+  if (owner !== undefined) return canAffect(ctx, owner, player);
+  // Tireur parti: l'équipe portée par le projectile garde les règles de tir allié.
+  if (!isDamageable(player)) return false;
+  return ctx.matchConfig.friendlyFire || projectile.teamId !== player.teamId;
 }
 
 function destroy(ctx: SimulationContext, projectile: ProjectileState, reason: DestroyReason): void {
