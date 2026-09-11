@@ -17,27 +17,23 @@ const logError = (line: string): void => {
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-const config = loadServerConfig(process.env);
-const server = new GameServer({
-  config,
-  transport: new WebSocketTransport({ host: config.host, port: config.port, log: logError }),
-  content: loadContent(),
-  repository: new InMemoryMatchResultRepository(),
-  log,
-});
-
-try {
+const start = async (): Promise<GameServer> => {
+  const config = loadServerConfig(process.env);
+  const server = new GameServer({
+    config,
+    transport: new WebSocketTransport({ host: config.host, port: config.port, log: logError }),
+    content: loadContent(),
+    repository: new InMemoryMatchResultRepository(),
+    log,
+  });
   await server.start();
-} catch (error) {
-  logError(`failed to start on ${config.host}:${config.port}: ${messageOf(error)}`);
-  process.exit(1);
-}
+  // `0.0.0.0` n'est pas une adresse joignable: on affiche celle que le client peut composer.
+  const dialableHost = config.host === ANY_INTERFACE ? 'localhost' : config.host;
+  log(`listening on ws://${dialableHost}:${config.port}`);
+  return server;
+};
 
-// `0.0.0.0` n'est pas une adresse joignable: on affiche celle que le client peut composer.
-const dialableHost = config.host === ANY_INTERFACE ? 'localhost' : config.host;
-log(`listening on ws://${dialableHost}:${config.port}`);
-
-const shutdown = (): void => {
+const shutdown = (server: GameServer): void => {
   log('shutting down');
   server.stop().then(
     () => process.exit(0),
@@ -48,5 +44,16 @@ const shutdown = (): void => {
   );
 };
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+try {
+  const server = await start();
+  process.on('SIGINT', () => {
+    shutdown(server);
+  });
+  process.on('SIGTERM', () => {
+    shutdown(server);
+  });
+} catch (error) {
+  // Configuration invalide ou port déjà pris: une ligne d'erreur, puis on sort.
+  logError(`failed to start: ${messageOf(error)}`);
+  process.exit(1);
+}

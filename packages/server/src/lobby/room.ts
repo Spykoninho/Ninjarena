@@ -54,6 +54,8 @@ export class Room {
     this.simulation.addPlayer({ id: playerId, teamId, characterId: this.characterId });
     this.present.push(session);
     this.broadcastRoomState();
+    // Le démarrage automatique se joue aussi à l'arrivée: une salle pleine n'attend aucun `ready`.
+    if (this.shouldStart()) this.simulation.startMatch();
     return { ok: true };
   }
 

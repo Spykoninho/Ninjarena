@@ -68,14 +68,14 @@ describe('Room', () => {
     });
   });
 
-  it('starts a full room on the first ready when auto-start is on', () => {
+  it('starts a full room on the last join when auto-start is on', () => {
     const room = createRoom(true);
-    const first = createSession('c1');
-    room.join(first.session, 'one');
+    room.join(createSession('c1').session, 'one');
+    expect(room.simulation.world.match.phase).toBe('WAITING');
     room.join(createSession('c2').session, 'two');
     expect(room.isFull).toBe(true);
-    room.setReady(first.session, true);
     expect(room.simulation.world.match.phase).not.toBe('WAITING');
+    expect(room.simulation.world.match.round).toBe(1);
   });
 
   it('removes a leaving player from the simulation', () => {

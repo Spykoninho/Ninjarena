@@ -135,16 +135,17 @@ the default binding is `127.0.0.1`: only expose the server on a network you trus
 The server reads its configuration from the environment at startup; every value is validated and
 an invalid one stops the process.
 
-| Variable                  | Default     | Meaning                                                                                           |
-| ------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
-| `NINJARENA_HOST`          | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                       |
-| `NINJARENA_PORT`          | `8080`      | WebSocket port (1-65535).                                                                         |
-| `NINJARENA_TICK_RATE`     | `60`        | Simulation ticks per second (1-240).                                                              |
-| `NINJARENA_SNAPSHOT_RATE` | `30`        | Snapshots per second (1-240).                                                                     |
-| `NINJARENA_MAP`           | `arena`     | Map id from `@ninjarena/content`.                                                                 |
-| `NINJARENA_MATCH_MODE`    | `duel`      | `duel`, `ffa-3`, `ffa-4`, `2v2` or `3v3`.                                                         |
-| `NINJARENA_INPUT_QUEUE`   | `8`         | Inputs buffered per player before the oldest are dropped.                                         |
-| `NINJARENA_AUTO_START`    | `true`      | Start as soon as the room is full; `false` waits for everyone to be ready (at least two players). |
+| Variable                    | Default     | Meaning                                                                                           |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| `NINJARENA_HOST`            | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                       |
+| `NINJARENA_PORT`            | `8080`      | WebSocket port (1-65535).                                                                         |
+| `NINJARENA_TICK_RATE`       | `60`        | Simulation ticks per second (1-240).                                                              |
+| `NINJARENA_SNAPSHOT_RATE`   | `30`        | Snapshots per second (1-240).                                                                     |
+| `NINJARENA_MAP`             | `arena`     | Map id from `@ninjarena/content`.                                                                 |
+| `NINJARENA_MATCH_MODE`      | `duel`      | `duel`, `ffa-3`, `ffa-4`, `2v2` or `3v3`.                                                         |
+| `NINJARENA_INPUT_QUEUE`     | `8`         | Inputs buffered per player before the oldest are dropped.                                         |
+| `NINJARENA_MAX_CONNECTIONS` | `32`        | Sockets accepted at once (1-1024); the next one is closed with `1013`.                            |
+| `NINJARENA_AUTO_START`      | `true`      | Start as soon as the room is full; `false` waits for everyone to be ready (at least two players). |
 
 The client is configured through query parameters:
 

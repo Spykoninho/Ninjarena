@@ -9,6 +9,7 @@ export interface ServerConfig {
   mapId: string;
   matchModeId: string;
   inputQueueCapacity: number;
+  maxConnections: number;
   autoStartWhenFull: boolean;
 }
 
@@ -19,9 +20,11 @@ const DEFAULT_TICK_RATE = 60;
 const DEFAULT_SNAPSHOT_RATE = 30;
 const DEFAULT_MATCH_MODE_ID = 'duel';
 const DEFAULT_INPUT_QUEUE_CAPACITY = 8;
+const DEFAULT_MAX_CONNECTIONS = 32;
 const MAX_RATE = 240;
 const MAX_PORT = 65535;
 const MAX_INPUT_QUEUE_CAPACITY = 64;
+const MAX_CONNECTION_LIMIT = 1024;
 
 // `z.coerce.boolean()` accepte n'importe quelle chaîne non vide: "false" doit rester faux.
 const BooleanEnvSchema = z
@@ -36,11 +39,12 @@ const ServerConfigSchema = z.object({
   mapId: z.string().min(1),
   matchModeId: z.string().min(1),
   inputQueueCapacity: z.coerce.number().int().min(1).max(MAX_INPUT_QUEUE_CAPACITY),
+  maxConnections: z.coerce.number().int().min(1).max(MAX_CONNECTION_LIMIT),
   autoStartWhenFull: BooleanEnvSchema,
 });
 
 export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
-  return ServerConfigSchema.parse({
+  const parsed = ServerConfigSchema.safeParse({
     host: env.NINJARENA_HOST ?? DEFAULT_HOST,
     port: env.NINJARENA_PORT ?? DEFAULT_PORT,
     tickRate: env.NINJARENA_TICK_RATE ?? DEFAULT_TICK_RATE,
@@ -48,6 +52,11 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
     mapId: env.NINJARENA_MAP ?? DEFAULT_MAP_ID,
     matchModeId: env.NINJARENA_MATCH_MODE ?? DEFAULT_MATCH_MODE_ID,
     inputQueueCapacity: env.NINJARENA_INPUT_QUEUE ?? DEFAULT_INPUT_QUEUE_CAPACITY,
+    maxConnections: env.NINJARENA_MAX_CONNECTIONS ?? DEFAULT_MAX_CONNECTIONS,
     autoStartWhenFull: env.NINJARENA_AUTO_START ?? true,
   });
+  if (parsed.success) return parsed.data;
+  // Un démarrage raté doit tenir sur une ligne: le champ fautif, pas le rapport zod complet.
+  const issues = parsed.error.issues.map((issue) => `${issue.path.join('.')} ${issue.message}`);
+  throw new Error(`invalid configuration: ${issues.join('; ')}`);
 }

@@ -12,6 +12,7 @@ export class ClientSession {
   name: string;
   ready = false;
   invalidMessages = 0;
+  closed = false;
 
   constructor(connection: Connection, inputQueueCapacity: number) {
     this.id = connection.id;
@@ -22,5 +23,11 @@ export class ClientSession {
 
   send(message: ServerMessage): void {
     this.connection.send(serverMessageCodec.encode(message));
+  }
+
+  close(code: number, reason: string): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.connection.close(code, reason);
   }
 }

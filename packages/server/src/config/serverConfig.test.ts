@@ -11,6 +11,7 @@ describe('loadServerConfig', () => {
       mapId: 'arena',
       matchModeId: 'duel',
       inputQueueCapacity: 8,
+      maxConnections: 32,
       autoStartWhenFull: true,
     });
   });
@@ -31,7 +32,12 @@ describe('loadServerConfig', () => {
     });
   });
 
-  it('fails fast on an invalid value', () => {
-    expect(() => loadServerConfig({ NINJARENA_PORT: 'not-a-port' })).toThrow();
+  it('fails fast on an invalid value, naming it on a single line', () => {
+    expect(() => loadServerConfig({ NINJARENA_PORT: 'not-a-port' })).toThrow(
+      /invalid configuration/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_MAX_CONNECTIONS: '0' })).toThrow(
+      /^invalid configuration: maxConnections [^\n]+$/,
+    );
   });
 });

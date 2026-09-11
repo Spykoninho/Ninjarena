@@ -35,6 +35,7 @@ export class GameServer {
   private readonly log: (line: string) => void;
   private readonly rooms: RoomManager;
   private loop: TickLoop | null = null;
+  private openConnections = 0;
 
   constructor(deps: GameServerDeps) {
     this.config = deps.config;
@@ -99,11 +100,19 @@ export class GameServer {
   }
 
   private handleConnection(room: Room, connection: Connection): void {
+    // Un socket de trop est refusé avant toute allocation: la salle ne le voit jamais.
+    if (this.openConnections >= this.config.maxConnections) {
+      this.log(`refusing ${connection.id}: ${this.config.maxConnections} connections already open`);
+      connection.close(1013, 'server full');
+      return;
+    }
+    this.openConnections += 1;
     const session = new ClientSession(connection, this.config.inputQueueCapacity);
     connection.onMessage((raw) => {
       this.handleMessage(room, session, raw);
     });
     connection.onClose(() => {
+      this.openConnections -= 1;
       room.leave(session);
     });
   }
@@ -113,9 +122,9 @@ export class GameServer {
     if (message === null) {
       // Une trame illisible est jetée sans réponse; un flot d'entre elles ferme la connexion.
       session.invalidMessages += 1;
-      if (session.invalidMessages !== MAX_INVALID_MESSAGES) return;
+      if (session.invalidMessages < MAX_INVALID_MESSAGES || session.closed) return;
       this.log(`closing ${session.id} after ${MAX_INVALID_MESSAGES} invalid messages`);
-      session.connection.close(1008, 'invalid messages');
+      session.close(1008, 'invalid messages');
       return;
     }
     if (message.type === 'join') {

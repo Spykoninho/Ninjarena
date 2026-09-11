@@ -33,18 +33,22 @@ class StubTransport implements ServerTransport {
 
 const CONTENT = loadContent();
 
-const startServer = async (): Promise<{ server: GameServer; transport: StubTransport }> => {
+const startServer = async (
+  env: Record<string, string> = {},
+): Promise<{ server: GameServer; transport: StubTransport; logs: string[] }> => {
   const transport = new StubTransport();
+  const logs: string[] = [];
   const server = new GameServer({
-    config: loadServerConfig({ NINJARENA_AUTO_START: 'false' }),
+    config: loadServerConfig({ NINJARENA_AUTO_START: 'false', ...env }),
     transport,
     content: CONTENT,
     repository: new InMemoryMatchResultRepository(),
+    log: (line) => logs.push(line),
   });
   await server.start();
   // La boucle de tick tourne sur de vrais timers: chaque test la coupe en sortant.
   onTestFinished(() => server.stop());
-  return { server, transport };
+  return { server, transport, logs };
 };
 
 const messagesOf = (connection: FakeConnection): ServerMessage[] =>
@@ -92,12 +96,26 @@ describe('GameServer', () => {
     expect(Object.keys(server.defaultRoom.simulation.world.players)).toEqual(['c1', 'c2']);
   });
 
-  it('closes a connection that keeps sending unreadable frames', async () => {
-    const { transport } = await startServer();
+  it('closes a connection that keeps sending unreadable frames, once', async () => {
+    const { transport, logs } = await startServer();
     const connection = transport.accept('c1');
-    for (let i = 0; i < 20; i++) connection.receive('not a frame');
+    for (let i = 0; i < 19; i++) connection.receive('not a frame');
+    expect(connection.closed).toBe(false);
+    for (let i = 0; i < 6; i++) connection.receive('not a frame');
     expect(connection.closed).toBe(true);
     expect(connection.closeCode).toBe(1008);
+    expect(logs.filter((line) => line.includes('invalid messages'))).toHaveLength(1);
+  });
+
+  it('refuses a socket beyond the connection cap and frees the slot on close', async () => {
+    const { transport } = await startServer({ NINJARENA_MAX_CONNECTIONS: '1' });
+    const first = transport.accept('c1');
+    const refused = transport.accept('c2');
+    expect(first.closed).toBe(false);
+    expect(refused.closed).toBe(true);
+    expect(refused.closeCode).toBe(1013);
+    first.close();
+    expect(transport.accept('c3').closed).toBe(false);
   });
 
   it('answers a ping with a pong echoing sentAt', async () => {
