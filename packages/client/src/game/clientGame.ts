@@ -58,6 +58,7 @@ export class ClientGame {
   private lastFrameMs: number | null = null;
   private rttMs: number | null = null;
   private connected = false;
+  private stopped = false;
   private status = 'connecting';
 
   constructor(deps: ClientGameDeps) {
@@ -86,6 +87,8 @@ export class ClientGame {
   }
 
   stop(): void {
+    // La fermeture de la socket arrive plus tard: rien ne doit plus toucher au HUD après `stop`.
+    this.stopped = true;
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     this.stopPing();
@@ -249,14 +252,17 @@ export class ClientGame {
   }
 
   private setStatus(status: string): void {
+    if (this.stopped) return;
     this.status = status;
     // La boucle de rendu ne démarre qu'au `welcome`: sans cet appel le joueur ne verrait rien avant.
     this.updateHud();
   }
 
   private markDisconnected(status: string): void {
+    if (this.stopped) return;
     this.connected = false;
     this.stopPing();
+    this.rttMs = null;
     // Une raison précise ne doit pas être écrasée par la fermeture qui la suit.
     if (this.status.startsWith(DISCONNECTED)) return;
     this.setStatus(status);

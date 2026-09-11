@@ -29,7 +29,10 @@ function text(value: string | null): string | null {
 }
 
 function number(value: string | null, fallback: number, min: number): number {
-  const parsed = Number(text(value));
+  // Un paramètre absent doit retomber sur le défaut: `Number(null)` vaudrait 0.
+  const raw = text(value);
+  if (raw === null) return fallback;
+  const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
 }
 
