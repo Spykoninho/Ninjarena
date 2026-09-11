@@ -1,0 +1,20 @@
+{
+  "name": "@ninjarena/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ninjarena/content": "workspace:*",
+    "@ninjarena/core": "workspace:*",
+    "@ninjarena/protocol": "workspace:*",
+    "pixi.js": "^8.6.0"
+  },
+  "devDependencies": { "vite": "^7.1.0" }
+}

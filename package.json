@@ -1,0 +1,29 @@
+{
+  "name": "ninjarena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.25.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @ninjarena/server dev\" \"pnpm --filter @ninjarena/client dev\"",
+    "build": "pnpm -r --if-present build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^22.20.0",
+    "concurrently": "^10.0.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.0",
+    "prettier": "^3.9.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^4.1.0"
+  }
+}
