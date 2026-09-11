@@ -79,11 +79,10 @@ export class GameSimulation {
       character,
       position: params.position ?? { x: 0, y: 0 },
     });
-    this.worldState.players[params.id] = player;
-    // Le joueur est inséré avant le calcul: son rang dans l'équipe choisit le spawn.
     if (params.position === undefined) {
       player.position = spawnPositionFor(this.loadedMap, this.match, player, this.worldState);
     }
+    this.worldState.players[params.id] = player;
     return player;
   }
 

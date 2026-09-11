@@ -17,9 +17,22 @@ export function respawnPlayer(ctx: SimulationContext, player: PlayerState, posit
   ctx.events.push({ type: 'phaseChanged', tick: ctx.now, playerId: player.id, phase: 'NORMAL' });
 }
 
+export function clearProjectiles(ctx: SimulationContext): void {
+  for (const projectile of Object.values(ctx.world.projectiles)) {
+    ctx.events.push({
+      type: 'projectileDestroyed',
+      tick: ctx.now,
+      projectileId: projectile.id,
+      reason: 'expired',
+      position: { x: projectile.position.x, y: projectile.position.y },
+    });
+  }
+  ctx.world.projectiles = {};
+}
+
 export function resetWorldForRound(ctx: SimulationContext): void {
   for (const player of playersOf(ctx.world)) {
     respawnPlayer(ctx, player, spawnPositionFor(ctx.map, ctx.matchConfig, player, ctx.world));
   }
-  ctx.world.projectiles = {};
+  clearProjectiles(ctx);
 }

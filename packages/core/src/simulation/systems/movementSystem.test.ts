@@ -71,6 +71,13 @@ describe('movementSystem', () => {
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
+    // Un adversaire vivant et distant garde la manche ouverte quand p1 meurt.
+    sim.addPlayer({
+      id: 'p2',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 400, y: 200 },
+    });
     upsertStatus(p, { type: 'ROOTED', expiresAt: 1000 });
     sim.step({ p1: moveRight() });
     expect(p.position.x).toBe(200);

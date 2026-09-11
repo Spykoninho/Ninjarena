@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createTestSimulation, contextOf } from '../testing/fixtures';
 import { applyDamage } from '../combat/damage';
-import { neutralInput } from '../simulation/input';
+import { abilityMask, neutralInput } from '../simulation/input';
 import { pickTeamForNewPlayer } from './teams';
 
 const duelWith = (overrides = {}) => createTestSimulation({ matchConfig: overrides });
+const moveRight = () => ({ ...neutralInput(), move: { x: 1, y: 0 } });
 
 describe('match rules', () => {
   it('freezes gameplay until the match starts', () => {
@@ -85,6 +86,67 @@ describe('match rules', () => {
     expect(sim.step({})).toContainEqual(
       expect.objectContaining({ type: 'roundEnded', winnerTeamId: 'a' }),
     );
+  });
+
+  it('holds the countdown and the round-end delay when they are not instant', () => {
+    const sim = duelWith({ countdownMs: 500, roundEndDelayMs: 500 }); // 30 ticks chacun
+    const a = sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    sim.startMatch();
+    expect(sim.world.match.phase).toBe('COUNTDOWN');
+
+    // Ticks 0 à 29: le compte à rebours gèle le gameplay.
+    for (let i = 0; i < 30; i++) {
+      sim.step({ a: moveRight() });
+      expect(sim.world.match.phase).toBe('COUNTDOWN');
+    }
+    expect(a.velocity).toEqual({ x: 0, y: 0 });
+    expect(a.position).toEqual({ x: 48, y: 120 });
+
+    // Tick 30: la manche 1 s'ouvre et le gameplay reprend.
+    expect(sim.step({})).toContainEqual(
+      expect.objectContaining({ type: 'roundStarted', round: 1 }),
+    );
+    expect(sim.world.match.phase).toBe('IN_ROUND');
+    sim.step({ a: moveRight() });
+    expect(a.velocity.x).toBeGreaterThan(0);
+
+    sim.step({ a: { ...neutralInput(), abilityHeld: abilityMask([3]) } });
+    expect(Object.keys(sim.world.projectiles)).toHaveLength(1);
+    applyDamage(contextOf(sim), b, 999, 'a');
+    const ended = sim.step({});
+    expect(ended).toContainEqual(
+      expect.objectContaining({ type: 'roundEnded', winnerTeamId: 'team-0' }),
+    );
+    expect(ended).toContainEqual(
+      expect.objectContaining({ type: 'projectileDestroyed', reason: 'expired' }),
+    );
+    expect(sim.world.projectiles).toEqual({});
+    expect(sim.world.match.phase).toBe('ROUND_END');
+
+    // 30 ticks de délai de fin de manche, gameplay gelé.
+    const held = a.position.x;
+    for (let i = 0; i < 29; i++) {
+      sim.step({ a: moveRight() });
+      expect(sim.world.match.phase).toBe('ROUND_END');
+    }
+    expect(a.position.x).toBe(held);
+    sim.step({});
+    expect(sim.world.match.phase).toBe('COUNTDOWN');
+    expect(sim.world.match.round).toBe(2);
+    expect(b.health).toBe(100);
+    expect(b.phase.kind).toBe('NORMAL');
+
+    // 30 ticks de compte à rebours avant la manche 2.
+    for (let i = 0; i < 29; i++) {
+      sim.step({});
+      expect(sim.world.match.phase).toBe('COUNTDOWN');
+    }
+    const round2 = sim.step({});
+    expect(sim.world.match.phase).toBe('IN_ROUND');
+    expect(round2.filter((e) => e.type === 'roundStarted')).toEqual([
+      expect.objectContaining({ round: 2 }),
+    ]);
   });
 
   it('fills the least populated team and gives ties to the lowest index', () => {
