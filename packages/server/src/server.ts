@@ -45,6 +45,10 @@ export class GameServer {
     this.rooms = new RoomManager(() => this.createDefaultRoom());
   }
 
+  get defaultRoom(): Room {
+    return this.rooms.getOrCreateDefault();
+  }
+
   async start(): Promise<void> {
     const room = this.rooms.getOrCreateDefault();
     const host = new MatchHost({

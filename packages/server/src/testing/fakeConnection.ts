@@ -4,6 +4,7 @@ export class FakeConnection implements Connection {
   readonly id: string;
   readonly sent: string[] = [];
   closed = false;
+  closeCode: number | null = null;
   private messageHandler: ((raw: string) => void) | null = null;
   private closeHandler: (() => void) | null = null;
 
@@ -15,9 +16,10 @@ export class FakeConnection implements Connection {
     this.sent.push(data);
   }
 
-  close(): void {
+  close(code?: number): void {
     if (this.closed) return;
     this.closed = true;
+    this.closeCode = code ?? null;
     this.closeHandler?.();
   }
 
