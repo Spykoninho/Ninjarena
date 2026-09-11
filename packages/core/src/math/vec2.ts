@@ -66,10 +66,11 @@ export function angleOf(v: Vec2): number {
 }
 
 export function angleBetween(a: Vec2, b: Vec2): number {
-  const lengthProduct = length(a) * length(b);
-  if (lengthProduct < EPSILON) return 0;
-  // Le produit scalaire normalisé peut sortir de [-1, 1] par arrondi, ce qui donnerait NaN.
-  const cosine = Math.min(1, Math.max(-1, dot(a, b) / lengthProduct));
+  // Chaque longueur est testée séparément: un opérande long masquerait un opérande dégénéré.
+  const lengthA = length(a);
+  const lengthB = length(b);
+  if (lengthA < EPSILON || lengthB < EPSILON) return 0;
+  const cosine = Math.min(1, Math.max(-1, dot(a, b) / (lengthA * lengthB)));
   return Math.acos(cosine);
 }
 

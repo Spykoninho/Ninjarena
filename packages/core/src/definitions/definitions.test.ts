@@ -70,6 +70,16 @@ describe('MapDefinitionSchema', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('rejects the empty character in the ground layer even when the legend declares it', () => {
+    expect(
+      MapDefinitionSchema.safeParse({
+        ...base,
+        legend: { ...base.legend, ' ': 2 },
+        layers: { ground: ['. .', '...'], objects: base.layers.objects },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('MatchConfigSchema', () => {
