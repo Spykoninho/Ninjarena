@@ -1,7 +1,7 @@
 # Ninjarena — Foundations Design
 
 Date: 2026-09-11
-Status: approved (stack, rendering layer and documentation language confirmed)
+Status: approved
 
 ## 1. Goal of this step
 
@@ -15,19 +15,19 @@ Formats to support without redesign: 1v1, FFA 3–4, 2v2, 3v3, more players late
 
 ## 2. Decisions
 
-| Topic | Decision | Why |
-|---|---|---|
-| Language | TypeScript everywhere, strict mode, ESM | One simulation shared by client and server: prediction and reconciliation reuse the exact server code. |
-| Repository | pnpm workspaces monorepo | Package boundaries enforce dependency direction between simulation, protocol, server and client. |
-| Simulation rate | Fixed 60 ticks/s, `dt = 1/60 s` | Gameplay never depends on render framerate. |
-| Snapshot rate | 30 snapshots/s by default (configurable) | Standard trade-off between bandwidth and smoothness; interpolation hides the gap. |
-| Transport | WebSocket behind a `Transport` interface | Simplest reliable transport today; WebRTC data channels can replace it later. |
-| Wire format | JSON with schema validation, behind a `MessageCodec` interface | Debuggable now; binary codec later without touching game code. |
-| Rendering | PixiJS 8 behind a `Renderer` interface | WebGL sprite batching, trivial pixel-perfect scaling; the simulation never imports it. |
-| Data validation | zod schemas for every content file (abilities, characters, tilesets, maps, match modes) | Data-driven balance with early, readable errors. |
-| Tests | Vitest | Fast, TypeScript-native, works per package. |
-| Docs language | English | Open source audience; commits are already in English. |
-| License | MIT | Permissive, standard for game foundations meant to be reused. |
+| Topic           | Decision                                                                                | Why                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Language        | TypeScript everywhere, strict mode, ESM                                                 | One simulation shared by client and server: prediction and reconciliation reuse the exact server code. |
+| Repository      | pnpm workspaces monorepo                                                                | Package boundaries enforce dependency direction between simulation, protocol, server and client.       |
+| Simulation rate | Fixed 60 ticks/s, `dt = 1/60 s`                                                         | Gameplay never depends on render framerate.                                                            |
+| Snapshot rate   | 30 snapshots/s by default (configurable)                                                | Standard trade-off between bandwidth and smoothness; interpolation hides the gap.                      |
+| Transport       | WebSocket behind a `Transport` interface                                                | Simplest reliable transport today; WebRTC data channels can replace it later.                          |
+| Wire format     | JSON with schema validation, behind a `MessageCodec` interface                          | Debuggable now; binary codec later without touching game code.                                         |
+| Rendering       | PixiJS 8 behind a `Renderer` interface                                                  | WebGL sprite batching, trivial pixel-perfect scaling; the simulation never imports it.                 |
+| Data validation | zod schemas for every content file (abilities, characters, tilesets, maps, match modes) | Data-driven balance with early, readable errors.                                                       |
+| Tests           | Vitest                                                                                  | Fast, TypeScript-native, works per package.                                                            |
+| Docs language   | English                                                                                 | Open source audience; commits are already in English.                                                  |
+| License         | MIT                                                                                     | Permissive, standard for game foundations meant to be reused.                                          |
 
 Versions pinned to the current stable majors: TypeScript 5.9, Vitest 4, Vite 7,
 ESLint 9, typescript-eslint 8, zod 4, pixi.js 8, ws 8.
@@ -91,18 +91,21 @@ src/
 ### 4.2 Fundamental types
 
 ```ts
-type Tick = number;               // integer simulation tick
-type PlayerId = string;           // assigned by the server
-type TeamId = string;             // 'team-0' ... ; in FFA the team id equals the player id
-type EntityId = string;           // projectiles and future entities
+type Tick = number; // integer simulation tick
+type PlayerId = string; // assigned by the server
+type TeamId = string; // 'team-0' ... ; in FFA the team id equals the player id
+type EntityId = string; // projectiles and future entities
 
-interface Vec2 { x: number; y: number }
+interface Vec2 {
+  x: number;
+  y: number;
+}
 
 // Intent for one tick. This is the only thing a client ever sends about gameplay.
 interface PlayerInput {
-  move: Vec2;            // clamped to length <= 1
-  aim: Vec2;             // unit vector, world space
-  abilityHeld: number;   // bitmask: bit i set while slot i is held
+  move: Vec2; // clamped to length <= 1
+  aim: Vec2; // unit vector, world space
+  abilityHeld: number; // bitmask: bit i set while slot i is held
 }
 ```
 
@@ -130,32 +133,54 @@ reconciliation trivial.
 ```ts
 type CombatPhaseState =
   | { kind: 'NORMAL' }
-  | { kind: 'CASTING'; slot: number; abilityId: string; startedAt: Tick;
-      activatesAt: Tick; endsAt: Tick; activated: boolean }
+  | {
+      kind: 'CASTING';
+      slot: number;
+      abilityId: string;
+      startedAt: Tick;
+      activatesAt: Tick;
+      endsAt: Tick;
+      activated: boolean;
+    }
   | { kind: 'DASHING'; direction: Vec2; speed: number; endsAt: Tick }
   | { kind: 'STUNNED'; endsAt: Tick }
   | { kind: 'KNOCKBACK'; velocity: Vec2; endsAt: Tick }
   | { kind: 'DEAD'; diedAt: Tick };
 
 type StatusEffectType = 'ROOTED' | 'SLOWED' | 'INVISIBLE' | 'INVULNERABLE';
-interface StatusEffect { type: StatusEffectType; expiresAt: Tick; magnitude?: number }
-
-interface PlayerStats {
-  maxHealth: number; maxEnergy: number; moveSpeed: number;
-  energyRegenPerSecond: number; colliderRadius: number;
+interface StatusEffect {
+  type: StatusEffectType;
+  expiresAt: Tick;
+  magnitude?: number;
 }
 
-interface AbilitySlot { abilityId: string; readyAt: Tick }
+interface PlayerStats {
+  maxHealth: number;
+  maxEnergy: number;
+  moveSpeed: number;
+  energyRegenPerSecond: number;
+  colliderRadius: number;
+}
+
+interface AbilitySlot {
+  abilityId: string;
+  readyAt: Tick;
+}
 
 interface PlayerState {
-  id: PlayerId; teamId: TeamId; characterId: string;
-  position: Vec2; velocity: Vec2; aim: Vec2;
-  health: number; energy: number;
-  stats: PlayerStats;                  // resolved from the character definition
-  phase: CombatPhaseState;             // exclusive primary state
-  statuses: StatusEffect[];            // non-exclusive modifiers
+  id: PlayerId;
+  teamId: TeamId;
+  characterId: string;
+  position: Vec2;
+  velocity: Vec2;
+  aim: Vec2;
+  health: number;
+  energy: number;
+  stats: PlayerStats; // resolved from the character definition
+  phase: CombatPhaseState; // exclusive primary state
+  statuses: StatusEffect[]; // non-exclusive modifiers
   abilities: AbilitySlot[];
-  previousAbilityHeld: number;         // for press-edge detection inside the simulation
+  previousAbilityHeld: number; // for press-edge detection inside the simulation
 }
 ```
 
@@ -239,15 +264,23 @@ Definitions are data (`packages/content/abilities/*.json`):
 
 ```jsonc
 {
-  "id": "shuriken", "name": "Shuriken",
-  "cooldownMs": 900, "energyCost": 10,
-  "startupMs": 100, "recoveryMs": 150,
+  "id": "shuriken",
+  "name": "Shuriken",
+  "cooldownMs": 900,
+  "energyCost": 10,
+  "startupMs": 100,
+  "recoveryMs": 150,
   "canMoveWhileCasting": false,
   "tags": ["projectile", "ranged"],
   "effects": [
-    { "type": "projectile", "speed": 420, "radius": 3, "lifetimeMs": 900,
-      "onHit": [ { "type": "damage", "amount": 18 } ] }
-  ]
+    {
+      "type": "projectile",
+      "speed": 420,
+      "radius": 3,
+      "lifetimeMs": 900,
+      "onHit": [{ "type": "damage", "amount": 18 }],
+    },
+  ],
 }
 ```
 
@@ -258,8 +291,8 @@ Two effect families, each dispatched through a registry keyed by `type`
   `projectile`, `dash { distance, durationMs }`,
   `melee { range, arcDegrees, onHit }`.
 - **Hit effects** (applied to a target): `damage`, `knockback { speed,
-  durationMs }`, `stun { durationMs }`, `applyStatus { status, durationMs,
-  magnitude? }`.
+durationMs }`, `stun { durationMs }`, `applyStatus { status, durationMs,
+magnitude? }`.
 
 Casting timeline: press → validation → energy deducted, cooldown starts,
 phase `CASTING` with `activatesAt = now + startup`, `endsAt = activatesAt +
@@ -281,13 +314,23 @@ phase to `DEAD` at zero and emits `playerDied`.
 ```ts
 type MatchPhase = 'WAITING' | 'COUNTDOWN' | 'IN_ROUND' | 'ROUND_END' | 'MATCH_END';
 interface MatchState {
-  phase: MatchPhase; phaseEndsAt: Tick | null; round: number;
-  scores: Record<TeamId, number>; lastRoundWinner: TeamId | null; winner: TeamId | null;
+  phase: MatchPhase;
+  phaseEndsAt: Tick | null;
+  round: number;
+  scores: Record<TeamId, number>;
+  lastRoundWinner: TeamId | null;
+  winner: TeamId | null;
 }
 interface MatchConfig {
-  id: string; mode: 'ffa' | 'team'; teamCount: number; playersPerTeam: number;
-  roundsToWin: number; roundDurationMs: number; countdownMs: number;
-  roundEndDelayMs: number; friendlyFire: boolean;
+  id: string;
+  mode: 'ffa' | 'team';
+  teamCount: number;
+  playersPerTeam: number;
+  roundsToWin: number;
+  roundDurationMs: number;
+  countdownMs: number;
+  roundEndDelayMs: number;
+  friendlyFire: boolean;
 }
 ```
 
@@ -309,10 +352,22 @@ type ClientMessage =
   | { type: 'ping'; sentAt: number };
 
 type ServerMessage =
-  | { type: 'welcome'; playerId: PlayerId; tickRate: number; snapshotRate: number;
-      mapId: string; matchConfig: MatchConfig }
+  | {
+      type: 'welcome';
+      playerId: PlayerId;
+      tickRate: number;
+      snapshotRate: number;
+      mapId: string;
+      matchConfig: MatchConfig;
+    }
   | { type: 'roomState'; players: { id: PlayerId; name: string; teamId: TeamId; ready: boolean }[] }
-  | { type: 'snapshot'; tick: Tick; lastProcessedSeq: number; world: WorldState; events: WorldEvent[] }
+  | {
+      type: 'snapshot';
+      tick: Tick;
+      lastProcessedSeq: number;
+      world: WorldState;
+      events: WorldEvent[];
+    }
   | { type: 'error'; code: string; message: string }
   | { type: 'pong'; sentAt: number; serverTime: number };
 ```

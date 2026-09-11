@@ -87,7 +87,8 @@ predicted state and everyone else from the interpolator, a few ticks in the past
 ```
 
 More detail in [docs/architecture.md](docs/architecture.md) and
-[docs/networking.md](docs/networking.md).
+[docs/networking.md](docs/networking.md); the design these packages were built from is kept as
+[docs/design/foundations.md](docs/design/foundations.md).
 
 ## Requirements
 
