@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contextOf, createTestSimulation } from '../testing/fixtures';
-import { applyDamage } from './damage';
+import { applyDamage, canAffect, killPlayer } from './damage';
 import { applyKnockback, applyStatusEffect, applyStun } from './control';
 
 const setup = () => {
@@ -41,6 +41,46 @@ describe('applyDamage', () => {
     applyStatusEffect(ctx, p, 'INVULNERABLE', 1000);
     expect(applyDamage(ctx, p, 30, null)).toBe(0);
     expect(p.health).toBe(100);
+  });
+});
+
+describe('killPlayer', () => {
+  it('empties health, clears statuses and reports the death', () => {
+    const { p, ctx } = setup();
+    applyStatusEffect(ctx, p, 'SLOWED', 1000, 0.5);
+    killPlayer(ctx, p, 'p2');
+    expect(p.health).toBe(0);
+    expect(p.phase.kind).toBe('DEAD');
+    expect(p.statuses).toHaveLength(0);
+    expect(ctx.events.some((e) => e.type === 'playerDied' && e.killerId === 'p2')).toBe(true);
+  });
+});
+
+describe('canAffect', () => {
+  it('spares allies without friendly fire but not enemies or environment targets', () => {
+    const sim = createTestSimulation();
+    const source = sim.addPlayer({
+      id: 'source',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+    });
+    const ally = sim.addPlayer({
+      id: 'ally',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 240, y: 200 },
+    });
+    const enemy = sim.addPlayer({
+      id: 'enemy',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 280, y: 200 },
+    });
+    const ctx = contextOf(sim);
+    expect(canAffect(ctx, source, ally)).toBe(false);
+    expect(canAffect(ctx, source, enemy)).toBe(true);
+    expect(canAffect(ctx, undefined, enemy)).toBe(true);
   });
 });
 

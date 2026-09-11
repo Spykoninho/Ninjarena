@@ -31,6 +31,7 @@ export function killPlayer(
   killerId: PlayerId | null,
 ): void {
   if (!setPhase(ctx, target, { kind: 'DEAD', diedAt: ctx.now })) return;
+  target.health = 0;
   target.velocity = { x: 0, y: 0 };
   target.statuses = [];
   ctx.events.push({ type: 'playerDied', tick: ctx.now, playerId: target.id, killerId });

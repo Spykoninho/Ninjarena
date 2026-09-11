@@ -11,22 +11,30 @@ import { playersOf } from '../world';
 
 const ZERO: Vec2 = { x: 0, y: 0 };
 
+interface MovedPlayer {
+  player: PlayerState;
+  from: Vec2;
+}
+
 export function movementSystem(ctx: SimulationContext, inputs: PlayerInputs): void {
-  const moved: PlayerState[] = [];
+  const moved: MovedPlayer[] = [];
   for (const player of playersOf(ctx.world)) {
     if (!isAlive(player)) continue;
     const input = inputs[player.id];
     if (input !== undefined && !isZero(input.aim)) player.aim = { x: input.aim.x, y: input.aim.y };
+    const from = { x: player.position.x, y: player.position.y };
     const velocity = velocityOf(ctx, player, input);
-    player.velocity = velocity;
-    player.position = placeCircle(
-      ctx.map,
-      clampToMap(ctx.map, moveBy(player.position, velocity, ctx.dt), player.stats.colliderRadius),
-      player.stats.colliderRadius,
-    );
-    moved.push(player);
+    player.position = settle(ctx.map, moveBy(from, velocity, ctx.dt), player.stats.colliderRadius);
+    moved.push({ player, from });
   }
   separatePlayers(ctx, moved);
+  // La vitesse publiée est celle réellement parcourue: murs et séparation compris.
+  for (const { player, from } of moved) {
+    player.velocity = {
+      x: (player.position.x - from.x) / ctx.dt,
+      y: (player.position.y - from.y) / ctx.dt,
+    };
+  }
 }
 
 function velocityOf(
@@ -76,19 +84,20 @@ function clampToMap(map: LoadedMap, position: Vec2, radius: number): Vec2 {
   };
 }
 
-function placeCircle(map: LoadedMap, desired: Vec2, radius: number): Vec2 {
+function settle(map: LoadedMap, desired: Vec2, radius: number): Vec2 {
+  const inside = clampToMap(map, desired, radius);
   return resolveCircleAgainstShapes(
-    desired,
+    inside,
     radius,
-    map.collidersNear(circleBounds(desired, radius)),
+    map.collidersNear(circleBounds(inside, radius)),
   );
 }
 
-function separatePlayers(ctx: SimulationContext, players: readonly PlayerState[]): void {
-  for (let i = 0; i < players.length; i++) {
-    for (let j = i + 1; j < players.length; j++) {
-      const a = players[i];
-      const b = players[j];
+function separatePlayers(ctx: SimulationContext, moved: readonly MovedPlayer[]): void {
+  for (let i = 0; i < moved.length; i++) {
+    for (let j = i + 1; j < moved.length; j++) {
+      const a = moved[i]?.player;
+      const b = moved[j]?.player;
       if (a === undefined || b === undefined) continue;
       const separated = separateCircles(
         a.position,
@@ -97,8 +106,8 @@ function separatePlayers(ctx: SimulationContext, players: readonly PlayerState[]
         b.stats.colliderRadius,
       );
       if (separated === null) continue;
-      a.position = placeCircle(ctx.map, separated.a, a.stats.colliderRadius);
-      b.position = placeCircle(ctx.map, separated.b, b.stats.colliderRadius);
+      a.position = settle(ctx.map, separated.a, a.stats.colliderRadius);
+      b.position = settle(ctx.map, separated.b, b.stats.colliderRadius);
     }
   }
 }

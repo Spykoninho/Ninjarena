@@ -2,8 +2,9 @@ import type { StatusEffectType } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import { normalize, scale } from '../math/vec2';
 import { setPhase } from '../player/phaseTransitions';
+import { isAlive } from '../player/rules';
 import type { PlayerState } from '../player/state';
-import { upsertStatus } from '../player/status';
+import { getStatus, upsertStatus } from '../player/status';
 import type { SimulationContext } from '../simulation/context';
 import type { Tick } from '../simulation/ids';
 
@@ -32,6 +33,8 @@ export function applyStatusEffect(
   durationMs: number,
   magnitude?: number,
 ): void {
+  // Un mort n'a plus de statuts: playerStateSystem ne les ferait jamais expirer.
+  if (!isAlive(target)) return;
   const expiresAt = endOf(ctx, durationMs);
   upsertStatus(
     target,
@@ -42,7 +45,8 @@ export function applyStatusEffect(
     tick: ctx.now,
     playerId: target.id,
     status: type,
-    expiresAt,
+    // Le refresh garde la fin la plus lointaine: on annonce celle réellement retenue.
+    expiresAt: getStatus(target, type)?.expiresAt ?? expiresAt,
   });
 }
 
