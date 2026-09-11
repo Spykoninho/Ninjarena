@@ -1,6 +1,8 @@
 import type { ClientMessage, ServerMessage } from '@ninjarena/protocol';
 import { clientMessageCodec, serverMessageCodec } from '@ninjarena/protocol';
 
+const MAX_LOGGED_CHARS = 120;
+
 export class NetworkClient {
   private socket: WebSocket | null = null;
   private messageHandler: ((message: ServerMessage) => void) | null = null;
@@ -20,7 +22,13 @@ export class NetworkClient {
       socket.addEventListener('message', (event: MessageEvent<unknown>) => {
         if (typeof event.data !== 'string') return;
         const message = serverMessageCodec.decode(event.data);
-        if (message !== null) this.messageHandler?.(message);
+        if (message === null) {
+          console.warn(
+            `dropped an unreadable server frame: ${event.data.slice(0, MAX_LOGGED_CHARS)}`,
+          );
+          return;
+        }
+        this.messageHandler?.(message);
       });
       socket.addEventListener('close', () => {
         this.socket = null;

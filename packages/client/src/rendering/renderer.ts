@@ -29,6 +29,7 @@ export interface RenderFrame {
   camera: Vec2;
   players: PlayerView[];
   projectiles: ProjectileView[];
+  isFfa: boolean;
 }
 
 export interface Renderer {

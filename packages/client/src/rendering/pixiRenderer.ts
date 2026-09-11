@@ -78,7 +78,7 @@ export class PixiRenderer implements Renderer {
       Math.round(app.screen.height / 2 - frame.camera.y * this.zoom),
     );
     const localTeamId = frame.players.find((player) => player.isLocal)?.teamId ?? null;
-    this.syncPlayers(frame.players, localTeamId);
+    this.syncPlayers(frame.players, localTeamId, frame.isFfa);
     this.syncProjectiles(frame.projectiles);
   }
 
@@ -97,11 +97,15 @@ export class PixiRenderer implements Renderer {
     this.mapLayer = null;
   }
 
-  private syncPlayers(views: readonly PlayerView[], localTeamId: TeamId | null): void {
+  private syncPlayers(
+    views: readonly PlayerView[],
+    localTeamId: TeamId | null,
+    isFfa: boolean,
+  ): void {
     const seen = new Set<PlayerId>();
     for (const view of views) {
       seen.add(view.id);
-      const node = this.playerNodes.get(view.id) ?? this.createPlayerNode(view, localTeamId);
+      const node = this.playerNodes.get(view.id) ?? this.createPlayerNode(view, localTeamId, isFfa);
       node.container.position.set(view.position.x, view.position.y);
       node.container.visible = view.visible;
       node.container.alpha = view.phase === 'DEAD' ? DEAD_ALPHA : 1;
@@ -132,10 +136,14 @@ export class PixiRenderer implements Renderer {
     removeMissing(this.projectileNodes, seen, (node) => node);
   }
 
-  private createPlayerNode(view: PlayerView, localTeamId: TeamId | null): PlayerNode {
+  private createPlayerNode(
+    view: PlayerView,
+    localTeamId: TeamId | null,
+    isFfa: boolean,
+  ): PlayerNode {
     const container = new Container();
     const body = new Graphics();
-    drawPlayerGraphic(body, teamColor(view.teamId, localTeamId), PLAYER_RADIUS);
+    drawPlayerGraphic(body, teamColor(view.teamId, localTeamId, isFfa), PLAYER_RADIUS);
     if (view.isLocal) {
       const outline = PLAYER_RADIUS + 2;
       body

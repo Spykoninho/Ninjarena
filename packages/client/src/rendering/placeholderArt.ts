@@ -2,16 +2,17 @@ import type { TeamId } from '@ninjarena/core';
 import type { Graphics } from 'pixi.js';
 
 const OWN_TEAM_COLOR = 0x4aa3ff;
-const OTHER_TEAM_COLORS = [0xff5a5a, 0xff9a3c, 0xd45ad4, 0xe8c14a];
-const FALLBACK_TEAM_COLOR = 0xff5a5a;
+const ENEMY_TEAM_COLOR = 0xff5a5a;
+const FFA_TEAM_COLORS = [0xff5a5a, 0xff9a3c, 0xd45ad4, 0xe8c14a];
 const EYE_COLOR = 0xf2f2f2;
 const BORDER_BRIGHTNESS = 0.45;
 
-export function teamColor(teamId: TeamId, localTeamId: TeamId | null): number {
+export function teamColor(teamId: TeamId, localTeamId: TeamId | null, isFfa: boolean): number {
   if (localTeamId !== null && teamId === localTeamId) return OWN_TEAM_COLOR;
+  if (!isFfa) return ENEMY_TEAM_COLOR;
   // En ffa chaque joueur forme son équipe: la teinte vient du hachage de son identifiant.
-  const index = hash(teamId) % OTHER_TEAM_COLORS.length;
-  return OTHER_TEAM_COLORS[index] ?? FALLBACK_TEAM_COLOR;
+  const index = hash(teamId) % FFA_TEAM_COLORS.length;
+  return FFA_TEAM_COLORS[index] ?? ENEMY_TEAM_COLOR;
 }
 
 export function drawPlayerGraphic(g: Graphics, teamColor: number, radius: number): void {

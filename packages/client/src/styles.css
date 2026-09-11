@@ -86,7 +86,6 @@ body {
 .hud-bar-fill {
   height: 100%;
   width: 100%;
-  transition: width 80ms linear;
 }
 
 .hud-bar-health .hud-bar-fill {

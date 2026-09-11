@@ -8,6 +8,7 @@ export interface ClientConfig {
 const DEFAULT_SERVER_URL = 'ws://localhost:8080';
 const DEFAULT_INTERPOLATION_DELAY_TICKS = 6;
 const DEFAULT_ZOOM = 3;
+const MIN_ZOOM = 1;
 const NAME_SUFFIX_LENGTH = 4;
 const NAME_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -16,8 +17,9 @@ export function loadClientConfig(search: string): ClientConfig {
   return {
     serverUrl: text(params.get('server')) ?? DEFAULT_SERVER_URL,
     playerName: text(params.get('name')) ?? randomName(),
-    interpolationDelayTicks: number(params.get('delay'), DEFAULT_INTERPOLATION_DELAY_TICKS),
-    zoom: number(params.get('zoom'), DEFAULT_ZOOM),
+    interpolationDelayTicks: number(params.get('delay'), DEFAULT_INTERPOLATION_DELAY_TICKS, 0),
+    // Un zoom fractionnaire casse l'alignement au pixel des tuiles.
+    zoom: Math.floor(number(params.get('zoom'), DEFAULT_ZOOM, MIN_ZOOM)),
   };
 }
 
@@ -26,9 +28,9 @@ function text(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function number(value: string | null, fallback: number): number {
+function number(value: string | null, fallback: number, min: number): number {
   const parsed = Number(text(value));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
 }
 
 function randomName(): string {

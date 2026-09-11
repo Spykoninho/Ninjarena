@@ -2,6 +2,8 @@ export * from './audio/audioPort';
 export * from './audio/eventCues';
 export * from './config/clientConfig';
 export * from './game/clientGame';
+export * from './game/hudView';
+export * from './game/renderFrame';
 export * from './input/bindings';
 export * from './input/buildPlayerInput';
 export * from './input/domInputAdapter';
