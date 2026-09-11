@@ -62,6 +62,20 @@ describe('movementSystem', () => {
     expect(p.position.x - 60).toBeCloseTo((140 * 0.5) / 60, 3);
   });
 
+  it('halves the distance travelled while SLOWED', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    const p = sim.addPlayer({
+      id: 'p1',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+    });
+    upsertStatus(p, { type: 'SLOWED', expiresAt: 1000, magnitude: 0.5 });
+    sim.step({ p1: moveRight() });
+    expect(p.position.x - 200).toBeCloseTo((140 * 0.5) / 60, 3);
+  });
+
   it('does not move while ROOTED, STUNNED or DEAD', () => {
     const sim = createTestSimulation();
     sim.startMatch();
