@@ -1,0 +1,153 @@
+:root {
+  --hud-background: rgba(16, 16, 20, 0.72);
+  --hud-border: rgba(255, 255, 255, 0.12);
+  --hud-text: #e8e8f0;
+  --hud-health: #6bd46b;
+  --hud-energy: #4aa3ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #101014;
+  color: var(--hud-text);
+  font:
+    13px/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#app canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-top {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  text-align: center;
+  background: var(--hud-background);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+}
+
+.hud-phase {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.hud-status {
+  opacity: 0.7;
+}
+
+.hud-panel {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  width: 240px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--hud-background);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+}
+
+.hud-bar {
+  position: relative;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.hud-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 80ms linear;
+}
+
+.hud-bar-health .hud-bar-fill {
+  background: var(--hud-health);
+}
+
+.hud-bar-energy .hud-bar-fill {
+  background: var(--hud-energy);
+}
+
+.hud-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.hud-abilities {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-chip {
+  position: relative;
+  flex: 1;
+  padding: 4px;
+  min-width: 0;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--hud-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.hud-chip-cooldown {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hud-chip-name {
+  position: relative;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-chip-timer {
+  position: relative;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.hud-chip.is-cooling .hud-chip-timer {
+  opacity: 1;
+  color: #ffb05a;
+}
