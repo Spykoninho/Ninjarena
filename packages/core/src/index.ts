@@ -6,6 +6,7 @@ export * from './collision';
 export * from './map';
 export * from './player';
 export * from './abilities';
+export * from './combat';
 export * from './projectile';
 export * from './match';
 export * from './simulation';
