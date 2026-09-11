@@ -33,16 +33,27 @@ class WebSocketConnection implements Connection {
   }
 }
 
+export interface WebSocketTransportOptions {
+  host: string;
+  port: number;
+  log?: (line: string) => void;
+}
+
+// Le plus gros message légitime tient en quelques centaines d'octets.
+const MAX_PAYLOAD_BYTES = 64 * 1024;
+
 export class WebSocketTransport implements ServerTransport {
   private readonly host: string;
   private readonly port: number;
+  private readonly log: (line: string) => void;
   private server: WebSocketServer | null = null;
   private connectionHandler: ((connection: Connection) => void) | null = null;
   private connectionCount = 0;
 
-  constructor(options: { host: string; port: number }) {
+  constructor(options: WebSocketTransportOptions) {
     this.host = options.host;
     this.port = options.port;
+    this.log = options.log ?? ((line) => console.error(line));
   }
 
   onConnection(handler: (connection: Connection) => void): void {
@@ -51,16 +62,32 @@ export class WebSocketTransport implements ServerTransport {
 
   listen(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const server = new WebSocketServer({ host: this.host, port: this.port });
+      const server = new WebSocketServer({
+        host: this.host,
+        port: this.port,
+        maxPayload: MAX_PAYLOAD_BYTES,
+      });
       this.server = server;
+      let settled = false;
       server.on('connection', (socket) => {
         // Une socket cliente en erreur ne doit pas faire tomber le serveur.
         socket.on('error', () => socket.terminate());
         this.connectionCount += 1;
         this.connectionHandler?.(new WebSocketConnection(`c${this.connectionCount}`, socket));
       });
-      server.once('error', reject);
-      server.once('listening', resolve);
+      // Listener permanent: sans lui, une erreur tardive du serveur ferait tomber le processus.
+      server.on('error', (error: Error) => {
+        if (settled) {
+          this.log(`websocket server error: ${error.message}`);
+          return;
+        }
+        settled = true;
+        reject(error);
+      });
+      server.once('listening', () => {
+        settled = true;
+        resolve();
+      });
     });
   }
 

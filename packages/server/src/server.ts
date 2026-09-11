@@ -25,6 +25,7 @@ type JoinMessage = Extract<ClientMessage, { type: 'join' }>;
 type JoinedMessage = Exclude<ClientMessage, { type: 'join' }>;
 
 const DEFAULT_ROOM_ID = 'default';
+const MAX_INVALID_MESSAGES = 20;
 
 export class GameServer {
   private readonly config: ServerConfig;
@@ -34,7 +35,6 @@ export class GameServer {
   private readonly log: (line: string) => void;
   private readonly rooms: RoomManager;
   private loop: TickLoop | null = null;
-  private invalidMessages = 0;
 
   constructor(deps: GameServerDeps) {
     this.config = deps.config;
@@ -107,9 +107,11 @@ export class GameServer {
   private handleMessage(room: Room, session: ClientSession, raw: string): void {
     const message = clientMessageCodec.decode(raw);
     if (message === null) {
-      // Une trame illisible est jetée sans réponse: un client hostile n'obtient rien du serveur.
-      this.invalidMessages += 1;
-      this.log(`dropped invalid message from ${session.id} (${this.invalidMessages} total)`);
+      // Une trame illisible est jetée sans réponse; un flot d'entre elles ferme la connexion.
+      session.invalidMessages += 1;
+      if (session.invalidMessages !== MAX_INVALID_MESSAGES) return;
+      this.log(`closing ${session.id} after ${MAX_INVALID_MESSAGES} invalid messages`);
+      session.connection.close(1008, 'invalid messages');
       return;
     }
     if (message.type === 'join') {
@@ -134,11 +136,11 @@ export class GameServer {
     }
     // Un second `join` ne doit pas dupliquer le joueur déjà présent dans la simulation.
     if (session.playerId !== null) return;
-    const result = room.join(session, message.name);
-    if (!result.ok) {
-      session.send({ type: 'error', code: result.error, message: 'the room is full' });
+    if (room.isFull) {
+      session.send({ type: 'error', code: 'ROOM_FULL', message: 'the room is full' });
       return;
     }
+    // Le client doit connaître son identifiant avant le `roomState` diffusé par la salle.
     session.send({
       type: 'welcome',
       playerId: session.id,
@@ -147,6 +149,7 @@ export class GameServer {
       mapId: this.config.mapId,
       matchConfig: room.matchConfig,
     });
+    room.join(session, message.name);
   }
 
   private handleJoinedMessage(room: Room, session: ClientSession, message: JoinedMessage): void {
@@ -160,6 +163,10 @@ export class GameServer {
       case 'ping':
         session.send({ type: 'pong', sentAt: message.sentAt, serverTime: Date.now() });
         return;
+      default: {
+        const exhaustive: never = message;
+        return exhaustive;
+      }
     }
   }
 

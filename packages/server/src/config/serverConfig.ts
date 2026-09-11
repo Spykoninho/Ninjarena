@@ -12,7 +12,8 @@ export interface ServerConfig {
   autoStartWhenFull: boolean;
 }
 
-const DEFAULT_HOST = '0.0.0.0';
+// Un serveur de développement sans authentification n'écoute pas sur le réseau par défaut.
+const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8080;
 const DEFAULT_TICK_RATE = 60;
 const DEFAULT_SNAPSHOT_RATE = 30;

@@ -11,6 +11,7 @@ export class ClientSession {
   playerId: PlayerId | null = null;
   name: string;
   ready = false;
+  invalidMessages = 0;
 
   constructor(connection: Connection, inputQueueCapacity: number) {
     this.id = connection.id;

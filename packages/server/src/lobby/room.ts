@@ -42,13 +42,16 @@ export class Room {
   }
 
   join(session: ClientSession, name: string): JoinResult {
+    // Un `join` répété par la même session est sans effet plutôt que de dupliquer le joueur.
+    if (this.present.includes(session)) return { ok: true };
     if (this.isFull) return { ok: false, error: 'ROOM_FULL' };
     // L'identité du joueur vient de sa connexion: le client ne choisit jamais son identifiant.
-    session.playerId = session.id;
+    const playerId = session.id;
+    session.playerId = playerId;
     session.name = name;
     session.ready = false;
-    const teamId = pickTeamForNewPlayer(this.matchConfig, this.simulation.world, session.id);
-    this.simulation.addPlayer({ id: session.id, teamId, characterId: this.characterId });
+    const teamId = pickTeamForNewPlayer(this.matchConfig, this.simulation.world, playerId);
+    this.simulation.addPlayer({ id: playerId, teamId, characterId: this.characterId });
     this.present.push(session);
     this.broadcastRoomState();
     return { ok: true };
@@ -74,10 +77,11 @@ export class Room {
   roomStateMessage(): ServerMessage {
     const players: RoomPlayerInfo[] = [];
     for (const session of this.present) {
-      const player = this.simulation.world.players[session.id];
+      if (session.playerId === null) continue;
+      const player = this.simulation.world.players[session.playerId];
       if (player === undefined) continue;
       players.push({
-        id: session.id,
+        id: session.playerId,
         name: session.name,
         teamId: player.teamId,
         ready: session.ready,

@@ -56,6 +56,28 @@ describe('Room', () => {
     expect(room.simulation.world.match.round).toBe(1);
   });
 
+  it('ignores a repeated join from the same session', () => {
+    const room = createRoom();
+    const { session } = createSession('c1');
+    expect(room.join(session, 'one')).toEqual({ ok: true });
+    expect(room.join(session, 'one-again')).toEqual({ ok: true });
+    expect(room.sessions).toHaveLength(1);
+    expect(room.roomStateMessage()).toMatchObject({
+      type: 'roomState',
+      players: [{ id: 'c1', name: 'one' }],
+    });
+  });
+
+  it('starts a full room on the first ready when auto-start is on', () => {
+    const room = createRoom(true);
+    const first = createSession('c1');
+    room.join(first.session, 'one');
+    room.join(createSession('c2').session, 'two');
+    expect(room.isFull).toBe(true);
+    room.setReady(first.session, true);
+    expect(room.simulation.world.match.phase).not.toBe('WAITING');
+  });
+
   it('removes a leaving player from the simulation', () => {
     const room = createRoom();
     const { session } = createSession('c1');
