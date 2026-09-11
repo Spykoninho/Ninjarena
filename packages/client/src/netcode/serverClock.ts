@@ -6,7 +6,14 @@ export class ServerClock {
   private estimatedAtMs = 0;
 
   constructor(tickDurationMs: number) {
+    if (!Number.isFinite(tickDurationMs) || tickDurationMs <= 0) {
+      throw new Error(`Invalid tick duration ${tickDurationMs}`);
+    }
     this.tickDurationMs = tickDurationMs;
+  }
+
+  get hasEstimate(): boolean {
+    return this.estimatedTick !== null;
   }
 
   observe(serverTick: number, receivedAtMs: number): void {
@@ -23,7 +30,6 @@ export class ServerClock {
 
   estimateTick(nowMs: number): number {
     if (this.estimatedTick === null) return 0;
-    if (this.tickDurationMs <= 0) return this.estimatedTick;
     return this.estimatedTick + (nowMs - this.estimatedAtMs) / this.tickDurationMs;
   }
 }

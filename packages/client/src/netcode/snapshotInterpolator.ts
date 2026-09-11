@@ -27,9 +27,10 @@ export class SnapshotInterpolator {
     this.maxSnapshots = Math.max(1, Math.floor(maxSnapshots));
   }
 
+  // L'interpolateur s'approprie le snapshot reçu: l'appelant passe un état qu'il n'utilise plus (sim.snapshot()).
   push(world: WorldState): void {
     const newest = this.latest;
-    // Un snapshot qui n'avance pas le tick est ignoré: le réseau peut livrer dans le désordre.
+    // Un tick qui ne progresse pas est ignoré, doublon compris: le réseau peut livrer dans le désordre.
     if (newest !== null && world.tick <= newest.tick) return;
     this.snapshots.push(world);
     while (this.snapshots.length > this.maxSnapshots) this.snapshots.shift();
@@ -71,15 +72,16 @@ function blendEntities<T extends { position: Vec2 }>(
   t: number,
 ): Record<string, T & { renderPosition: Vec2 }> {
   const blended: Record<string, T & { renderPosition: Vec2 }> = {};
-  // Une entité absente du snapshot récent garde sa dernière position connue.
+  // L'état discret vient du snapshot ancien: il doit décrire l'instant rendu, pas un futur déjà reçu.
   for (const [id, state] of Object.entries(from)) {
-    blended[id] = { ...state, renderPosition: { ...state.position } };
-  }
-  for (const [id, state] of Object.entries(to)) {
-    const previous = from[id];
+    const next = to[id];
     const renderPosition =
-      previous === undefined ? { ...state.position } : lerp(previous.position, state.position, t);
+      next === undefined ? { ...state.position } : lerp(state.position, next.position, t);
     blended[id] = { ...state, renderPosition };
+  }
+  // Une entité apparue seulement dans le snapshot récent est affichée depuis celui-ci.
+  for (const [id, state] of Object.entries(to)) {
+    if (from[id] === undefined) blended[id] = { ...state, renderPosition: { ...state.position } };
   }
   return blended;
 }
