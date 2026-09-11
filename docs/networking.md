@@ -56,8 +56,10 @@ two ticks changes, and the render interpolates the local player with the accumul
 
 The server's `TickLoop` subtracts the time already spent in the current wake-up before scheduling
 the next one, so drift does not accumulate, and its clock and scheduler are injectable — which is
-how it is tested without waiting. Both accumulators cap catch-up: a long freeze (a hidden tab, a
-paused process) is abandoned rather than replayed in a burst.
+how it is tested without waiting. That clock is `performance.now()` and not `Date.now()`: it is
+monotonic, so an NTP step cannot make one tick last a negative or an enormous amount of time. Both
+accumulators cap catch-up: a long freeze (a hidden tab, a paused process) is abandoned rather than
+replayed in a burst.
 
 ## Sequence numbers and `lastProcessedSeq`
 

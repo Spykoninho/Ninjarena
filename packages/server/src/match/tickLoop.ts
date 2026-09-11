@@ -27,7 +27,8 @@ export class TickLoop {
       stepMs,
       options.maxCatchUpSteps ?? DEFAULT_MAX_CATCH_UP_STEPS,
     );
-    this.now = options.now ?? (() => Date.now());
+    // L'horloge du pas est monotone: une correction NTP ne doit pas fabriquer un delta absurde.
+    this.now = options.now ?? (() => performance.now());
     this.schedule = options.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
     this.cancel =
       options.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
