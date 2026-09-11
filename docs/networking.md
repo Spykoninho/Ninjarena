@@ -174,6 +174,10 @@ Stating the gaps is more useful than implying they do not exist.
   first thing to add.
 - **No delta or binary snapshots.** Every snapshot carries the whole `WorldState` as JSON. It is
   small at six players on one map, and it is easy to read while debugging. It will not scale.
+- **No per-viewer snapshot filtering.** Every session receives the same whole `WorldState`, so
+  `INVISIBLE` is a rendering hint the client honours through `isVisibleTo`, not a secret: the
+  position of an invisible player is on the wire. Filtering each snapshot for its viewer is the
+  prerequisite for any stealth ability worth the name.
 - **No input redundancy.** Each input is sent once. On a lossy link a dropped input is simply
   missing, and the server repeats the previous one. Sending the last few inputs in each message is
   the usual fix.

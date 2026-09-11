@@ -31,6 +31,7 @@ export function statusSpeedMultiplier(player: PlayerState): number {
   return slowed.magnitude ?? DEFAULT_SLOW_MAGNITUDE;
 }
 
+// Indice de rendu: le serveur ne filtre pas encore les snapshots par destinataire.
 export function isVisibleTo(player: PlayerState, viewer: PlayerState): boolean {
   if (!hasStatus(player, 'INVISIBLE')) return true;
   return player.id === viewer.id || player.teamId === viewer.teamId;

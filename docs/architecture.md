@@ -119,8 +119,9 @@ a round, and only the round reset writes the phase back directly. A stun or a kn
 The rules that read this model are six small predicates in `player/rules.ts`: `isAlive`,
 `isDamageable` (alive and not `INVULNERABLE`), `canAct` (phase is `NORMAL`), `controlsMovement`
 (phase allows it and not `ROOTED`), `statusSpeedMultiplier`, `isVisibleTo` (an `INVISIBLE` player
-is still visible to themselves and their team). Adding a status means adding a variant and touching
-the one rule that cares — not rewriting a state machine.
+is still visible to themselves and their team). `isVisibleTo` is a rendering hint the client
+applies, not an authority: the server broadcasts the same unfiltered snapshot to everyone. Adding a
+status means adding a variant and touching the one rule that cares — not rewriting a state machine.
 
 ## Abilities
 
