@@ -36,7 +36,7 @@ describe('movementSystem', () => {
   it('is stopped by a wall and slides along it', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    // wall column 10 → x in [160, 176); rows 3-8 → y in [48, 144)
+    // mur colonne 10 → x dans [160, 176); rangées 3-8 → y dans [48, 144)
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',
@@ -51,7 +51,7 @@ describe('movementSystem', () => {
   it('is slowed by water', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    // water rows 10-12, columns 3-6 → x in [48, 112), y in [160, 208)
+    // eau rangées 10-12, colonnes 3-6 → x dans [48, 112), y dans [160, 208)
     const p = sim.addPlayer({
       id: 'p1',
       teamId: 'team-0',

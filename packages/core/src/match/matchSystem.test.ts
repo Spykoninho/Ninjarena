@@ -39,8 +39,8 @@ describe('match rules', () => {
     sim.startMatch();
     sim.step({});
     applyDamage(contextOf(sim), b, 999, 'a');
-    sim.step({}); // round ends
-    sim.step({}); // next round starts
+    sim.step({}); // fin de la manche
+    sim.step({}); // début de la manche suivante
     expect(sim.world.match.round).toBe(2);
     expect(sim.world.match.phase).toBe('IN_ROUND');
     expect(b.health).toBe(100);

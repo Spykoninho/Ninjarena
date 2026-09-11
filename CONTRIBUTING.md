@@ -59,7 +59,8 @@ The package boundaries are the architecture. An arrow means "may import":
 
 - **`core` imports nothing from the workspace.** It is the simulation: no DOM, no Node APIs, no
   network, no rendering, no randomness, no wall clock. An ESLint `no-restricted-imports` rule fails
-  the build if a `@ninjarena/*` import appears there, and its `tsconfig` excludes DOM types.
+  the build if a `@ninjarena/*` import — or a relative import climbing out of `packages/core/src` —
+  appears there, and its `tsconfig` excludes DOM types.
 - `protocol` and `content` depend on `core` only. They never depend on each other, on the server or
   on the client.
 - `server` and `client` are the only packages allowed to touch I/O.
@@ -125,10 +126,11 @@ under the player's centre.
 
 Prettier and ESLint decide the rest; these are the choices they cannot enforce.
 
-- **English** for identifiers, types, tests, documentation and anything a player sees.
-- **Comments are rare.** One line, in French, only for an architectural choice, a piece of
-  non-obvious logic or a network constraint. A comment that restates the code is removed instead of
-  updated. This is the maintainer's convention; everything else stays in English.
+- **English** for identifiers, types, test names, documentation, UI strings and commit messages.
+- **Code comments are one French line**, in every file that carries code — sources, tests and
+  configuration alike. They are rare: only for an architectural choice, a piece of non-obvious logic
+  or a network constraint. A comment that restates the code is removed instead of updated. This is
+  the maintainer's convention; everything else stays in English.
 - `import type` for type-only imports (enforced by
   `@typescript-eslint/consistent-type-imports`), relative imports without a file extension.
 - No `any`. `strict` and `noUncheckedIndexedAccess` are on: handle the `undefined` an index access

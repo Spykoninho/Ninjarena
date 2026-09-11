@@ -23,7 +23,7 @@ describe('ability validation', () => {
     sim.step({ p1: press(0) });
     expect(p.phase.kind).toBe('CASTING');
     expect(p.energy).toBe(90);
-    expect(p.abilities[0]!.readyAt).toBe(54); // 900 ms at 60 Hz
+    expect(p.abilities[0]!.readyAt).toBe(54); // 900 ms à 60 Hz
   });
 
   it('rejects a press while on cooldown, out of energy, or busy', () => {
@@ -42,7 +42,7 @@ describe('ability validation', () => {
     );
     p.abilities[0]!.readyAt = 0;
     p.energy = 5;
-    events = sim.step({ p1: idle() }); // release
+    events = sim.step({ p1: idle() }); // relâchement du bouton
     events = sim.step({ p1: press(0) });
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'abilityRejected', reason: 'NOT_ENOUGH_ENERGY' }),
@@ -69,7 +69,7 @@ describe('ability validation', () => {
     for (let i = 0; i < 120; i++) {
       for (const e of sim.step({ p1: press(0) })) if (e.type === 'abilityCast') casts++;
     }
-    expect(casts).toBe(1); // the cooldown ended at tick 54 but the button was never released
+    expect(casts).toBe(1); // le cooldown s'achève au tick 54 mais le bouton n'a jamais été relâché
   });
 
   it('follows the timeline startup → activation → recovery → NORMAL', () => {
@@ -81,7 +81,7 @@ describe('ability validation', () => {
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    sim.step({ p1: press(0) }); // tick 0: cast, activates at 6, ends at 15
+    sim.step({ p1: press(0) }); // tick 0: incantation, activation au tick 6, fin au tick 15
     for (let i = 1; i < 6; i++) sim.step({ p1: idle() });
     expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
     sim.step({ p1: idle() }); // tick 6
@@ -113,7 +113,7 @@ describe('ability validation', () => {
     });
     sim.step({ p2: press(2) });
     for (let i = 0; i < 6; i++) sim.step({ p2: idle() });
-    expect(blocked.position.x).toBeCloseTo(160 - 5, 1); // wall at x = 160
+    expect(blocked.position.x).toBeCloseTo(160 - 5, 1); // mur à x = 160
   });
 
   it('melee hits targets inside the arc and applies knockback', () => {
@@ -137,7 +137,7 @@ describe('ability validation', () => {
       characterId: 'ninja',
       position: { x: 180, y: 200 },
     });
-    sim.step({ a: press(1) }); // startup 100 ms = 6 ticks, activates during tick 6
+    sim.step({ a: press(1) }); // armement 100 ms = 6 ticks, activation pendant le tick 6
     for (let i = 0; i < 8; i++) sim.step({ a: idle() });
     expect(inFront.health).toBe(70);
     expect(inFront.phase.kind).toBe('KNOCKBACK');

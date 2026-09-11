@@ -33,7 +33,7 @@ describe('reconcile', () => {
     const snapshot = server.snapshot();
     buffer.acknowledge(6);
     reconcile(client, 'me', snapshot, buffer.pending);
-    // client re-simulated ticks 7..10 on top of the server's tick 6
+    // Le client a rejoué les ticks 7 à 10 par-dessus le tick 6 du serveur.
     const expected = makeSim();
     for (let i = 0; i < 10; i++) expected.step({ me: right() });
     expect(client.world.players['me']!.position).toEqual(expected.world.players['me']!.position);
@@ -45,7 +45,7 @@ describe('reconcile', () => {
     const buffer = new PredictionBuffer();
     buffer.push(1, right());
     client.step({ me: right() });
-    server.step({ me: neutralInput() }); // server saw no movement
+    server.step({ me: neutralInput() }); // le serveur n'a vu aucun mouvement
     buffer.acknowledge(1);
     reconcile(client, 'me', server.snapshot(), buffer.pending);
     expect(client.world.players['me']!.position).toEqual(server.world.players['me']!.position);

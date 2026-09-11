@@ -33,7 +33,7 @@ describe('LoadedMap', () => {
 
   it('merges solid tiles into rectangles and keeps explicit colliders', () => {
     const rects = loaded.colliders.filter((s) => s.type === 'rect');
-    expect(rects).toHaveLength(4); // top row, left column, right column, bottom row
+    expect(rects).toHaveLength(4); // rangée haute, colonne gauche, colonne droite, rangée basse
     expect(loaded.colliders.some((s) => s.type === 'circle')).toBe(true);
   });
 

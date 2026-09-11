@@ -4,7 +4,7 @@ import { abilityMask, neutralInput } from '../input';
 import { contextOf, createTestSimulation } from '../../testing/fixtures';
 import { projectileSystem } from './projectileSystem';
 
-const shoot = { ...neutralInput(), aim: { x: 1, y: 0 }, abilityHeld: abilityMask([3]) }; // seal: no startup
+const shoot = { ...neutralInput(), aim: { x: 1, y: 0 }, abilityHeld: abilityMask([3]) }; // seal: aucun temps d'armement
 const idle = { ...neutralInput(), aim: { x: 1, y: 0 } };
 
 describe('projectileSystem', () => {
@@ -34,7 +34,7 @@ describe('projectileSystem', () => {
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 120, y: 100 },
-    }); // wall at x = 160
+    }); // mur à x = 160
     const events: string[] = [];
     sim.step({ a: shoot });
     for (let i = 0; i < 20; i++) {
@@ -47,7 +47,7 @@ describe('projectileSystem', () => {
   it('expires at the end of its lifetime', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    // Row 2 is open from x=16 to x=464: 300 units/s for 1000 ms never reaches a wall.
+    // La rangée 2 est libre de x=16 à x=464: 300 unités/s pendant 1000 ms n'atteint aucun mur.
     sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 40, y: 40 } });
     sim.step({ a: shoot });
     let reason: string | undefined;

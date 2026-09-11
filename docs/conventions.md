@@ -5,10 +5,11 @@ version for a first pull request; this note is the reference.
 
 ## Language
 
-- **English** for identifiers, types, file names, tests, documentation, commit messages, issues
-  and anything a player can read.
-- **Code comments are the one exception: they are written in French.** This is the maintainer's
-  convention and it applies only to comments inside source files.
+- **English** for identifiers, types, file names, test names, documentation, commit messages,
+  issues and anything a player can read.
+- **Code comments are the one exception: one French line each.** This is the maintainer's
+  convention and it applies to every file that carries code — sources, tests and configuration
+  files alike.
 
 ## Naming
 
@@ -66,7 +67,8 @@ sectioned with comments.
 
 ## Comments
 
-Rare, one line, in French, above the thing they explain. Write one only for:
+Rare, one line, in French, above the thing they explain — in sources, tests and configuration files
+alike. Write one only for:
 
 - an **architectural choice** that the code cannot show — why a seam exists, why an order matters,
 - **non-obvious logic** — an invariant, a guard that looks removable but is not,

@@ -32,7 +32,8 @@ what the package boundaries enforce.
 ```
 
 `core` compiles against `ES2022` only — no DOM library — and an ESLint `no-restricted-imports` rule
-rejects any `@ninjarena/*` import inside it. `protocol` and `content` never import each other. The
+rejects any `@ninjarena/*` import inside it, as well as a relative import climbing out of
+`packages/core/src`. `protocol` and `content` never import each other. The
 server and the client are the only packages that perform I/O.
 
 Determinism is a rule, not a hope: `core` contains no randomness and never reads a wall clock. Time

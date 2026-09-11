@@ -96,7 +96,7 @@ describe('stun and knockback', () => {
       endsAt: 15,
       activated: false,
     };
-    applyStun(ctx, p, 100); // 6 ticks: stunned through tick 5, back to NORMAL during tick 6
+    applyStun(ctx, p, 100); // 6 ticks: étourdi jusqu'au tick 5, de retour en NORMAL pendant le tick 6
     expect(p.phase.kind).toBe('STUNNED');
     for (let i = 0; i < 7; i++) sim.step({});
     expect(p.phase.kind).toBe('NORMAL');
@@ -105,7 +105,7 @@ describe('stun and knockback', () => {
   it('knockback moves the player along the direction then stops', () => {
     const { sim, p, ctx } = setup();
     applyKnockback(ctx, p, { x: 1, y: 0 }, 300, 100);
-    for (let i = 0; i < 7; i++) sim.step({}); // 6 ticks of knockback, then the phase expires
+    for (let i = 0; i < 7; i++) sim.step({}); // 6 ticks de recul, puis la phase expire
     expect(p.position.x).toBeCloseTo(200 + 300 * (6 / 60), 3);
     expect(p.phase.kind).toBe('NORMAL');
   });

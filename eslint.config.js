@@ -7,7 +7,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // The simulation must stay free of I/O, rendering and networking concerns.
+    // La simulation reste libre de toute entrée-sortie, de rendu et de réseau.
     files: ['packages/core/src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
@@ -15,6 +15,10 @@ export default tseslint.config(
         {
           patterns: [
             { group: ['@ninjarena/*'], message: 'core must not depend on other packages' },
+            {
+              group: ['../../../*', '../../../../*'],
+              message: 'core must not reach outside packages/core/src',
+            },
           ],
         },
       ],
