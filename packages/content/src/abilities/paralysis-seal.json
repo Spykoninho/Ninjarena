@@ -1,0 +1,21 @@
+{
+  "id": "paralysis-seal",
+  "name": "Paralysis Seal",
+  "cooldownMs": 6000,
+  "energyCost": 30,
+  "startupMs": 200,
+  "recoveryMs": 250,
+  "tags": ["ranged", "control"],
+  "effects": [
+    {
+      "type": "projectile",
+      "speed": 300,
+      "radius": 4,
+      "lifetimeMs": 700,
+      "onHit": [
+        { "type": "stun", "durationMs": 800 },
+        { "type": "applyStatus", "status": "SLOWED", "durationMs": 2000, "magnitude": 0.5 }
+      ]
+    }
+  ]
+}

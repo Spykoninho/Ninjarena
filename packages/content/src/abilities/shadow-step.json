@@ -1,0 +1,10 @@
+{
+  "id": "shadow-step",
+  "name": "Shadow Step",
+  "cooldownMs": 4000,
+  "energyCost": 25,
+  "startupMs": 0,
+  "recoveryMs": 0,
+  "tags": ["mobility"],
+  "effects": [{ "type": "dash", "distance": 96, "durationMs": 150 }]
+}

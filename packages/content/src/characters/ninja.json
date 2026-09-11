@@ -1,0 +1,12 @@
+{
+  "id": "ninja",
+  "name": "Ninja",
+  "stats": {
+    "maxHealth": 100,
+    "maxEnergy": 100,
+    "moveSpeed": 140,
+    "energyRegenPerSecond": 8,
+    "colliderRadius": 5
+  },
+  "abilities": ["shuriken", "kunai-slash", "shadow-step", "paralysis-seal"]
+}

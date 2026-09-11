@@ -1,0 +1,12 @@
+{
+  "id": "default",
+  "tileSize": 16,
+  "tiles": {
+    "0": { "name": "ground", "color": "#c9b97a" },
+    "1": { "name": "grass", "color": "#5aa15a", "tags": ["grass"] },
+    "2": { "name": "water", "color": "#4a86c8", "speedMultiplier": 0.6, "tags": ["water"] },
+    "3": { "name": "wall", "color": "#6b6b7a", "solid": true },
+    "4": { "name": "tree", "color": "#2f6b3a", "solid": true, "tags": ["tree"] },
+    "5": { "name": "building", "color": "#8a4b3b", "solid": true, "tags": ["building"] }
+  }
+}

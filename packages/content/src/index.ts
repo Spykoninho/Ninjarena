@@ -1,1 +1,1 @@
-export const PACKAGE_NAME = '@ninjarena/content';
+export * from './loadContent';

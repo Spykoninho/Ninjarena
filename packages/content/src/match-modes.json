@@ -1,0 +1,57 @@
+[
+  {
+    "id": "duel",
+    "mode": "team",
+    "teamCount": 2,
+    "playersPerTeam": 1,
+    "roundsToWin": 3,
+    "roundDurationMs": 90000,
+    "countdownMs": 3000,
+    "roundEndDelayMs": 3000,
+    "friendlyFire": false
+  },
+  {
+    "id": "ffa-3",
+    "mode": "ffa",
+    "teamCount": 3,
+    "playersPerTeam": 1,
+    "roundsToWin": 3,
+    "roundDurationMs": 90000,
+    "countdownMs": 3000,
+    "roundEndDelayMs": 3000,
+    "friendlyFire": false
+  },
+  {
+    "id": "ffa-4",
+    "mode": "ffa",
+    "teamCount": 4,
+    "playersPerTeam": 1,
+    "roundsToWin": 3,
+    "roundDurationMs": 90000,
+    "countdownMs": 3000,
+    "roundEndDelayMs": 3000,
+    "friendlyFire": false
+  },
+  {
+    "id": "2v2",
+    "mode": "team",
+    "teamCount": 2,
+    "playersPerTeam": 2,
+    "roundsToWin": 3,
+    "roundDurationMs": 90000,
+    "countdownMs": 3000,
+    "roundEndDelayMs": 3000,
+    "friendlyFire": false
+  },
+  {
+    "id": "3v3",
+    "mode": "team",
+    "teamCount": 2,
+    "playersPerTeam": 3,
+    "roundsToWin": 3,
+    "roundDurationMs": 90000,
+    "countdownMs": 3000,
+    "roundEndDelayMs": 3000,
+    "friendlyFire": false
+  }
+]

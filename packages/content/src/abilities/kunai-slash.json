@@ -1,0 +1,20 @@
+{
+  "id": "kunai-slash",
+  "name": "Kunai Slash",
+  "cooldownMs": 700,
+  "energyCost": 8,
+  "startupMs": 120,
+  "recoveryMs": 200,
+  "tags": ["melee"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 22,
+      "arcDegrees": 110,
+      "onHit": [
+        { "type": "damage", "amount": 30 },
+        { "type": "knockback", "speed": 260, "durationMs": 120 }
+      ]
+    }
+  ]
+}
