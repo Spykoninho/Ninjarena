@@ -67,6 +67,17 @@ describe('FileMapRepository', () => {
     expect(logs).toEqual([expect.stringMatching(/^skipping map file bad\.json: .+$/)]);
   });
 
+  it('skips and logs a file that is valid JSON but not a valid map document', async () => {
+    const repository = new FileMapRepository({ dir, log: (line) => logs.push(line) });
+    await repository.save(makeDocument('one', 'One'));
+    await writeFile(join(dir, 'bad.json'), JSON.stringify({ version: 1, id: 'bad' }), 'utf8');
+
+    const docs = await repository.list();
+    expect(docs.map((doc) => doc.id)).toEqual(['one']);
+    expect(logs).toEqual([expect.stringContaining('skipping map file bad.json:')]);
+    await expect(repository.get('bad')).resolves.toBeNull();
+  });
+
   it('keeps a single file when overwriting', async () => {
     const repository = new FileMapRepository({ dir, log: (line) => logs.push(line) });
     await repository.save(makeDocument('one', 'One'));

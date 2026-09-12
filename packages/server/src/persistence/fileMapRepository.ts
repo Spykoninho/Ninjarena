@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MapDocument } from '@ninjarena/core';
+import { migrateMapDocument } from '@ninjarena/core';
 import type { MapRepository } from './mapRepository';
 
 export interface FileMapRepositoryOptions {
@@ -62,7 +63,8 @@ export class FileMapRepository implements MapRepository {
   private async readDocument(fileName: string): Promise<MapDocument | null> {
     try {
       const raw = await readFile(join(this.dir, fileName), 'utf8');
-      return JSON.parse(raw) as MapDocument;
+      // Un fichier sur disque n'est pas plus digne de confiance qu'un envoi client: même passage obligé.
+      return migrateMapDocument(JSON.parse(raw));
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') return null;
       const reason = error instanceof Error ? error.message : String(error);
