@@ -192,7 +192,7 @@ export class SetupPanel {
   private refresh(): void {
     const state = this.state;
     if (state === null) return;
-    this.pointsLabel.textContent = `${pointsLeft(state, this.rules, this.budget)} points left`;
+    this.pointsLabel.textContent = `${pointsLeft(state, this.budget)} points left`;
     const availability = playAvailability(
       state,
       this.rules,

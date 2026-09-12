@@ -259,6 +259,8 @@ export class ClientGame {
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
     this.updateSpectator();
+    // Une pression ne vaut que pour l'image qui la lit: elle est consommée à la fin de celle-ci.
+    this.deps.inputState.pressedOnce.clear();
     const offset = this.smoother.advance(elapsed);
     // Un gel de coup arrête l'image sans arrêter la simulation ni les entrées envoyées.
     if (!this.feedback.advance(elapsed).frozen) {
@@ -280,7 +282,6 @@ export class ClientGame {
   private updateSpectator(): void {
     const localPlayerId = this.localPlayerId;
     const cyclePressed = this.deps.inputState.pressedOnce.has(this.deps.bindings.spectateNext);
-    this.deps.inputState.pressedOnce.clear();
     if (localPlayerId === null) return;
     this.spectator.update(this.latestSnapshot, localPlayerId, this.isFfa, cyclePressed);
   }
@@ -351,6 +352,7 @@ export class ClientGame {
       buildHudView({
         localPlayer: this.localPlayer(),
         abilities: this.deps.content.abilities,
+        bindings: this.deps.bindings,
         match: this.latestSnapshot?.match ?? null,
         tick: this.simulation?.world.tick ?? 0,
         tickDurationMs: this.tickMs,

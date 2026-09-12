@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadContent, loadMap } from '@ninjarena/content';
 import { GameSimulation } from '@ninjarena/core';
 import type { MatchState, PlayerState } from '@ninjarena/core';
+import { DEFAULT_BINDINGS } from '../input/bindings';
 import { buildHudView } from './hudView';
 
 const content = loadContent();
@@ -39,6 +40,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match,
       tick: 100,
       tickDurationMs: 1000 / 60,
@@ -69,6 +71,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match,
       tick: 100,
       tickDurationMs: 1000 / 60,
@@ -84,6 +87,13 @@ describe('buildHudView', () => {
     expect(view.abilities[0]?.remainingMs).toBeCloseTo(500);
     expect(view.abilities[1]?.remainingMs).toBe(0);
     expect(view.abilities[2]?.chakraCost).toBe(content.abilities.get('fireball').chakraCost);
+    expect(view.abilities.map((ability) => ability.binding)).toEqual([
+      'LMB',
+      'SPC',
+      'RMB',
+      'E',
+      'R',
+    ]);
   });
 
   it('reports the remaining absorb of an active shield', () => {
@@ -92,6 +102,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match,
       tick: 100,
       tickDurationMs: 1000 / 60,
@@ -107,6 +118,7 @@ describe('buildHudView', () => {
     const base = {
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       tickDurationMs: 1000 / 60,
       status: '',
       rttMs: null,
@@ -128,6 +140,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match,
       tick: 0,
       tickDurationMs: 1000 / 60,
@@ -142,6 +155,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: undefined,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match: null,
       tick: 0,
       tickDurationMs: 1000 / 60,
@@ -162,6 +176,7 @@ describe('buildHudView', () => {
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
       match,
       tick: 100,
       tickDurationMs: 1000 / 60,

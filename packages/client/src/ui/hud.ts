@@ -2,6 +2,7 @@ import type { MatchPhase, TeamId } from '@ninjarena/core';
 
 export interface HudAbilityView {
   name: string;
+  binding: string;
   chakraCost: number;
   remainingMs: number;
   cooldownMs: number;
@@ -39,11 +40,13 @@ interface Line {
 interface AbilityChip {
   root: HTMLElement;
   cooldown: HTMLElement;
+  binding: HTMLElement;
   name: HTMLElement;
   cost: HTMLElement;
   timer: HTMLElement;
   hidden: boolean;
   cooling: boolean;
+  bindingText: string;
   nameText: string;
   costText: string;
   timerText: string;
@@ -110,6 +113,10 @@ function updateChip(chip: AbilityChip, ability: HudAbilityView | undefined): voi
   if (chip.cooling !== cooling) {
     chip.cooling = cooling;
     chip.root.classList.toggle('is-cooling', cooling);
+  }
+  if (chip.bindingText !== ability.binding) {
+    chip.bindingText = ability.binding;
+    chip.binding.textContent = ability.binding;
   }
   if (chip.nameText !== ability.name) {
     chip.nameText = ability.name;
@@ -195,11 +202,13 @@ function createChip(parent: HTMLElement): AbilityChip {
   return {
     root,
     cooldown: element('div', 'hud-chip-cooldown', root),
+    binding: element('div', 'hud-chip-binding', root),
     name: element('div', 'hud-chip-name', root),
     cost: element('div', 'hud-chip-cost', root),
     timer: element('div', 'hud-chip-timer', root),
     hidden: false,
     cooling: false,
+    bindingText: '',
     nameText: '',
     costText: '',
     timerText: '',

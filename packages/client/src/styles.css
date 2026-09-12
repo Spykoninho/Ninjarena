@@ -152,6 +152,13 @@ body {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.hud-chip-binding {
+  position: relative;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
 .hud-chip-name {
   position: relative;
   font-size: 10px;

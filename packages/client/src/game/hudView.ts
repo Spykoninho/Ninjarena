@@ -8,11 +8,14 @@ import type {
   PlayerState,
 } from '@ninjarena/core';
 import { ATTRIBUTE_IDS, getStatus } from '@ninjarena/core';
+import type { InputBindings } from '../input/bindings';
+import { bindingLabel } from '../input/bindings';
 import type { HudAbilityView, HudView } from '../ui/hud';
 
 export interface HudViewInput {
   localPlayer: PlayerState | undefined;
   abilities: DefinitionCatalog<AbilityDefinition>;
+  bindings: InputBindings;
   match: MatchState | null;
   tick: number;
   tickDurationMs: number;
@@ -43,7 +46,8 @@ export function buildHudView(input: HudViewInput): HudView {
     maxChakra: local?.stats.maxChakra ?? 0,
     // La magnitude d'un bouclier est l'absorption qui lui reste.
     shield: local === undefined ? 0 : (getStatus(local, 'SHIELDED')?.magnitude ?? 0),
-    abilities: local === undefined ? [] : local.abilities.map((slot) => abilityView(input, slot)),
+    abilities:
+      local === undefined ? [] : local.abilities.map((slot, i) => abilityView(input, slot, i)),
     // L'état de match affiché vient du serveur: la prédiction locale ne décide pas des phases.
     matchPhase: input.match?.phase ?? 'WAITING',
     round: input.match?.round ?? 0,
@@ -56,10 +60,12 @@ export function buildHudView(input: HudViewInput): HudView {
   };
 }
 
-function abilityView(input: HudViewInput, slot: AbilitySlot): HudAbilityView {
+function abilityView(input: HudViewInput, slot: AbilitySlot, index: number): HudAbilityView {
   const ability = input.abilities.get(slot.abilityId);
+  const binding = input.bindings.abilities[index];
   return {
     name: ability.name,
+    binding: binding === undefined ? '' : bindingLabel(binding),
     chakraCost: ability.chakraCost,
     remainingMs: Math.max(0, (slot.readyAt - input.tick) * input.tickDurationMs),
     cooldownMs: ability.cooldownMs,

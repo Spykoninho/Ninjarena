@@ -232,8 +232,8 @@ changes: one input per tick, sanitized, snapshots every two ticks.
 - **Spectator** (`game/spectator.ts`, pure selection): when the local player is `DEAD`
   during `IN_ROUND`, the camera follows the current target; candidates are living teammates
   (team) or every living player (FFA); Tab cycles; HUD shows "Spectating <name>".
-- **HUD**: chakra bar, five ability chips with cost and cooldown, build summary, shield
-  amount, spectator line, round timer.
+- **HUD**: chakra bar, five ability chips with their binding, cost and cooldown, build
+  summary, shield amount, spectator line, round timer.
 
 ## 7. Content
 

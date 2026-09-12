@@ -34,6 +34,7 @@ const game = new ClientGame({
   audio: new WebAudioSynth(),
   inputState,
   bindings: DEFAULT_BINDINGS,
+  // Le panneau compte avec `rules.defaultPointBudget`; le serveur tranche avec `matchConfig.buildPoints` et son refus s'affiche ici.
   setupPanel: new SetupPanel(
     setupRoot,
     content.statRules,

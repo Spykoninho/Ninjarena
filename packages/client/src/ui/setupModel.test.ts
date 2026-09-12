@@ -80,7 +80,7 @@ describe('pointsLeft', () => {
   it('subtracts the points already spent from the budget', () => {
     const config = loadClientConfig('?name=kage&build=2,3,0,0,0,0,0');
     const state = createSetupState(config, rules, options);
-    expect(pointsLeft(state, rules, rules.defaultPointBudget)).toBe(5);
+    expect(pointsLeft(state, rules.defaultPointBudget)).toBe(5);
   });
 });
 

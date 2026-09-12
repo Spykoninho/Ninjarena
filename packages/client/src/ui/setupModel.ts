@@ -43,7 +43,7 @@ export function createSetupState(
   };
 }
 
-export function pointsLeft(state: SetupState, rules: StatRulesDefinition, budget: number): number {
+export function pointsLeft(state: SetupState, budget: number): number {
   return budget - buildPointsSpent(state.build);
 }
 
