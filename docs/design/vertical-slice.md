@@ -4,6 +4,11 @@ Date: 2026-09-12
 Status: approved
 Builds on: docs/design/foundations.md (all its decisions stand unless amended here)
 
+Superseded on rooms and joining by
+[docs/design/lobby-rooms-map-editor.md](lobby-rooms-map-editor.md): there is no single default
+room any more, `join` is gone from the protocol, and the pre-match screen described below was
+replaced by a lobby and a loadout panel.
+
 ## 1. Goal
 
 Turn the foundations into a playable vertical slice: two or more players pick a stat build
@@ -203,11 +208,11 @@ changes: one input per tick, sanitized, snapshots every two ticks.
 
 ## 6. Client (`@ninjarena/client`)
 
-- **Setup panel** (`ui/setupPanel.ts`, pure model in `ui/setupModel.ts`): name, seven
-  sliders bounded by the rules with a live "points left" counter, three distinct technique
-  selects listing content abilities of kind `technique` with their chakra cost and
-  cooldown, Play. Prefilled from `?name=&build=v,s,p,sp,c,r,d&techniques=a,b,c`; shows the
-  server's `INVALID_LOADOUT` message inline.
+- **Pre-match screen** (a panel and its pure model, since renamed and folded into the lobby's
+  loadout panel): name, seven sliders bounded by the rules with a live "points left" counter,
+  three distinct technique selects listing content abilities of kind `technique` with their
+  chakra cost and cooldown, Play. Prefilled from `?name=&build=v,s,p,sp,c,r,d&techniques=a,b,c`;
+  shows the server's `INVALID_LOADOUT` message inline.
 - **Bindings**: slot 0 `Mouse0` basic attack, slot 1 `Space` dash, slots 2–4 `Mouse2`, `KeyE`,
   `KeyR` techniques; `Tab` cycles the spectator target; `abilityHeld` mask keeps five bits.
 - **Rendering sources**: the local player, its projectiles, zones and walls come from the
