@@ -97,11 +97,12 @@ export class MapLibrary {
       return { ok: false, code: 'MAP_STORE_FULL', message: 'the map store is full' };
     }
 
+    // Un écrasement garde sa date d'origine: seule une carte neuve reçoit l'horodatage du jour.
     const stamped: MapDocument = {
       ...document,
       id,
       author,
-      createdAt: this.now().toISOString(),
+      createdAt: existing?.createdAt ?? this.now().toISOString(),
     };
     await this.repository.save(stamped);
     return { ok: true, id };

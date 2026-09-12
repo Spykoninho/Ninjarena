@@ -130,6 +130,26 @@ describe('MapLibrary', () => {
     expect(stored[0]).toMatchObject({ name: 'First renamed' });
   });
 
+  it('keeps the original createdAt when overwriting an existing stored map', async () => {
+    const repository = new InMemoryMapRepository();
+    const library = new MapLibrary({ content, repository, maxStoredMaps: 10, random: () => 0 });
+
+    const first = await library.save(tinyMap({ name: 'First' }), 'kunoichi');
+    expect(first.ok).toBe(true);
+    if (!first.ok) throw new Error('expected save to succeed');
+    const original = await repository.get(first.id);
+
+    const overwrite = await library.save(
+      tinyMap({ id: first.id, name: 'First renamed' }),
+      'kunoichi',
+    );
+    expect(overwrite).toEqual({ ok: true, id: first.id });
+
+    const updated = await repository.get(first.id);
+    expect(updated?.createdAt).toEqual(original?.createdAt);
+    expect(updated?.name).toBe('First renamed');
+  });
+
   it('loads the bundled arena map', async () => {
     const library = new MapLibrary({
       content,
