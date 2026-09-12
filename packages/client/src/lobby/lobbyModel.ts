@@ -238,11 +238,12 @@ function integerPatch(key: keyof RoomSettings, raw: string | boolean): RoomSetti
   }
 }
 
-// La carte choisie reste listée tant que `mapList` n'est pas arrivée: sinon le select mentirait.
+// La carte choisie reste listée même absente de `maps`: sinon le select coincerait l'hôte dessus.
 function mapOptions(mapId: string, maps: MapSummary[]): SelectOption[] {
-  if (!maps.some((map) => map.id === mapId)) return [{ value: mapId, label: mapId }];
-  return maps.map((map) => ({
+  const known = maps.map((map) => ({
     value: map.id,
     label: map.builtin ? `${map.name} (built-in)` : map.name,
   }));
+  if (maps.some((map) => map.id === mapId)) return known;
+  return [...known, { value: mapId, label: `${mapId} (missing)` }];
 }

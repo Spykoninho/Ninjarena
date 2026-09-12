@@ -170,7 +170,16 @@ describe('settingsRows', () => {
   it('keeps the selected map listed even when the map list has not arrived', () => {
     const rows = settingsRows(settings, [], rules);
     expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
-      { value: 'arena', label: 'arena' },
+      { value: 'arena', label: 'arena (missing)' },
+    ]);
+  });
+
+  it('appends the selected map to the real list when it is missing from it', () => {
+    const rows = settingsRows({ ...settings, mapId: 'dojo' }, maps, rules);
+    expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
+      { value: 'arena', label: 'Arena (built-in)' },
+      { value: 'garden', label: 'Garden' },
+      { value: 'dojo', label: 'dojo (missing)' },
     ]);
   });
 
