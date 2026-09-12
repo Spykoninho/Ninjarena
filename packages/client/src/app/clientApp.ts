@@ -37,6 +37,7 @@ export class ClientApp {
   private intent: ReduceIntent = 'lobby';
   private name: string;
   private renderedMaps: MapSummary[] | null = null;
+  private lastError: string | null = null;
   private connected = false;
   private connecting = false;
 
@@ -171,7 +172,7 @@ export class ClientApp {
   }
 
   private handleClose(): void {
-    const { game, screens } = this.deps;
+    const { game } = this.deps;
     if (game.active) game.endMatch();
     this.connected = false;
     this.connecting = false;
@@ -182,17 +183,19 @@ export class ClientApp {
       room: null,
       status: DISCONNECTED,
     };
+    this.showError(DISCONNECTED);
     this.render();
-    screens.home.showError(DISCONNECTED);
   }
 
   private setStatus(status: string): void {
+    this.lastError = null;
     this.appState = { ...this.appState, status };
     this.render();
   }
 
   private showError(message: string): void {
     const { game, screens } = this.deps;
+    this.lastError = message;
     switch (screenFor(this.appState)) {
       case 'game':
         game.setStatus(`error: ${message}`);
@@ -217,7 +220,10 @@ export class ClientApp {
       this.screenOf(target)?.mount(uiRoot);
     }
     const room = this.appState.room;
-    if (target === 'home') screens.home.setStatus(this.appState.status);
+    // Une erreur déjà listée ne se répète pas dans la ligne d'état.
+    if (target === 'home') {
+      screens.home.setStatus(this.appState.status === this.lastError ? '' : this.appState.status);
+    }
     if (target === 'lobby' && room !== null) {
       screens.lobby.update(room, this.appState.maps, this.appState.sessionId ?? '');
     }
