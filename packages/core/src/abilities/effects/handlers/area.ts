@@ -15,7 +15,7 @@ export const areaHandler: EffectHandler<'area'> = (effect, context, path) => {
   const radius = effect.radius * terrainRadiusMultiplier(ctx, center, effect.terrain);
   if (effect.delayMs === 0) {
     const ability = ctx.abilities.get(context.source.abilityId);
-    applyAreaHit({ ...context, origin: center }, ability, path, center, radius);
+    applyAreaHit(context, ability, path, center, radius, effect.visual);
     return;
   }
   schedulePending(ctx, {

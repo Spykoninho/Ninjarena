@@ -32,5 +32,12 @@ function fire(ctx: SimulationContext, pending: PendingEffect): void {
     executeList(ability, pending.source.path, 'effects', context);
     return;
   }
-  applyAreaHit(context, ability, pending.source.path, pending.position, pending.radius);
+  applyAreaHit(
+    context,
+    ability,
+    pending.source.path,
+    pending.position,
+    pending.radius,
+    pending.visual,
+  );
 }

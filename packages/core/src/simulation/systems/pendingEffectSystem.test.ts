@@ -34,6 +34,17 @@ describe('delayed area', () => {
     expect(inside.health).toBe(100);
     const events = sim.step({});
     expect(events.some((e) => e.type === 'zoneTriggered')).toBe(true);
+    // Le retrait de la zone précède sa résolution: le client efface puis joue l'explosion.
+    expect(events.filter((e) => e.type === 'zoneTriggered' || e.type === 'areaResolved')).toEqual([
+      expect.objectContaining({ type: 'zoneTriggered', position: { x: 264, y: 200 } }),
+      expect.objectContaining({
+        type: 'areaResolved',
+        ownerId: 'a',
+        position: { x: 264, y: 200 },
+        radius: 30,
+        visual: { color: '#c9a26b', size: 30, trail: false },
+      }),
+    ]);
     expect(inside.health).toBe(80);
     expect(outside.health).toBe(100);
     expect(Object.keys(sim.world.pending)).toHaveLength(0);
@@ -127,6 +138,9 @@ describe('delayed trigger', () => {
     expect(fired).toContainEqual(
       expect.objectContaining({ type: 'zoneTriggered', position: { x: 200, y: 200 } }),
     );
+    expect(fired).toContainEqual(
+      expect.objectContaining({ type: 'areaResolved', radius: 24, position: { x: 200, y: 200 } }),
+    );
     expect(near.health).toBe(85);
     expect(far.health).toBe(100);
     expect(Object.keys(sim.world.pending)).toHaveLength(0);
@@ -157,10 +171,50 @@ describe('projectile explosion', () => {
       position: { x: 260, y: 200 },
     });
     sim.step({ a: { ...press(2), aim: { x: 1, y: 0 } } });
-    for (let i = 0; i < 10; i++) sim.step({});
+    const blast = [];
+    for (let i = 0; i < 10; i++) blast.push(...sim.step({}));
     expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
     expect(hit.health).toBe(85);
     expect(bystander.health).toBe(95);
     expect(Object.keys(sim.world.pending)).toHaveLength(0);
+    // Une explosion immédiate ne passe par aucune collection: l'événement porte son visuel.
+    expect(blast.filter((e) => e.type === 'areaResolved')).toEqual([
+      expect.objectContaining({
+        type: 'areaResolved',
+        ownerId: 'a',
+        radius: 24,
+        visual: { color: '#ff9a3d', size: 24, trail: false },
+      }),
+    ]);
+    expect(blast.some((e) => e.type === 'zoneTriggered')).toBe(false);
+  });
+
+  it('explodes where it expires when it hits nobody', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 60, y: 40 },
+      techniqueIds: ['boom', 'seal', 'blink'],
+    });
+    // Le tir part en x 69 et couvre 300 unités en 60 ticks: il expire en x 369, loin de tout mur.
+    const bystander = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 369, y: 60 },
+    });
+    sim.step({ a: { ...press(2), aim: { x: 1, y: 0 } } });
+    const flight = [];
+    for (let i = 0; i < 60; i++) flight.push(...sim.step({}));
+    expect(flight).toContainEqual(
+      expect.objectContaining({ type: 'projectileDestroyed', reason: 'expired' }),
+    );
+    expect(flight).toContainEqual(
+      expect.objectContaining({ type: 'areaResolved', position: { x: 369, y: 40 }, radius: 24 }),
+    );
+    expect(bystander.health).toBe(95);
   });
 });

@@ -1,5 +1,5 @@
 import type { AbilityUseRejection } from '../abilities/rejection';
-import type { DamageScaling, StatusEffectType } from '../definitions';
+import type { DamageScaling, StatusEffectType, Visual } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import type { CombatPhaseKind } from '../player/phase';
 import type { EntityId, PlayerId, TeamId, Tick } from './ids';
@@ -51,6 +51,14 @@ export type WorldEvent =
       fireAt: Tick;
     }
   | { type: 'zoneTriggered'; tick: Tick; id: EntityId; position: Vec2 }
+  | {
+      type: 'areaResolved';
+      tick: Tick;
+      ownerId: PlayerId;
+      position: Vec2;
+      radius: number;
+      visual: Visual | null;
+    }
   | { type: 'obstacleSpawned'; tick: Tick; id: EntityId; ownerId: PlayerId }
   | { type: 'obstacleRemoved'; tick: Tick; id: EntityId }
   | { type: 'dashContact'; tick: Tick; playerId: PlayerId; targetId: PlayerId }

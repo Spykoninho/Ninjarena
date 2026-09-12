@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { circlePenetration } from '../../collision';
 import { createTestSimulation } from '../../testing/fixtures';
 import { abilityMask, neutralInput } from '../input';
 
@@ -42,10 +43,35 @@ describe('obstacleSystem', () => {
 
     for (let i = 0; i < 20; i++) sim.step({ a: { ...neutralInput(), move: { x: 1, y: 0 } } });
     expect(a.position.x).toBeLessThan(224 - 4 - 5 + 0.5); // arrêté par la face proche du mur
+    expect(a.position.x).toBeGreaterThan(214);
 
     const removal = [];
     for (let i = 0; i < 60; i++) removal.push(...sim.step({}));
     expect(Object.keys(sim.world.obstacles)).toHaveLength(0); // durée de vie 1000 ms
     expect(removal).toContainEqual(expect.objectContaining({ type: 'obstacleRemoved' }));
+  });
+
+  it('pushes out a player standing where the wall appears', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+      techniqueIds: ['wall', 'shuriken', 'blink'],
+    });
+    const caught = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 224, y: 200 }, // le centre exact du mur à venir
+    });
+    sim.step({ a: { ...press(2), aim: { x: 1, y: 0 } } });
+    const wall = Object.values(sim.world.obstacles)[0]!;
+    const radius = caught.stats.colliderRadius;
+    expect(circlePenetration(wall.shape, { x: 224, y: 200 }, radius)).not.toBeNull();
+    expect(circlePenetration(wall.shape, caught.position, radius)).toBeNull();
+    expect(caught.position.x).toBe(220 - radius);
   });
 });

@@ -261,6 +261,15 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
             onHit: [{ type: 'damage', amount: 5 }],
           },
         ],
+        onExpire: [
+          {
+            type: 'area',
+            radius: 24,
+            origin: 'here',
+            visual: { color: '#ff9a3d', size: 24 },
+            onHit: [{ type: 'damage', amount: 5 }],
+          },
+        ],
       },
     ],
   }),
