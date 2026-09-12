@@ -25,6 +25,13 @@ describe('buildPlayerInput', () => {
     state.buttonsDown.add(0);
     state.keysDown.add('Space');
     const input = buildPlayerInput(state, DEFAULT_BINDINGS, { x: 0, y: 0 });
-    expect(input.abilityHeld).toBe(0b0101);
+    expect(input.abilityHeld).toBe(0b00011);
+  });
+
+  it('sets bit 4 for the third technique slot', () => {
+    const state = createInputState();
+    state.keysDown.add('KeyR');
+    const input = buildPlayerInput(state, DEFAULT_BINDINGS, { x: 0, y: 0 });
+    expect(input.abilityHeld).toBe(0b10000);
   });
 });

@@ -36,6 +36,8 @@ export class DomInputAdapter {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    // Tab ne doit pas faire sortir le focus du canevas de jeu.
+    if (event.code === 'Tab') event.preventDefault();
     if (event.repeat) return;
     this.state.keysDown.add(event.code);
   };
