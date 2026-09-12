@@ -28,6 +28,7 @@ const createRoom = (autoStartWhenFull = false) => {
     autoStartWhenFull,
     rules: content.statRules,
     abilities: content.abilities,
+    characters: content.characters,
   });
 };
 

@@ -46,6 +46,7 @@ export interface AddPlayerParams {
   teamId: TeamId;
   characterId: string;
   build?: Build;
+  basicAttackId?: string;
   techniqueIds?: readonly string[];
   position?: Vec2;
 }
@@ -99,7 +100,11 @@ export class GameSimulation {
       position: params.position ?? { x: 0, y: 0 },
       build: params.build ?? emptyBuild(),
       // L'ordre des slots est figé: attaque de base, esquive, puis les techniques choisies.
-      abilityIds: [character.basicAttackId, character.dashId, ...(params.techniqueIds ?? [])],
+      abilityIds: [
+        params.basicAttackId ?? character.basicAttackId,
+        character.dashId,
+        ...(params.techniqueIds ?? []),
+      ],
       rules: this.statRules,
     });
     if (params.position === undefined) {

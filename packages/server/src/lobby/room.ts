@@ -1,17 +1,12 @@
 import type {
   AbilityDefinition,
+  CharacterDefinition,
   DefinitionCatalog,
   GameSimulation,
   MatchConfig,
   StatRulesDefinition,
 } from '@ninjarena/core';
-import {
-  buildBudget,
-  maxPlayers,
-  pickTeamForNewPlayer,
-  validateBuild,
-  validateLoadout,
-} from '@ninjarena/core';
+import { buildBudget, maxPlayers, pickTeamForNewPlayer, validateLoadout } from '@ninjarena/core';
 import type { RoomPlayerInfo, ServerMessage } from '@ninjarena/protocol';
 import type { ClientSession } from '../session/clientSession';
 
@@ -33,6 +28,7 @@ export interface RoomOptions {
   autoStartWhenFull: boolean;
   rules: StatRulesDefinition;
   abilities: DefinitionCatalog<AbilityDefinition>;
+  characters: DefinitionCatalog<CharacterDefinition>;
 }
 
 const MIN_PLAYERS_TO_START = 2;
@@ -42,6 +38,7 @@ export class Room {
   readonly matchConfig: MatchConfig;
   readonly simulation: GameSimulation;
   private readonly characterId: string;
+  private readonly characterBasicAttack: string;
   private readonly autoStartWhenFull: boolean;
   private readonly rules: StatRulesDefinition;
   private readonly abilities: DefinitionCatalog<AbilityDefinition>;
@@ -52,6 +49,7 @@ export class Room {
     this.matchConfig = options.matchConfig;
     this.simulation = options.simulation;
     this.characterId = options.characterId;
+    this.characterBasicAttack = options.characters.get(options.characterId).basicAttackId;
     this.autoStartWhenFull = options.autoStartWhenFull;
     this.rules = options.rules;
     this.abilities = options.abilities;
@@ -70,16 +68,21 @@ export class Room {
     if (this.present.includes(session)) return { ok: true };
     if (this.isFull)
       return { ok: false, error: { code: 'ROOM_FULL', message: 'the room is full' } };
-    const build = validateBuild(
-      request.build,
+    const raw = {
+      build: request.build,
+      basicAttackId: this.characterBasicAttack,
+      techniqueIds: request.techniqueIds,
+    };
+    const validation = validateLoadout(
+      raw,
+      this.abilities,
       this.rules,
       buildBudget(this.matchConfig, this.rules),
     );
-    if (!build.ok) return { ok: false, error: { code: 'INVALID_LOADOUT', message: build.reason } };
-    const loadout = validateLoadout(request.techniqueIds, this.abilities, this.rules);
-    if (!loadout.ok) {
-      return { ok: false, error: { code: 'INVALID_LOADOUT', message: loadout.reason } };
+    if (!validation.ok) {
+      return { ok: false, error: { code: 'INVALID_LOADOUT', message: validation.reason } };
     }
+    const { loadout } = validation;
     // L'identité du joueur vient de sa connexion: le client ne choisit jamais son identifiant.
     const playerId = session.id;
     session.playerId = playerId;
@@ -91,7 +94,8 @@ export class Room {
       id: playerId,
       teamId,
       characterId: this.characterId,
-      build: build.build,
+      build: loadout.build,
+      basicAttackId: loadout.basicAttackId,
       techniqueIds: loadout.techniqueIds,
     });
     this.present.push(session);

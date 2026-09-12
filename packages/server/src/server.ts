@@ -112,6 +112,7 @@ export class GameServer {
       autoStartWhenFull: this.config.autoStartWhenFull,
       rules: this.content.statRules,
       abilities: this.content.abilities,
+      characters: this.content.characters,
     });
   }
 
