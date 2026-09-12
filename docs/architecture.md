@@ -242,7 +242,9 @@ effect resolves over a tagged tile (fireball hits harder on grass, lightning das
 Two bricks do not resolve immediately:
 
 - **`area` with `delayMs > 0`** and **`delayedTrigger`** both create a `PendingEffect` in
-  `world.pending` instead of running there and then, and emit `zoneCreated`. The
+  `world.pending` instead of running there and then. Only a pending effect that carries a radius —
+  an `area` — emits `zoneCreated`; a `delayedTrigger` has none and stays invisible to the client
+  until it fires. The
   `pendingEffectSystem` step (see the pipeline above) fires every pending effect whose `fireAt` has
   arrived — an area hits every affectable player within its radius at its position, applying
   terrain rules there; a trigger just executes its referenced effect list — deletes it, and emits
@@ -310,9 +312,11 @@ single rule serves every format: the round ends when at most one team still has 
 (and an opponent was actually eliminated), or when the round timer expires, which is a draw. The
 winning team scores a point; the first to `roundsToWin` wins the match, and `matchEnded` is stored
 through the `MatchResultRepository` port. `GameSimulation.startMatch()` accepts `MATCH_END` as a
-starting phase, same as `WAITING`, but nothing on the server calls it again once a match ends: the
-room only auto-starts a `WAITING` room that just filled up. A finished room therefore sits in
-`MATCH_END` until the process restarts — an automatic restart is on the roadmap.
+starting phase, same as `WAITING`, and the server uses it to restart: `matchEnded` schedules
+`Room.tryStart()` after `NINJARENA_MATCH_RESTART_MS` (8 seconds by default), which starts a new
+match at round one with fresh scores as long as at least two players are still in the room. A room
+that emptied below that stays in `MATCH_END` until enough players are back and one of them is
+ready.
 
 Ending a round clears the projectiles still in flight, every pending zone and every spawned wall,
 so a shot, a delayed area or an obstacle from before the last kill cannot linger into the next

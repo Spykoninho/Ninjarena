@@ -27,6 +27,8 @@ This repository is the **vertical slice** step. What works today:
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
   a feedback layer (particles, screen shake, hit stop, procedural audio) and a DOM HUD,
 - a spectator camera that follows a living teammate (or anyone alive in free-for-all) after death,
+- an automatic restart: a finished match starts over after `NINJARENA_MATCH_RESTART_MS` when the
+  room still holds two players,
 - content validated at load: abilities, a character, stat rules, a tileset, a map and the match
   modes.
 
@@ -35,7 +37,6 @@ What is deliberately missing or simplified:
 - real sprites and animations (players are coloured shapes) and actual sound assets (the audio
   is procedural WebAudio tones, not recordings),
 - a lobby UI beyond the setup panel, matchmaking, bots, more than one room per server process,
-- an automatic restart after a match ends (the server holds the finished match in `MATCH_END`),
 - snapshot filtering: every session receives the same unfiltered `WorldState`, so an `INVISIBLE`
   status is a rendering hint the client honours, not a secret,
 - the netcode refinements listed in [Roadmap](#roadmap), including lag compensation.
@@ -313,7 +314,6 @@ teammates (or every living player in a free-for-all mode).
 
 Planned next, in no particular order:
 
-- an automatic restart when a match ends, instead of holding `MATCH_END` forever,
 - lag compensation (server-side rewind when validating hits),
 - per-viewer snapshot filtering, so `INVISIBLE` becomes a real secret instead of a rendering hint,
 - delta-compressed and binary snapshots behind the existing `MessageCodec` seam,

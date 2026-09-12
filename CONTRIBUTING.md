@@ -112,6 +112,10 @@ the third:
    handlers.
 3. Register it in `effectHandlers` in `packages/core/src/abilities/effects/executor.ts`.
 
+A brick that places something in the world says where from: `spawnEntity` and an `area` with
+`origin: 'caster' | 'aim'` re-anchor on the caster, never on the impact point that triggered them,
+so nesting one under an `onHit` list still spawns it at the caster.
+
 `effectHandlers` is typed as `{ [K in Effect['type']]: EffectHandler<K> }`, one entry per
 discriminant, so the project does not compile until every brick in the union has a handler — there
 is nowhere else to special-case an effect type. Finish with a test that exercises the new brick

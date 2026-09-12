@@ -53,9 +53,16 @@ sectioned with comments.
 
 - `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax` and `isolatedModules` are on. An
   index access returns `T | undefined`: handle it, do not assert it away.
-- **No `any`.** `unknown` at a boundary, then narrow. Casts are exceptional and each one is
-  justified on the spot: the two effect handler lookups (where the discriminant guarantees a match
-  the compiler cannot correlate), the structural deep clone, and the opaque timer handle.
+- **No `any`.** `unknown` at a boundary, then narrow. Casts are exceptional, justified on the spot,
+  and the sources hold only these:
+  - the effect handler lookup in `abilities/effects/executor.ts`, where the discriminant guarantees
+    a match the compiler cannot correlate,
+  - the structural deep clone in `simulation/clone.ts`,
+  - in `stats/build.ts`, the empty record filled attribute by attribute and the `unknown` payload
+    read as a record before validation, plus the attribute tuple widened to `readonly string[]` to
+    answer `includes`; `abilities/loadout.ts` widens the same way, turning the `any[]` left by
+    `Array.isArray` back into `readonly unknown[]`,
+  - the opaque timer handle in `match/tickLoop.ts` and `server.ts`.
 - `import type` for type-only imports — enforced by `@typescript-eslint/consistent-type-imports`.
 - Relative imports without a file extension; workspace packages by their `@ninjarena/*` name.
 - Prefer a discriminated union over a flag plus optional fields, and exhaustive `switch` over a
