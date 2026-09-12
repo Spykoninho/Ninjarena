@@ -8,4 +8,7 @@ export * from './lobby/roomManager';
 export * from './match/tickLoop';
 export * from './match/matchHost';
 export * from './persistence/matchResultRepository';
+export * from './persistence/mapRepository';
+export * from './persistence/fileMapRepository';
+export * from './maps/mapLibrary';
 export * from './server';
