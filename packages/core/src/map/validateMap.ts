@@ -165,30 +165,32 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
   return issues;
 }
 
+function notEnoughGeneric(needed: number, found: number): MapIssue {
+  return { code: 'NOT_ENOUGH_SPAWNS', message: `${needed} generic spawns needed, ${found} found` };
+}
+
 export function spawnIssues(doc: MapDocument, requirement: SpawnRequirement): MapIssue[] {
   const generic = doc.spawns.filter((spawn) => spawn.team === undefined).length;
 
   if (requirement.mode === 'ffa') {
+    const needed = requirement.teamCount;
+    return generic < needed ? [notEnoughGeneric(needed, generic)] : [];
+  }
+
+  // Le pool générique ne complète une équipe que si aucun spawn n'est tagué du tout.
+  const anyTagged = doc.spawns.some((spawn) => spawn.team !== undefined);
+  if (!anyTagged) {
     const needed = requirement.teamCount * requirement.playersPerTeam;
-    if (generic < needed) {
-      return [
-        {
-          code: 'NOT_ENOUGH_SPAWNS',
-          message: `${needed} generic spawns needed, ${generic} found`,
-        },
-      ];
-    }
-    return [];
+    return generic < needed ? [notEnoughGeneric(needed, generic)] : [];
   }
 
   const issues: MapIssue[] = [];
   for (let team = 0; team < requirement.teamCount; team++) {
     const tagged = doc.spawns.filter((spawn) => spawn.team === team).length;
-    const found = tagged + generic;
-    if (found < requirement.playersPerTeam) {
+    if (tagged < requirement.playersPerTeam) {
       issues.push({
         code: 'NOT_ENOUGH_SPAWNS',
-        message: `team ${team + 1} needs ${requirement.playersPerTeam} spawns, ${found} found`,
+        message: `team ${team + 1} needs ${requirement.playersPerTeam} spawns, ${tagged} found`,
       });
     }
   }

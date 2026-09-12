@@ -192,7 +192,7 @@ describe('spawnIssues', () => {
     ]);
   });
 
-  it('lets generic spawns cover every team', () => {
+  it('lets generic spawns cover every team when the map tags none of them', () => {
     const doc = mapWith({
       spawns: [
         { x: 1, y: 1 },
@@ -202,5 +202,44 @@ describe('spawnIssues', () => {
       ],
     });
     expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 })).toEqual([]);
+  });
+
+  it('accepts ffa spawns regardless of playersPerTeam', () => {
+    const doc = mapWith({
+      spawns: [
+        { x: 1, y: 1 },
+        { x: 6, y: 6 },
+      ],
+    });
+    expect(spawnIssues(doc, { mode: 'ffa', teamCount: 2, playersPerTeam: 3 })).toEqual([]);
+  });
+
+  it('requires the aggregate generic count when no spawn is tagged', () => {
+    const doc = mapWith({
+      spawns: [
+        { x: 1, y: 1 },
+        { x: 2, y: 1 },
+        { x: 6, y: 6 },
+      ],
+    });
+    expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 })).toEqual([
+      { code: 'NOT_ENOUGH_SPAWNS', message: '4 generic spawns needed, 3 found' },
+    ]);
+  });
+
+  it('ignores the generic pool once a spawn is tagged, even with plenty of generics', () => {
+    const doc = mapWith({
+      spawns: [
+        { x: 1, y: 1, team: 0 },
+        { x: 2, y: 1, team: 0 },
+        { x: 6, y: 6, team: 1 },
+        { x: 5, y: 6 },
+        { x: 5, y: 5 },
+        { x: 4, y: 5 },
+      ],
+    });
+    expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 })).toEqual([
+      { code: 'NOT_ENOUGH_SPAWNS', message: 'team 2 needs 2 spawns, 1 found' },
+    ]);
   });
 });
