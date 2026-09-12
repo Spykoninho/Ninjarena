@@ -47,17 +47,20 @@ sides; the small float differences that remain are absorbed by reconciliation.
 packages/core/src/
   math/          Vec2 helpers: add, scale, normalize, clampLength, angleBetween, lerp, EPSILON
   time/          SimulationConfig (tickRate), msToTicks, tickDurationMs, FixedStepAccumulator
-  definitions/   zod schemas and inferred types for abilities, characters, tilesets, maps,
-                 match configs and status types
+  definitions/   zod schemas and inferred types for abilities (effects, telegraphs), characters,
+                 stat rules, tilesets, maps, match configs and status types
   collision/     Shape = Rect | Circle | ConvexPolygon, closest-point resolution, SpatialGrid,
                  mergeSolidTiles
   map/           LoadedMap: ASCII layers + legend -> terrain, merged colliders, spawns, broadphase
+  stats/         Build, computeStats, computeDamage, validateBuild — see "Stats and builds"
   player/        PlayerState, CombatPhaseState, StatusEffect, setPhase, rules.ts
   combat/        applyDamage, killPlayer, applyStun, applyKnockback, applyStatusEffect, canAffect
-  abilities/     validation, casting timeline, activation and hit effect handlers
+  abilities/     casting timeline, loadout validation, effectRef (dotted paths), effects/
+                 (the executor and one handler file per brick under effects/handlers/)
   projectile/    ProjectileState, spawnProjectile
   match/         MatchState, phases, teams, spawns, round reset
-  simulation/    WorldState, PlayerInput, WorldEvent, SimulationContext, GameSimulation, systems/
+  simulation/    WorldState (players, projectiles, pending, obstacles), PlayerInput, WorldEvent,
+                 SimulationContext, GameSimulation, systems/, entities/ (pending effects, obstacles)
   testing/       fixtures shared by the tests
   index.ts       the public surface
 ```
@@ -84,9 +87,15 @@ plain functions over that context — there is no system base class and no regis
    pressed slot, starts the cast, and progresses a cast in flight.
 5. **`movementSystem`** — derives a velocity from the phase and the input, integrates it, resolves
    collisions and writes the velocity actually travelled.
-6. **`projectileSystem`** — moves projectiles in sub-steps, applies hits, destroys them.
-7. **`matchPostStep`** — decides whether the round is over and updates the scores.
-8. `tick` is incremented and the events collected during the step are returned.
+6. **`dashContactSystem`** — a `DASHING` player carrying a `contact` payload (source effect
+   reference plus the ids already hit) applies its `onContact` effect list once to each affectable
+   player it overlaps this tick.
+7. **`projectileSystem`** — moves projectiles in sub-steps, applies hits, destroys them.
+8. **`pendingEffectSystem`** — fires every delayed area or trigger whose `fireAt` has arrived (see
+   "Effects, bricks and the executor" below), then deletes it.
+9. **`obstacleSystem`** — removes spawned walls whose `expiresAt` has passed.
+10. **`matchPostStep`** — decides whether the round is over and updates the scores.
+11. `tick` is incremented and the events collected during the step are returned.
 
 `startMatch()` is separate: it resets the world, zeroes the scores and enters `COUNTDOWN`. The
 events it produces are held and flushed at the beginning of the next `step`, so no event is lost
@@ -106,8 +115,10 @@ A player is in exactly one **phase** and carries any number of **statuses**.
   NORMAL                                  ROOTED
   CASTING   slot, abilityId,              SLOWED      (magnitude, default 0.5)
             startedAt, activatesAt,       INVISIBLE
-            endsAt, activated             INVULNERABLE
-  DASHING   direction, speed, endsAt
+            activeUntil, endsAt,          INVULNERABLE
+            activated                     SHIELDED    (magnitude = remaining absorb)
+  DASHING   direction, speed, endsAt,
+            contact? { source, hitPlayerIds }
   STUNNED   endsAt                        each carries expiresAt; re-applying keeps the
   KNOCKBACK velocity, endsAt              furthest end and adopts the new magnitude
   DEAD      diedAt
@@ -123,6 +134,46 @@ The rules that read this model are six small predicates in `player/rules.ts`: `i
 is still visible to themselves and their team). `isVisibleTo` is a rendering hint the client
 applies, not an authority: the server broadcasts the same unfiltered snapshot to everyone. Adding a
 status means adding a variant and touching the one rule that cares — not rewriting a state machine.
+
+## Stats and builds
+
+A player distributes an integer number of points across seven attributes — `vitality`,
+`strength`, `power`, `speed`, `maxChakra`, `chakraRegen`, `defense` — within a shared budget
+(`MatchConfig.buildPoints`, falling back to `StatRulesDefinition.defaultPointBudget`) and a
+per-attribute range (`stat-rules.json`, 0 to 5 by default). `validateBuild` checks the shape,
+the ranges and the budget and is what the server calls at `join`; a rejection answers
+`INVALID_LOADOUT` with a human-readable reason.
+
+`computeStats` (`packages/core/src/stats/formulas.ts`) turns a character's `baseStats` plus a
+`Build` into the derived `PlayerStats` a player actually fights with, through coefficients that
+live entirely in content:
+
+```
+maxHealth                = baseStats.maxHealth + vitality × healthPerVitality
+maxChakra                = baseStats.maxChakra + maxChakra(attribute) × chakraPerPoint
+chakraRegenPerSecond     = baseStats.chakraRegenPerSecond + chakraRegen × chakraRegenPerPoint
+moveSpeed                = baseStats.moveSpeed × (1 + speed × moveSpeedPerSpeed)
+physicalDamageMultiplier = 1 + strength × physicalDamagePerStrength
+techniqueDamageMultiplier= 1 + power × techniqueDamagePerPower
+defense                  = defense(attribute) × defensePerPoint
+```
+
+`speed` only ever touches `moveSpeed`: cooldowns, cast timings and everything else in milliseconds
+stay exactly what the ability declares, on every build. `computeDamage` is the other half: a
+`damage` effect's `amount` is multiplied by the attacker's `physicalDamageMultiplier` or
+`techniqueDamageMultiplier` depending on its `scaling` (`'none'` skips the multiplier, used for
+effects without an attacking player behind them), then mitigated by the target's `defense` as
+`amount × 100 / (100 + defense)`, rounded to one decimal place so the simulation stays exact and
+readable. `chakraCost` is checked and spent the same way for every ability kind; the basic attack
+always costs 0, so a build that dumps every point outside `maxChakra`/`chakraRegen` still has an
+attack that always works.
+
+A character (`CharacterDefinition`) no longer lists an `abilities` array: it only names
+`basicAttackId` and `dashId`. Every other ability of `kind: 'technique'` is fair game, and the
+player's own three picks (`techniqueIds`, validated by `validateLoadout` against
+`StatRulesDefinition.techniqueSlots`) fill the remaining ability slots — `createPlayerState`
+builds them in the fixed order `[basicAttackId, dashId, ...techniqueIds]`, five slots
+(`MAX_ABILITY_SLOTS = 5`) in total.
 
 ## Abilities
 
@@ -141,24 +192,74 @@ timeline begins:
     v               v                                   v
     [--- startupMs ---][---------- recoveryMs ----------]
     ^                  ^
-    chakra spent,      activation effects fire once
-    cooldown started,  (projectile / dash / melee)
+    chakra spent,      the effect tree fires once
+    cooldown started,  (see "Effects, bricks" below)
     phase = CASTING                                     phase = NORMAL
 ```
 
 Chakra is deducted and the cooldown starts at the press, not at the activation, so an interrupted
 cast still costs. A zero-startup ability activates inside the tick of the press. A `dash` effect
 replaces the `CASTING` phase with `DASHING`, which is why dash abilities declare `recoveryMs: 0`.
-
-Effects are dispatched through two typed handler records keyed by the effect's discriminant —
-`activationHandlers` for `projectile | dash | melee`, `hitHandlers` for `damage | knockback | stun |
-applyStatus`. Adding an effect type means adding a schema variant and a handler; the type of the
-record makes the compiler insist on it.
+`activeMs` (defaulting to 0) has no effect on the simulation: it only tells the client how long to
+keep drawing a melee arc or a held pose after activation.
 
 `applyDamage` is the single door to health: it ignores a target that is dead or `INVULNERABLE`,
-clamps the amount to the remaining health, emits `damageDealt`, and calls `killPlayer` at zero,
-which emits `playerDied`. `canAffect` is the single door to "may this hit that": never yourself,
-and never a team-mate unless the match config enables friendly fire.
+subtracts from a `SHIELDED` status first (emitting `shieldAbsorbed`, then `shieldBroken` once it is
+spent) before touching health, clamps the remaining amount to the target's health, emits
+`damageDealt`, and calls `killPlayer` at zero, which emits `playerDied`. `canAffect` is the single
+door to "may this hit that": never yourself, and never a team-mate unless the match config enables
+friendly fire.
+
+## Effects, bricks and the executor
+
+An ability's `effects` array is a **recursive tree**, not a flat list: any brick that can carry a
+follow-up (`projectile.onHit`/`onExpire`, `area.onHit`, `dash.onContact`, `delayedTrigger.effects`)
+nests more effects inside it, so a fireball is one `projectile` whose `onHit` is a `damage` next to
+an `area` whose own `onHit` is another `damage` next to a `knockback`. The schema
+(`packages/core/src/definitions/ability.ts`) is declared with `z.lazy` to allow this.
+
+The twelve bricks are `projectile`, `area` (instant or delayed, `origin: 'caster' | 'aim' | 'here'`),
+`dash` (with optional `invulnerableTicks` and an `onContact` list), `melee`, `teleport`,
+`spawnEntity` (currently only `entity: 'wall'`), `shield`, `delayedTrigger`, and the four
+target-bound bricks `damage`, `knockback`, `stun`, `applyStatus`. All twelve run through **one**
+executor (`packages/core/src/abilities/effects/executor.ts`) instead of the two lists the
+foundations step used: a single typed record, `effectHandlers: { [K in Effect['type']]:
+EffectHandler<K> }`, maps every discriminant to its handler file under
+`abilities/effects/handlers/`. Because the record's type is derived from the `Effect` union, the
+compiler refuses to compile until a new brick has both a schema variant and a handler — see
+[CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-brick).
+
+A brick executes with an `EffectContext { ctx, casterId, teamId, origin, direction, target?,
+source }`. `target` is only set while executing an `onHit`/`onContact` list against a specific
+player, so `damage`, `knockback`, `stun`, `applyStatus` and a `shield` used inside such a list are
+no-ops without one — `shield` used directly in an ability's activation list instead applies to the
+caster. `source` is an `EffectRef { abilityId, path }`, a dotted path into the ability's own tree
+(`"0"`, `"0.onHit.1"`, `"2.effects.0"`); `resolveEffect` walks it on demand, so a projectile, a
+pending zone or a dashing player's `contact` never copies effect data, only the coordinates to find
+it again. `TerrainRule[]` on `damage` and `area` multiplies the damage or the radius when the
+effect resolves over a tagged tile (fireball hits harder on grass, lightning dash on water).
+
+Two bricks do not resolve immediately:
+
+- **`area` with `delayMs > 0`** and **`delayedTrigger`** both create a `PendingEffect` in
+  `world.pending` instead of running there and then, and emit `zoneCreated`. The
+  `pendingEffectSystem` step (see the pipeline above) fires every pending effect whose `fireAt` has
+  arrived — an area hits every affectable player within its radius at its position, applying
+  terrain rules there; a trigger just executes its referenced effect list — deletes it, and emits
+  `zoneTriggered`. This is what lets the client draw a filling telegraph on the ground for the
+  whole delay: the pending zone is already in the snapshot.
+- **`spawnEntity` (wall)** creates an `ObstacleState` in `world.obstacles` instead: a convex quad
+  built perpendicular to the caster's aim at `offset` units, and emits `obstacleSpawned`. It blocks
+  players and projectiles of every team, including its owner — movement and projectile resolution
+  check `map.collidersNear(bounds)` plus every live obstacle shape, a linear scan since walls are
+  few. The `obstacleSystem` step removes an obstacle once `expiresAt` passes and emits
+  `obstacleRemoved`.
+
+`dash.onContact` does not resolve through `pendingEffectSystem` either: a dash records its source
+effect and an empty `hitPlayerIds` list on the `DASHING` phase, and the `dashContactSystem` step
+applies the list once to each affectable player the dash overlaps, appending to `hitPlayerIds` so
+the same target is never hit twice by one dash, and emitting `dashContact`. `invulnerableTicks > 0`
+on a `dash` applies the `INVULNERABLE` status for that many ticks starting at the dash.
 
 ## Collision and terrain
 
@@ -180,11 +281,15 @@ and never a team-mate unless the match config enables friendly fire.
   the statics again. The published `velocity` is the distance actually travelled divided by `dt`,
   so a player pressed against a wall reports zero.
 - A dash uses the same resolution, so walls stop dashes.
+- **Spawned walls are not map statics.** A `spawnEntity` obstacle lives in `world.obstacles`, not
+  in the map's own collider list, and expires; movement and projectile resolution check both
+  `map.collidersNear(bounds)` and every live obstacle, so a wall someone just cast blocks exactly
+  like a map wall until its `lifetimeMs` runs out.
 
 This is **discrete** resolution: it assumes one tick of displacement is smaller than the collider
 radius, which holds at the current speeds (a ninja moves 140 units/s, about 2.3 units per tick,
 against a radius of 5). Projectiles, which are much faster, are sub-stepped instead: each sub-step
-advances at most one radius, so a shuriken cannot tunnel through a wall or a target.
+advances at most one radius, so a fireball cannot tunnel through a wall or a target.
 
 ## Match rules
 
@@ -204,16 +309,19 @@ Free-for-all is modelled as "every player is their own team" — the team id is 
 single rule serves every format: the round ends when at most one team still has a living player
 (and an opponent was actually eliminated), or when the round timer expires, which is a draw. The
 winning team scores a point; the first to `roundsToWin` wins the match, and `matchEnded` is stored
-through the `MatchResultRepository` port.
+through the `MatchResultRepository` port. `GameSimulation.startMatch()` accepts `MATCH_END` as a
+starting phase, same as `WAITING`, but nothing on the server calls it again once a match ends: the
+room only auto-starts a `WAITING` room that just filled up. A finished room therefore sits in
+`MATCH_END` until the process restarts — an automatic restart is on the roadmap.
 
-Ending a round clears the projectiles still in flight so a shot fired before the last kill cannot
-score during the delay. Starting the next round respawns everyone at a spawn point for their team
-with full health and chakra, all cooldowns reset and no statuses, then freezes gameplay for the
-countdown.
+Ending a round clears the projectiles still in flight, every pending zone and every spawned wall,
+so a shot, a delayed area or an obstacle from before the last kill cannot linger into the next
+round. Starting the next round respawns everyone at a spawn point for their team with full health
+and chakra, all cooldowns reset and no statuses, then freezes gameplay for the countdown.
 
-The presets live in `packages/content/src/match-modes.json`: `duel`, `ffa-3`, `ffa-4`, `2v2`,
-`3v3`, all first to 3 rounds, 90-second rounds, 3-second countdown and round-end delay, friendly
-fire off.
+The presets live in `packages/content/src/match-modes.json`: `duel`, `ffa-3`, `ffa-4` and `2v2` are
+first to 2 rounds, `3v3` is first to 3; all five run 240-second rounds with a 10-point build
+budget, a 3-second countdown and round-end delay, and friendly fire off.
 
 ## The flow of a player action, end to end
 
@@ -232,10 +340,12 @@ fire off.
  10  client                         clock.observe(tick); interpolator.push(world)
  11  client                         buffer.acknowledge(lastProcessedSeq)
  12  client (reconciliation)        simulation.restore(world); replay every pending input
- 13  client, every frame            local player from the predicted state, interpolated with
-                                    alpha; remotes and projectiles from the interpolator at
+ 13  client, every frame            the local player and everything it owns (its projectiles,
+                                    pending zones, walls) from the predicted state, interpolated
+                                    with alpha; every other entity from the interpolator at
                                     estimatedServerTick - interpolationDelayTicks
- 14  Renderer.render(frame)         camera, player views, projectile views — nothing else
+ 14  Renderer.render(frame)         camera, player views, projectile/zone/obstacle views — nothing
+                                    else; see networking.md for the full rendering-source rule
 ```
 
 Steps 3 and 4 happen in the same tick: the client does not wait for the server to move. Step 12 is
@@ -244,12 +354,12 @@ steps.
 
 ## Seams left open on purpose
 
-| Seam                    | Today                           | Meant for                                  |
-| ----------------------- | ------------------------------- | ------------------------------------------ |
-| `ServerTransport`       | `WebSocketTransport` (`ws`)     | WebRTC data channels                       |
-| `MessageCodec`          | JSON + zod                      | a binary, delta-compressed codec           |
-| `Renderer`              | `PixiRenderer` (PixiJS 8)       | another renderer, or a headless one        |
-| `AudioPort`             | `NullAudio`                     | an actual audio implementation             |
-| `MatchResultRepository` | in-memory                       | a database                                 |
-| `RoomManager`           | one default room                | many rooms, matchmaking                    |
-| `TickLoop` clock        | injectable `now` and `schedule` | deterministic tests, already used that way |
+| Seam                    | Today                                                     | Meant for                                  |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------ |
+| `ServerTransport`       | `WebSocketTransport` (`ws`)                               | WebRTC data channels                       |
+| `MessageCodec`          | JSON + zod                                                | a binary, delta-compressed codec           |
+| `Renderer`              | `PixiRenderer` (PixiJS 8)                                 | another renderer, or a headless one        |
+| `AudioPort`             | `WebAudioSynth` (procedural tones); `NullAudio` for tests | recorded sound assets                      |
+| `MatchResultRepository` | in-memory                                                 | a database                                 |
+| `RoomManager`           | one default room                                          | many rooms, matchmaking                    |
+| `TickLoop` clock        | injectable `now` and `schedule`                           | deterministic tests, already used that way |

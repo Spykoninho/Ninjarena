@@ -3,38 +3,52 @@
 The netcode: who decides what, what travels on the wire, and how the browser hides the round trip.
 The package layout that makes this possible is described in [architecture.md](architecture.md).
 
+The transport is WebSocket over TCP, kept deliberately rather than moved to something unordered.
+TCP already orders and retransmits every frame, which removes reordering and loss as concerns for
+`join`, `ready` and `snapshot` messages; the only network defect the client still has to hide is
+delay, which is what prediction, reconciliation and interpolation below are for.
+
 ## Authority model
 
 The server owns the game state. A client sends **intent**, never outcome.
 
-| The client may send                                | The server alone decides                                     |
-| -------------------------------------------------- | ------------------------------------------------------------ |
-| `join { protocolVersion, name }`                   | the player id (it comes from the connection, never the wire) |
-| `ready`                                            | when a match starts, and the team a joining player gets      |
-| `input { seq, input: { move, aim, abilityHeld } }` | whether an ability is allowed, and what it hits              |
-| `ping { sentAt }`                                  | damage, deaths, statuses, knockback                          |
-|                                                    | positions, collisions, projectile flight                     |
-|                                                    | round and match results                                      |
+| The client may send                                   | The server alone decides                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `join { protocolVersion, name, build, techniqueIds }` | the player id (it comes from the connection, never the wire) |
+| `ready`                                               | whether the requested build and techniques are valid         |
+| `input { seq, input: { move, aim, abilityHeld } }`    | when a match starts, and the team a joining player gets      |
+| `ping { sentAt }`                                     | whether an ability is allowed, and what it hits              |
+|                                                       | damage, deaths, statuses, knockback, shields                 |
+|                                                       | positions, collisions, projectile and zone resolution        |
+|                                                       | round and match results                                      |
 
 Every client frame is validated by a zod schema before it reaches game code
-(`ClientMessageSchema`, strict objects, name limited to 24 characters). A frame that fails to parse
-is dropped silently and counted; after 20 bad frames the session is closed with code `1008`. The
-transport accepts text only — a binary frame is ignored — and `maxPayload` is 64 KiB, well above
-the largest legitimate message.
+(`ClientMessageSchema`, strict objects, name limited to 24 characters, `build` an exact seven-key
+integer record, `techniqueIds` a bounded array of strings — the schema only checks shape, since the
+exact number of required techniques and their attribute ranges depend on content loaded at
+runtime). A frame that fails to parse is dropped silently and counted; after 20 bad frames the
+session is closed with code `1008`. The transport accepts text only — a binary frame is ignored —
+and `maxPayload` is 64 KiB, well above the largest legitimate message.
 
 Even a well-formed input is not trusted: `sanitizePlayerInput` clamps `move` to length 1,
-normalizes `aim`, masks `abilityHeld` to the four real slots, and replaces the whole input with a
-neutral one if any component is not finite.
+normalizes `aim`, masks `abilityHeld` to the five real slots, and replaces the whole input with a
+neutral one if any component is not finite. `join`'s `build` and `techniqueIds` get the same
+treatment against actual content and rules, not just shape: `validateBuild` checks every attribute
+is within its configured range and the total is within `matchConfig.buildPoints`, and
+`validateLoadout` checks `techniqueIds` names exactly `techniqueSlots` distinct abilities of
+`kind: 'technique'` that actually exist in the loaded catalog.
 
 The server sends:
 
 - `welcome { playerId, tickRate, snapshotRate, mapId, matchConfig }` — sent before the room
   broadcast, so the client knows which player it is,
-- `roomState { players }` — broadcast whenever someone joins, leaves or toggles ready,
+- `roomState { players }` — broadcast whenever someone joins, leaves or toggles ready; each player
+  entry now carries its `techniqueIds` too,
 - `snapshot { tick, lastProcessedSeq, world, events }`,
-- `error { code, message }` — `PROTOCOL_VERSION`, `ROOM_FULL`, `NOT_JOINED`, and `INVALID_MESSAGE`,
-  which the protocol declares but the server does not currently send: a malformed frame gets no
-  answer at all,
+- `error { code, message }` — `PROTOCOL_VERSION`, `ROOM_FULL`, `INVALID_LOADOUT` (an out-of-range,
+  over-budget or unknown-technique build or loadout), `NOT_JOINED`, and `INVALID_MESSAGE`, which
+  the protocol declares but the server does not currently send: a malformed frame gets no answer at
+  all,
 - `pong { sentAt, serverTime }`.
 
 `PROTOCOL_VERSION` is a single integer, checked on `join`. A client speaking another version is
@@ -138,6 +152,46 @@ The delay is the price of smoothness: a remote player is shown roughly 100 ms in
 default, which is enough to cover a missed or late snapshot at 30 Hz. Lower it with `?delay=` to
 trade smoothness for freshness.
 
+## What renders from where
+
+The rule behind prediction and interpolation is one sentence: **an entity owned by the local
+player renders from its own predicted simulation; every other entity renders from the
+interpolator.** "Owned" is not just the player itself — it is the player's own projectiles, its own
+pending zones (a seismic slam charging up) and its own spawned walls too, matched by `ownerId`
+(`buildRenderFrame` in `packages/client/src/game/renderFrame.ts` filters `world.projectiles`,
+`world.pending` and `world.obstacles` by `ownerId === localPlayerId` for the predicted half, and by
+`ownerId !== localPlayerId` for the interpolated half). This is why your own fireball appears the
+instant you press the button and travels smoothly frame to frame, while everyone else's fireball is
+whatever the last few snapshots said, blended and slightly delayed like the rest of the remote
+world. Telegraphs during a local `CASTING` also read straight off the predicted phase state, so
+your own cast bar and ground marker never wait for a round trip either.
+
+## Correction smoothing
+
+Reconciliation (above) can move the local player a few units when the server disagrees with the
+prediction — not enough to matter for gameplay, but a raw snap is visible as a jitter on every
+correction, all the time, since some drift is normal. `CorrectionSmoother`
+(`packages/client/src/netcode/correctionSmoother.ts`) captures the gap between the pre-reconcile
+render position and the new predicted position and decays it to zero over 100 ms, so the player is
+drawn from `correctedPosition + decayingOffset` for that brief window instead of jumping straight
+to `correctedPosition`. A correction of 24 units or more is not smoothed at all — at that size it
+is treated as a genuine teleport or a rejected action, and lying about it visually would be worse
+than the snap.
+
+## Event routing
+
+Two copies of the same tick's events exist on the client for the local player: the ones its own
+prediction produced immediately, and the ones the server's snapshot reports for that tick a round
+trip later. Playing both would double every particle, sound and screen shake. `routeEvents`
+(`packages/client/src/game/eventRouter.ts`) picks one copy per event: for `abilityCast`,
+`abilityActivated`, `teleported`, `projectileSpawned`, `zoneCreated` and `obstacleSpawned`, the
+local, predicted copy is kept when it belongs to the local player (`playerId`/`ownerId` match) and
+the server's copy of that same event is dropped; every event that does not name the local player as
+its owner, and every other event type entirely (`damageDealt`, `playerDied`, `shieldBroken`, round
+and match events, and so on), always comes from the server. The result is that the local player's
+own casts and shots feel instant while everything that could only ever be decided authoritatively —
+whether a hit actually landed — still waits for the server to say so.
+
 ## Seams
 
 Two interfaces keep the transport and the wire format replaceable without touching game code:
@@ -181,10 +235,12 @@ Stating the gaps is more useful than implying they do not exist.
 - **No input redundancy.** Each input is sent once. On a lossy link a dropped input is simply
   missing, and the server repeats the previous one. Sending the last few inputs in each message is
   the usual fix.
-- **No misprediction smoothing.** A correction snaps the local player to the reconciled position
-  instead of easing towards it over a few frames.
-- **No teleport handling in interpolation.** A remote entity that moves discontinuously is blended
-  across the gap rather than jumped, so a future blink ability would look like a very fast slide.
+- **Only small mispredictions are smoothed.** `CorrectionSmoother` eases a correction under 24
+  units over 100 ms (see "Correction smoothing" above); a larger one still snaps outright.
+- **No teleport handling in interpolation.** A remote entity that moves discontinuously — most
+  visibly a remote `blink` — is blended across the gap by `SnapshotInterpolator` like any other
+  movement, rather than being detected and cut instantly. The local player's own blink does not
+  have this problem: it renders from the predicted simulation, which moves it in one tick.
 - **The snapshot world is not validated in depth.** The client trusts its server: `world` and
   `events` are only checked to be objects. A hostile server is not part of the threat model.
 - **Joining a match in progress is not supported**, and a player who disconnects mid-round leaves

@@ -13,15 +13,15 @@ version for a first pull request; this note is the reference.
 
 ## Naming
 
-| Kind                                    | Style                                                     | Example                                           |
-| --------------------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
-| Types, interfaces, classes              | `PascalCase`                                              | `PlayerState`, `SnapshotInterpolator`             |
-| Functions, variables, properties        | `camelCase`                                               | `applyDamage`, `interpolationDelayTicks`          |
-| Module-level constants                  | `SCREAMING_SNAKE`                                         | `DEFAULT_SIMULATION_CONFIG`, `MAX_ABILITY_SLOTS`  |
-| Union members, phases, statuses, events | `SCREAMING_SNAKE` for states, `camelCase` for event types | `IN_ROUND`, `INVULNERABLE`, `projectileDestroyed` |
-| Source files                            | `camelCase.ts`                                            | `matchSystem.ts`, `buildPlayerInput.ts`           |
-| Data files and their ids                | `kebab-case`                                              | `kunai-slash.json` holding `"id": "kunai-slash"`  |
-| Test files                              | `<module>.test.ts`                                        | `movementSystem.test.ts`                          |
+| Kind                                    | Style                                                     | Example                                            |
+| --------------------------------------- | --------------------------------------------------------- | -------------------------------------------------- |
+| Types, interfaces, classes              | `PascalCase`                                              | `PlayerState`, `SnapshotInterpolator`              |
+| Functions, variables, properties        | `camelCase`                                               | `applyDamage`, `interpolationDelayTicks`           |
+| Module-level constants                  | `SCREAMING_SNAKE`                                         | `DEFAULT_SIMULATION_CONFIG`, `MAX_ABILITY_SLOTS`   |
+| Union members, phases, statuses, events | `SCREAMING_SNAKE` for states, `camelCase` for event types | `IN_ROUND`, `INVULNERABLE`, `projectileDestroyed`  |
+| Source files                            | `camelCase.ts`                                            | `matchSystem.ts`, `buildPlayerInput.ts`            |
+| Data files and their ids                | `kebab-case`                                              | `kunai-strike.json` holding `"id": "kunai-strike"` |
+| Test files                              | `<module>.test.ts`                                        | `movementSystem.test.ts`                           |
 
 A duration ends in `Ms` when it is milliseconds (`cooldownMs`, `roundDurationMs`) and in `Ticks`
 when it is ticks (`interpolationDelayTicks`). A tick value that is an absolute point in time is

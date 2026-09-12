@@ -75,34 +75,74 @@ Two consequences worth stating on their own:
   turns strings into validated messages. Neither knows what a ninja is. Anything that decides an
   outcome lives in the simulation, on the server.
 
-## Adding an ability
+## Adding a technique
 
-Abilities are data. In the common case you write no TypeScript at all.
+Techniques are data. In the common case you write no TypeScript at all: any ability of
+`kind: "technique"` is automatically offered to every player on the setup panel, so there is no
+character file to touch.
 
-1. Create `packages/content/src/abilities/<kebab-case-id>.json`. Durations are in milliseconds,
-   speeds and distances in world units (a tile is 16 units).
+1. Create `packages/content/src/abilities/<kebab-case-id>.json` with `"kind": "technique"`.
+   Durations are in milliseconds, speeds and distances in world units (a tile is 16 units).
 2. Register it in `packages/content/src/loadContent.ts` so it is parsed and catalogued.
-3. Add its id to a character's `abilities` array in `packages/content/src/characters/`. A
-   character has at most four slots, and the slot order is the binding order (left click, right
-   click, Space, E).
-4. Add a test in `packages/core/src/abilities/abilities.test.ts` for the behaviour you introduced.
+3. Give it a `telegraph` (`kind`, `color`, `size`, `anchor`) so the client can announce the cast —
+   an ability without one casts silently, which reads as a bug rather than a stealth technique —
+   and a `visual` (`color`, `size`, optional `trail`) on every `projectile`, `area` and
+   `spawnEntity` effect so it has something to draw.
+4. Add a test in `packages/core/src/abilities/effects/executor.test.ts` (or the fixture-driven
+   style used by the existing techniques there) for the behaviour you introduced.
 
-An ability declares `cooldownMs`, `chakraCost`, `startupMs`, `recoveryMs`, an optional
-`canMoveWhileCasting`, `tags`, and one or more activation effects. Activation effects
-(`projectile`, `dash`, `melee`) fire when the cast activates; hit effects (`damage`, `knockback`,
-`stun`, `applyStatus`) apply to a target that was reached.
+A technique declares `cooldownMs`, `chakraCost` (basic attacks cost 0; techniques in this project
+run 20–35), `startupMs`, `activeMs` (visual only — how long the client keeps drawing a melee arc or
+held pose after activation; 0 does nothing to the simulation), `recoveryMs`, an optional
+`canMoveWhileCasting`, `tags`, and an `effects` tree that runs once when the cast activates. See
+"Adding a brick" below for what a brick can do, and `packages/content/src/abilities/fireball.json`
+or `seismic-slam.json` for worked examples that nest a `damage` inside an `area` inside a
+`projectile`.
 
-**A new kind of effect** is two edits and nothing else:
+## Adding a brick
 
-- add a variant to `ActivationEffectSchema` or `HitEffectSchema` in
-  `packages/core/src/definitions/ability.ts`,
-- add the matching handler to `activationHandlers` in
-  `packages/core/src/abilities/effects/activationEffects.ts` or to `hitHandlers` in
-  `effects/hitEffects.ts`.
+A brick is one variant of the `Effect` union. Adding one is three edits, and the compiler forces
+the third:
 
-Both handler records are typed by the effect's discriminant, so TypeScript refuses to compile until
-the handler exists and its effect parameter is narrowed correctly. Do not special-case an effect
-type inside a system.
+1. Add the variant to `EffectSchema` in `packages/core/src/definitions/ability.ts` (it is a
+   `z.discriminatedUnion` under a `z.lazy`, so a brick that carries its own sub-effects, like
+   `onHit` or `effects`, stays recursive for free).
+2. Add a handler file under `packages/core/src/abilities/effects/handlers/`, matching the
+   signature `(effect, context: EffectContext, path: string) => void` used by the existing
+   handlers.
+3. Register it in `effectHandlers` in `packages/core/src/abilities/effects/executor.ts`.
+
+`effectHandlers` is typed as `{ [K in Effect['type']]: EffectHandler<K> }`, one entry per
+discriminant, so the project does not compile until every brick in the union has a handler — there
+is nowhere else to special-case an effect type. Finish with a test that exercises the new brick
+through `GameSimulation.step`, in `packages/core/src/abilities/effects/executor.test.ts` for
+cross-brick behaviour or next to the system that fires it (`pendingEffectSystem.test.ts`,
+`dashContactSystem` is covered in `executor.test.ts`, `obstacleSystem.test.ts`) when the brick
+creates or interacts with a world entity.
+
+## Tuning balance
+
+Every number that affects balance is content, not code, so tuning is a JSON edit and a re-run of
+the tests that pin the formulas.
+
+- **A technique's own numbers** — `chakraCost`, `cooldownMs`, timings, damage `amount`,
+  `knockback.speed`, status `durationMs`/`magnitude` — live in its file under
+  `packages/content/src/abilities/`.
+- **The build system's shape** — the point budget, each attribute's `min`/`max`, and every
+  coefficient that turns a point into a stat (`healthPerVitality`, `physicalDamagePerStrength`,
+  `techniqueDamagePerPower`, `moveSpeedPerSpeed`, `chakraPerPoint`, `chakraRegenPerPoint`,
+  `defensePerPoint`, and `techniqueSlots`) — lives in `packages/content/src/stat-rules.json`. The
+  formulas themselves are fixed in `packages/core/src/stats/formulas.ts` and are not meant to
+  change for a balance pass; only the coefficients should.
+- **A character's baseline** — base health, chakra, chakra regen, move speed and collider radius —
+  lives in `packages/content/src/characters/<id>.json`.
+- **A match preset's pace** — `roundDurationMs`, `buildPoints`, `roundsToWin`, `countdownMs`,
+  `roundEndDelayMs`, `friendlyFire` — lives in `packages/content/src/match-modes.json`.
+
+Every one of these files is parsed by its zod schema at load, so an out-of-range or missing value
+fails immediately with the file name and the field, rather than shipping a silently broken number.
+After a balance edit, `packages/core/src/stats/stats.test.ts` and the relevant ability test are
+what confirm the change did what you intended.
 
 ## Adding a map
 
