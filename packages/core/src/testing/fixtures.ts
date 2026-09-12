@@ -195,6 +195,99 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     recoveryMs: 0,
     effects: [{ type: 'shield', amount: 25, durationMs: 2000 }],
   }),
+  AbilityDefinitionSchema.parse({
+    id: 'quake',
+    name: 'Quake',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'area',
+        origin: 'aim',
+        range: 64,
+        radius: 30,
+        delayMs: 500,
+        visual: { color: '#c9a26b', size: 30 },
+        onHit: [{ type: 'damage', amount: 20, scaling: 'technique' }],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'quake-water',
+    name: 'Quake (Water)',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'area',
+        origin: 'aim',
+        range: 64,
+        radius: 30,
+        delayMs: 500,
+        visual: { color: '#c9a26b', size: 30 },
+        onHit: [{ type: 'damage', amount: 20, scaling: 'technique' }],
+        terrain: [{ tag: 'water', radiusMultiplier: 2 }],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'boom',
+    name: 'Boom',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'projectile',
+        speed: 300,
+        radius: 3,
+        lifetimeMs: 1000,
+        visual: { color: '#ff6a3d', size: 3 },
+        onHit: [
+          { type: 'damage', amount: 10 },
+          {
+            type: 'area',
+            radius: 24,
+            origin: 'here',
+            visual: { color: '#ff9a3d', size: 24 },
+            onHit: [{ type: 'damage', amount: 5 }],
+          },
+        ],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'fuse',
+    name: 'Fuse',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'delayedTrigger',
+        delayMs: 500,
+        effects: [
+          {
+            type: 'area',
+            radius: 24,
+            origin: 'here',
+            visual: { color: '#ff9a3d', size: 24 },
+            onHit: [{ type: 'damage', amount: 15 }],
+          },
+        ],
+      },
+    ],
+  }),
 ];
 
 const RANGE = { min: 0, max: 5 };

@@ -10,8 +10,10 @@ import { playersOf } from '../../simulation/world';
 import type { EffectListName, EffectRef } from '../effectRef';
 import { childPath, effectList, rootPath } from '../effectRef';
 import { applyStatusHandler } from './handlers/applyStatus';
+import { areaHandler } from './handlers/area';
 import { damageHandler } from './handlers/damage';
 import { dashHandler } from './handlers/dash';
+import { delayedTriggerHandler } from './handlers/delayedTrigger';
 import { knockbackHandler } from './handlers/knockback';
 import { meleeHandler } from './handlers/melee';
 import { projectileHandler } from './handlers/projectile';
@@ -47,10 +49,10 @@ export const effectHandlers: EffectHandlers = {
   knockback: knockbackHandler,
   stun: stunHandler,
   applyStatus: applyStatusHandler,
-  // Provisoire: remplacé par les zones et murs.
-  area: unavailable('area'),
+  area: areaHandler,
+  // Provisoire: remplacé par les murs invoqués.
   spawnEntity: unavailable('spawnEntity'),
-  delayedTrigger: unavailable('delayedTrigger'),
+  delayedTrigger: delayedTriggerHandler,
 };
 
 export function executeEffects(

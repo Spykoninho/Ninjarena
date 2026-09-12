@@ -1,6 +1,6 @@
 import type { SimulationContext } from '../simulation/context';
 import type { TeamId } from '../simulation/ids';
-import { clearProjectiles, resetWorldForRound } from './reset';
+import { clearTransientEntities, resetWorldForRound } from './reset';
 import { aliveTeams, teamsPresent } from './teams';
 
 // Une fin de manche instantanée enchaîne ROUND_END → COUNTDOWN → IN_ROUND dans le même tick.
@@ -66,8 +66,8 @@ function endRound(ctx: SimulationContext, winner: TeamId | null): void {
   match.lastRoundWinner = winner;
   if (winner !== null) match.scores[winner] = (match.scores[winner] ?? 0) + 1;
   ctx.events.push({ type: 'roundEnded', tick: ctx.now, round: match.round, winnerTeamId: winner });
-  // Un tir encore en vol ne doit pas tuer pendant le délai de fin de manche.
-  clearProjectiles(ctx);
+  // Un tir ou une zone en cours ne doit pas tuer pendant le délai de fin de manche.
+  clearTransientEntities(ctx);
   if (winner !== null && (match.scores[winner] ?? 0) >= ctx.matchConfig.roundsToWin) {
     match.phase = 'MATCH_END';
     match.phaseEndsAt = null;

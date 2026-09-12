@@ -17,3 +17,19 @@ export function terrainDamageMultiplier(
   }
   return multiplier;
 }
+
+export function terrainRadiusMultiplier(
+  ctx: SimulationContext,
+  position: Vec2,
+  rules: readonly TerrainRule[],
+): number {
+  if (rules.length === 0) return 1;
+  const tags = ctx.map.terrainAt(position).tags;
+  let multiplier = 1;
+  for (const rule of rules) {
+    if (rule.radiusMultiplier !== undefined && tags.includes(rule.tag)) {
+      multiplier *= rule.radiusMultiplier;
+    }
+  }
+  return multiplier;
+}

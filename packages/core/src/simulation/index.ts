@@ -4,5 +4,6 @@ export * from './events';
 export * from './clone';
 export * from './catalog';
 export * from './world';
+export * from './entities/pendingEffect';
 export * from './context';
 export * from './gameSimulation';

@@ -41,6 +41,16 @@ export type WorldEvent =
   | { type: 'shieldAbsorbed'; tick: Tick; playerId: PlayerId; amount: number; remaining: number }
   | { type: 'shieldBroken'; tick: Tick; playerId: PlayerId }
   | { type: 'teleported'; tick: Tick; playerId: PlayerId; from: Vec2; to: Vec2 }
+  | {
+      type: 'zoneCreated';
+      tick: Tick;
+      id: EntityId;
+      ownerId: PlayerId;
+      position: Vec2;
+      radius: number;
+      fireAt: Tick;
+    }
+  | { type: 'zoneTriggered'; tick: Tick; id: EntityId; position: Vec2 }
   | { type: 'dashContact'; tick: Tick; playerId: PlayerId; targetId: PlayerId }
   | { type: 'playerDied'; tick: Tick; playerId: PlayerId; killerId: PlayerId | null }
   | {

@@ -17,7 +17,7 @@ export function respawnPlayer(ctx: SimulationContext, player: PlayerState, posit
   ctx.events.push({ type: 'phaseChanged', tick: ctx.now, playerId: player.id, phase: 'NORMAL' });
 }
 
-export function clearProjectiles(ctx: SimulationContext): void {
+export function clearTransientEntities(ctx: SimulationContext): void {
   for (const projectile of Object.values(ctx.world.projectiles)) {
     ctx.events.push({
       type: 'projectileDestroyed',
@@ -28,11 +28,13 @@ export function clearProjectiles(ctx: SimulationContext): void {
     });
   }
   ctx.world.projectiles = {};
+  // Une zone balayée ne se déclenche pas: elle disparaît sans toucher personne.
+  ctx.world.pending = {};
 }
 
 export function resetWorldForRound(ctx: SimulationContext): void {
   for (const player of playersOf(ctx.world)) {
     respawnPlayer(ctx, player, spawnPositionFor(ctx.map, ctx.matchConfig, player, ctx.world));
   }
-  clearProjectiles(ctx);
+  clearTransientEntities(ctx);
 }
