@@ -5,15 +5,18 @@ import type {
   PlayerId,
   Vec2,
   WorldEvent,
-  WorldState,
 } from '@ninjarena/core';
 
+// Une gerbe ancrée sur un joueur suit le corps dessiné, en retard sur le monde prédit.
 export type VisualCue =
   | { kind: 'hitFlash'; playerId: PlayerId }
   | { kind: 'impact'; position: Vec2; color: string; size: number }
+  | { kind: 'playerImpact'; playerId: PlayerId; color: string; size: number }
   | { kind: 'burst'; position: Vec2; color: string; count: number }
+  | { kind: 'playerBurst'; playerId: PlayerId; color: string; count: number }
   | { kind: 'dashTrail'; playerId: PlayerId }
   | { kind: 'damageNumber'; position: Vec2; amount: number }
+  | { kind: 'playerDamageNumber'; playerId: PlayerId; amount: number }
   | { kind: 'castFlash'; playerId: PlayerId; color: string };
 
 export interface FeedbackCue {
@@ -25,7 +28,6 @@ export interface FeedbackCue {
 
 export interface FeedbackView {
   localPlayerId: PlayerId;
-  positionOf(id: PlayerId): Vec2 | null;
   abilityColor(abilityId: string): string;
 }
 
@@ -41,18 +43,13 @@ const TELEPORT_PARTICLES = 10;
 const ZONE_PARTICLES = 14;
 const AREA_PARTICLES = 12;
 
-// La vue donne au mapping les seules données de monde dont il a besoin: position et couleur.
+// La vue donne au mapping les seules données dont il a besoin: le joueur local et une couleur.
 export function feedbackView(
-  world: WorldState,
   localPlayerId: PlayerId,
   abilities: DefinitionCatalog<AbilityDefinition>,
 ): FeedbackView {
   return {
     localPlayerId,
-    positionOf: (id) => {
-      const player = world.players[id];
-      return player === undefined ? null : { ...player.position };
-    },
     abilityColor: (abilityId) => colorOf(abilities, abilityId),
   };
 }
@@ -74,7 +71,7 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
       return cue({
         visual: [
           { kind: 'hitFlash', playerId: event.targetId },
-          { kind: 'damageNumber', position: event.position, amount: event.amount },
+          { kind: 'playerDamageNumber', playerId: event.targetId, amount: event.amount },
         ],
         audio: 'hit',
         shake: involvesLocal(event.targetId, event.sourceId, view) ? HIT_SHAKE : 0,
@@ -86,7 +83,14 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
       });
     case 'playerDied':
       return cue({
-        visual: burstAt(view.positionOf(event.playerId), NEUTRAL_COLOR, DEATH_PARTICLES),
+        visual: [
+          {
+            kind: 'playerBurst',
+            playerId: event.playerId,
+            color: NEUTRAL_COLOR,
+            count: DEATH_PARTICLES,
+          },
+        ],
         audio: 'death',
         shake: DEATH_SHAKE,
       });
@@ -135,7 +139,12 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
       return cue({
         visual: [
           { kind: 'dashTrail', playerId: event.playerId },
-          ...impactAt(view.positionOf(event.targetId), NEUTRAL_COLOR, IMPACT_SIZE),
+          {
+            kind: 'playerImpact',
+            playerId: event.targetId,
+            color: NEUTRAL_COLOR,
+            size: IMPACT_SIZE,
+          },
         ],
         audio: 'impact',
       });
@@ -172,14 +181,6 @@ function cue(partial: Partial<FeedbackCue>): FeedbackCue {
 
 function involvesLocal(targetId: PlayerId, sourceId: PlayerId | null, view: FeedbackView): boolean {
   return targetId === view.localPlayerId || sourceId === view.localPlayerId;
-}
-
-function burstAt(position: Vec2 | null, color: string, count: number): VisualCue[] {
-  return position === null ? [] : [{ kind: 'burst', position, color, count }];
-}
-
-function impactAt(position: Vec2 | null, color: string, size: number): VisualCue[] {
-  return position === null ? [] : [{ kind: 'impact', position, color, size }];
 }
 
 function colorOf(abilities: DefinitionCatalog<AbilityDefinition>, abilityId: string): string {

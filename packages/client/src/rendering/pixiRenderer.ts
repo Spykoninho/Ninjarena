@@ -84,6 +84,18 @@ export class PixiRenderer implements Renderer {
         return this.effectsLayer.burst(cue.position, cue.color, cue.count);
       case 'damageNumber':
         return this.effectsLayer.damageNumber(cue.position, cue.amount);
+      case 'playerImpact':
+        return this.atPlayer(cue.playerId, (position) => {
+          this.effectsLayer.impact(position, cue.color, cue.size);
+        });
+      case 'playerBurst':
+        return this.atPlayer(cue.playerId, (position) => {
+          this.effectsLayer.burst(position, cue.color, cue.count);
+        });
+      case 'playerDamageNumber':
+        return this.atPlayer(cue.playerId, (position) => {
+          this.effectsLayer.damageNumber(position, cue.amount);
+        });
     }
   }
 
@@ -119,6 +131,13 @@ export class PixiRenderer implements Renderer {
   private afterimage(playerId: PlayerId): void {
     const sample = this.entityLayer.playerSample(playerId);
     if (sample !== null) this.effectsLayer.afterimage(sample.position, sample.color);
+  }
+
+  // Un effet ancré sur un joueur part du corps dessiné: le monde prédit est en avance sur lui.
+  private atPlayer(playerId: PlayerId, draw: (position: Vec2) => void): void {
+    const sample = this.entityLayer.playerSample(playerId);
+    if (sample === null) return;
+    draw(sample.position);
   }
 }
 

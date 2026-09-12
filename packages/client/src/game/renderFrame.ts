@@ -174,6 +174,8 @@ function aimedDistance(ability: AbilityDefinition, size: number): number {
   const first = ability.effects[0];
   // Une zone visée frappe à sa portée: le télégraphe annonce ce point, pas le bout de la visée.
   if (first?.type === 'area' && first.origin === 'aim') return first.range;
+  // Un mur apparaît à son décalage: sa marque au sol annonce l'endroit exact où il se dressera.
+  if (first?.type === 'spawnEntity') return first.offset;
   return size;
 }
 

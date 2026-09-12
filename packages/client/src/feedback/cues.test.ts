@@ -1,16 +1,10 @@
-import type { Vec2, WorldEvent } from '@ninjarena/core';
+import type { WorldEvent } from '@ninjarena/core';
 import { describe, expect, it } from 'vitest';
 import type { FeedbackView, VisualCue } from './cues';
 import { cuesForEvent } from './cues';
 
-const POSITIONS: Record<string, Vec2> = {
-  me: { x: 10, y: 20 },
-  other: { x: 30, y: 40 },
-};
-
 const view: FeedbackView = {
   localPlayerId: 'me',
-  positionOf: (id) => POSITIONS[id] ?? null,
   abilityColor: () => '#ff8800',
 };
 
@@ -32,20 +26,16 @@ const damage = (overrides: Partial<Extract<WorldEvent, { type: 'damageDealt' }>>
 describe('cuesForEvent', () => {
   it('flashes, numbers and shakes when the local player takes damage', () => {
     const cue = cuesForEvent(damage({ targetId: 'me', sourceId: 'other' }), view);
-    expect(kinds(cue.visual)).toEqual(['hitFlash', 'damageNumber']);
+    expect(kinds(cue.visual)).toEqual(['hitFlash', 'playerDamageNumber']);
     expect(cue.visual[0]).toEqual({ kind: 'hitFlash', playerId: 'me' });
-    expect(cue.visual[1]).toEqual({
-      kind: 'damageNumber',
-      position: { x: 30, y: 40 },
-      amount: 12,
-    });
+    expect(cue.visual[1]).toEqual({ kind: 'playerDamageNumber', playerId: 'me', amount: 12 });
     expect(cue.shake).toBeGreaterThan(0);
     expect(cue.audio).toBe('hit');
   });
 
   it('does not shake for damage between two remote players', () => {
     const cue = cuesForEvent(damage({ targetId: 'other', sourceId: 'third' }), view);
-    expect(kinds(cue.visual)).toEqual(['hitFlash', 'damageNumber']);
+    expect(kinds(cue.visual)).toEqual(['hitFlash', 'playerDamageNumber']);
     expect(cue.shake).toBe(0);
   });
 
@@ -66,14 +56,28 @@ describe('cuesForEvent', () => {
     expect(cue.audio).toBe('ability');
   });
 
-  it('bursts and shakes hard on a death', () => {
+  it('bursts on the dying body and shakes hard on a death', () => {
     const cue = cuesForEvent(
       { type: 'playerDied', tick: 9, playerId: 'other', killerId: 'me' },
       view,
     );
-    expect(kinds(cue.visual)).toEqual(['burst']);
+    expect(cue.visual).toEqual([
+      { kind: 'playerBurst', playerId: 'other', color: '#ffffff', count: 18 },
+    ]);
     expect(cue.shake).toBe(4);
     expect(cue.audio).toBe('death');
+  });
+
+  it('anchors a dash contact on the two bodies it involves', () => {
+    const cue = cuesForEvent(
+      { type: 'dashContact', tick: 11, playerId: 'me', targetId: 'other' },
+      view,
+    );
+    expect(cue.visual).toEqual([
+      { kind: 'dashTrail', playerId: 'me' },
+      { kind: 'playerImpact', playerId: 'other', color: '#ffffff', size: 5 },
+    ]);
+    expect(cue.audio).toBe('impact');
   });
 
   it('marks a projectile impact but ignores an expired one', () => {

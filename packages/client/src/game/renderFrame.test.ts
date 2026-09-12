@@ -262,6 +262,28 @@ describe('buildRenderFrame', () => {
     });
   });
 
+  it('anchors a ground telegraph where a spawned wall will stand', () => {
+    const sim = makeSim();
+    const me = sim.world.players['me']!;
+    me.aim = { x: 1, y: 0 };
+    me.phase = {
+      kind: 'CASTING',
+      slot: 4,
+      abilityId: 'earth-wall',
+      startedAt: 0,
+      activatesAt: 18,
+      activeUntil: 18,
+      endsAt: 27,
+      activated: false,
+    };
+    const frame = buildRenderFrame(inputFor(sim, { tick: 9 }));
+    expect(frame.players[0]?.telegraph).toMatchObject({
+      kind: 'ground-mark',
+      size: 24,
+      anchor: { x: 42, y: 20 },
+    });
+  });
+
   it('drops the telegraph once the cast has activated', () => {
     const sim = makeSim();
     const me = sim.world.players['me']!;

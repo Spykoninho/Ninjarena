@@ -274,10 +274,7 @@ export class ClientGame {
     const events = routeEvents(predicted, this.serverEvents, localPlayerId);
     this.serverEvents = [];
     if (events.length === 0) return;
-    this.feedback.apply(
-      events,
-      feedbackView(simulation.world, localPlayerId, this.deps.content.abilities),
-    );
+    this.feedback.apply(events, feedbackView(localPlayerId, this.deps.content.abilities));
   }
 
   private updateSpectator(): void {
