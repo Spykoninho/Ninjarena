@@ -1,7 +1,9 @@
 import { circleBounds, circlePenetration, resolveCircleAgainstShapes } from '../../../collision';
 import type { LoadedMap } from '../../../map/loadedMap';
 import type { Vec2 } from '../../../math/vec2';
+import type { SimulationContext } from '../../../simulation/context';
 import { add, normalize, scale } from '../../../math/vec2';
+import { collidersNear } from '../../../simulation/colliders';
 import type { EffectHandler } from '../executor';
 import { casterOf } from '../executor';
 
@@ -21,13 +23,13 @@ export const teleportHandler: EffectHandler<'teleport'> = (effect, context) => {
       add(from, scale(direction, (effect.distance * step) / steps)),
       radius,
     );
-    if (blocked(ctx.map, sample, radius)) break;
+    if (blocked(ctx, sample, radius)) break;
     free = sample;
   }
   const to = resolveCircleAgainstShapes(
     free,
     radius,
-    ctx.map.collidersNear(circleBounds(free, radius)),
+    collidersNear(ctx, circleBounds(free, radius)),
   );
   caster.position = to;
   ctx.events.push({
@@ -46,8 +48,8 @@ function clampToMap(map: LoadedMap, position: Vec2, radius: number): Vec2 {
   };
 }
 
-function blocked(map: LoadedMap, position: Vec2, radius: number): boolean {
-  for (const shape of map.collidersNear(circleBounds(position, radius))) {
+function blocked(ctx: SimulationContext, position: Vec2, radius: number): boolean {
+  for (const shape of collidersNear(ctx, circleBounds(position, radius))) {
     if (circlePenetration(shape, position, radius) !== null) return true;
   }
   return false;

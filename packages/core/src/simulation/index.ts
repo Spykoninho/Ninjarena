@@ -4,6 +4,8 @@ export * from './events';
 export * from './clone';
 export * from './catalog';
 export * from './world';
+export * from './colliders';
 export * from './entities/pendingEffect';
+export * from './entities/obstacle';
 export * from './context';
 export * from './gameSimulation';

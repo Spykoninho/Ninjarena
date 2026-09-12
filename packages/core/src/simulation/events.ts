@@ -51,6 +51,8 @@ export type WorldEvent =
       fireAt: Tick;
     }
   | { type: 'zoneTriggered'; tick: Tick; id: EntityId; position: Vec2 }
+  | { type: 'obstacleSpawned'; tick: Tick; id: EntityId; ownerId: PlayerId }
+  | { type: 'obstacleRemoved'; tick: Tick; id: EntityId }
   | { type: 'dashContact'; tick: Tick; playerId: PlayerId; targetId: PlayerId }
   | { type: 'playerDied'; tick: Tick; playerId: PlayerId; killerId: PlayerId | null }
   | {

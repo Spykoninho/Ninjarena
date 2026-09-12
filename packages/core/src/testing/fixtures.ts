@@ -288,6 +288,26 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
       },
     ],
   }),
+  AbilityDefinitionSchema.parse({
+    id: 'wall',
+    name: 'Wall',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'spawnEntity',
+        entity: 'wall',
+        width: 48,
+        thickness: 8,
+        offset: 24,
+        lifetimeMs: 1000,
+        visual: { color: '#8a6a4b', size: 8 },
+      },
+    ],
+  }),
 ];
 
 const RANGE = { min: 0, max: 5 };

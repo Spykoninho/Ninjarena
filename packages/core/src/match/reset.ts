@@ -2,6 +2,7 @@ import type { Vec2 } from '../math/vec2';
 import { normalPhase } from '../player/phase';
 import type { PlayerState } from '../player/state';
 import type { SimulationContext } from '../simulation/context';
+import { removeObstacle } from '../simulation/entities/obstacle';
 import { playersOf } from '../simulation/world';
 import { spawnPositionFor } from './spawns';
 
@@ -30,6 +31,7 @@ export function clearTransientEntities(ctx: SimulationContext): void {
   ctx.world.projectiles = {};
   // Une zone balayée ne se déclenche pas: elle disparaît sans toucher personne.
   ctx.world.pending = {};
+  for (const obstacle of Object.values(ctx.world.obstacles)) removeObstacle(ctx, obstacle);
 }
 
 export function resetWorldForRound(ctx: SimulationContext): void {

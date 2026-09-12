@@ -1,5 +1,6 @@
 import { circleBounds, resolveCircleAgainstShapes, separateCircles } from '../../collision';
 import type { LoadedMap } from '../../map/loadedMap';
+import { collidersNear } from '../colliders';
 import type { Vec2 } from '../../math/vec2';
 import { clampLength, isZero, scale } from '../../math/vec2';
 import type { CombatPhaseState } from '../../player/phase';
@@ -24,7 +25,7 @@ export function movementSystem(ctx: SimulationContext, inputs: PlayerInputs): vo
     if (input !== undefined && !isZero(input.aim)) player.aim = { x: input.aim.x, y: input.aim.y };
     const from = { x: player.position.x, y: player.position.y };
     const velocity = velocityOf(ctx, player, input);
-    player.position = settle(ctx.map, moveBy(from, velocity, ctx.dt), player.stats.colliderRadius);
+    player.position = settle(ctx, moveBy(from, velocity, ctx.dt), player.stats.colliderRadius);
     moved.push({ player, from });
   }
   separatePlayers(ctx, moved);
@@ -84,12 +85,12 @@ function clampToMap(map: LoadedMap, position: Vec2, radius: number): Vec2 {
   };
 }
 
-function settle(map: LoadedMap, desired: Vec2, radius: number): Vec2 {
-  const inside = clampToMap(map, desired, radius);
+function settle(ctx: SimulationContext, desired: Vec2, radius: number): Vec2 {
+  const inside = clampToMap(ctx.map, desired, radius);
   return resolveCircleAgainstShapes(
     inside,
     radius,
-    map.collidersNear(circleBounds(inside, radius)),
+    collidersNear(ctx, circleBounds(inside, radius)),
   );
 }
 
@@ -106,8 +107,8 @@ function separatePlayers(ctx: SimulationContext, moved: readonly MovedPlayer[]):
         b.stats.colliderRadius,
       );
       if (separated === null) continue;
-      a.position = settle(ctx.map, separated.a, a.stats.colliderRadius);
-      b.position = settle(ctx.map, separated.b, b.stats.colliderRadius);
+      a.position = settle(ctx, separated.a, a.stats.colliderRadius);
+      b.position = settle(ctx, separated.b, b.stats.colliderRadius);
     }
   }
 }

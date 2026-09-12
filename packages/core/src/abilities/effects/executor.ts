@@ -18,6 +18,7 @@ import { knockbackHandler } from './handlers/knockback';
 import { meleeHandler } from './handlers/melee';
 import { projectileHandler } from './handlers/projectile';
 import { shieldHandler } from './handlers/shield';
+import { spawnEntityHandler } from './handlers/spawnEntity';
 import { stunHandler } from './handlers/stun';
 import { teleportHandler } from './handlers/teleport';
 
@@ -50,8 +51,7 @@ export const effectHandlers: EffectHandlers = {
   stun: stunHandler,
   applyStatus: applyStatusHandler,
   area: areaHandler,
-  // Provisoire: remplacé par les murs invoqués.
-  spawnEntity: unavailable('spawnEntity'),
+  spawnEntity: spawnEntityHandler,
   delayedTrigger: delayedTriggerHandler,
 };
 
@@ -121,12 +121,6 @@ const DEFAULT_AIM: Vec2 = { x: 1, y: 0 };
 
 export function aimOf(caster: PlayerState): Vec2 {
   return isZero(caster.aim) ? DEFAULT_AIM : normalize(caster.aim);
-}
-
-function unavailable<K extends Effect['type']>(type: K): EffectHandler<K> {
-  return () => {
-    throw new Error(`effect "${type}" is not available yet`);
-  };
 }
 
 type AnyEffectHandler = (effect: Effect, context: EffectContext, path: string) => void;

@@ -3,6 +3,7 @@ import { createMatchState } from '../match/state';
 import { isAlive } from '../player/rules';
 import type { PlayerState } from '../player/state';
 import type { ProjectileState } from '../projectile/state';
+import type { ObstacleState } from './entities/obstacle';
 import type { PendingEffect } from './entities/pendingEffect';
 import type { EntityId, PlayerId, Tick } from './ids';
 
@@ -11,6 +12,7 @@ export interface WorldState {
   players: Record<PlayerId, PlayerState>;
   projectiles: Record<EntityId, ProjectileState>;
   pending: Record<EntityId, PendingEffect>;
+  obstacles: Record<EntityId, ObstacleState>;
   nextEntityId: number;
   match: MatchState;
 }
@@ -21,6 +23,7 @@ export function createWorldState(): WorldState {
     players: {},
     projectiles: {},
     pending: {},
+    obstacles: {},
     nextEntityId: 1,
     match: createMatchState(),
   };

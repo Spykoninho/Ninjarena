@@ -7,6 +7,7 @@ import { add, distanceSq, length, normalize, scale } from '../../math/vec2';
 import { isDamageable } from '../../player/rules';
 import type { PlayerState } from '../../player/state';
 import type { ProjectileState } from '../../projectile/state';
+import { collidersNear } from '../colliders';
 import type { SimulationContext } from '../context';
 import { playersOf } from '../world';
 
@@ -72,7 +73,7 @@ function runEffects(
 
 function hitsWall(ctx: SimulationContext, projectile: ProjectileState): boolean {
   const bounds = circleBounds(projectile.position, projectile.radius);
-  for (const shape of ctx.map.collidersNear(bounds)) {
+  for (const shape of collidersNear(ctx, bounds)) {
     if (circlePenetration(shape, projectile.position, projectile.radius) !== null) return true;
   }
   return false;

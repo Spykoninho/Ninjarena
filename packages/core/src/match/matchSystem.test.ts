@@ -149,6 +149,30 @@ describe('match rules', () => {
     ]);
   });
 
+  it('clears pending zones and walls when the round ends', () => {
+    const sim = duelWith();
+    sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      techniqueIds: ['quake', 'wall', 'blink'],
+    });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    sim.startMatch();
+    sim.step({ a: { ...neutralInput(), abilityHeld: abilityMask([2]) } });
+    sim.step({ a: { ...neutralInput(), abilityHeld: abilityMask([3]) } });
+    expect(Object.keys(sim.world.pending)).toHaveLength(1);
+    expect(Object.keys(sim.world.obstacles)).toHaveLength(1);
+
+    applyDamage(contextOf(sim), b, 999, 'a');
+    const events = sim.step({});
+    expect(events).toContainEqual(expect.objectContaining({ type: 'roundEnded' }));
+    expect(events).toContainEqual(expect.objectContaining({ type: 'obstacleRemoved' }));
+    expect(events.some((e) => e.type === 'zoneTriggered')).toBe(false);
+    expect(sim.world.pending).toEqual({});
+    expect(sim.world.obstacles).toEqual({});
+  });
+
   it('fills the least populated team and gives ties to the lowest index', () => {
     const sim = createTestSimulation({ matchConfig: { teamCount: 2, playersPerTeam: 2 } });
     expect(pickTeamForNewPlayer(sim.matchConfig, sim.world, 'a')).toBe('team-0');

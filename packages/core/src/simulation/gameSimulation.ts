@@ -25,6 +25,7 @@ import { neutralInput, sanitizePlayerInput } from './input';
 import { abilitySystem } from './systems/abilitySystem';
 import { dashContactSystem } from './systems/dashContactSystem';
 import { movementSystem } from './systems/movementSystem';
+import { obstacleSystem } from './systems/obstacleSystem';
 import { pendingEffectSystem } from './systems/pendingEffectSystem';
 import { playerStateSystem } from './systems/playerStateSystem';
 import { projectileSystem } from './systems/projectileSystem';
@@ -132,6 +133,7 @@ export class GameSimulation {
     dashContactSystem(ctx);
     projectileSystem(ctx);
     pendingEffectSystem(ctx);
+    obstacleSystem(ctx);
     matchPostStep(ctx);
     this.worldState.tick += 1;
     return ctx.events;
