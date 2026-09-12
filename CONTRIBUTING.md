@@ -196,13 +196,18 @@ A room setting is one field of `RoomSettings` (`packages/core/src/lobby/roomSett
 3. If it affects the simulation, add one line to `toMatchConfig` mapping it onto the matching
    `MatchConfig` field (adding a new one to `MatchConfigSchema` first if it does not exist yet).
    A setting that only affects lobby behaviour, like `mapId`, needs no `toMatchConfig` line at all.
-4. Add a row for it in `settingsRows` (`packages/client/src/lobby/lobbyModel.ts`) so the host's
+4. Add the field to both `RoomSettingsSchema` and `RoomSettingsPatchSchema` (`.optional()` there)
+   in `packages/protocol/src/schemas.ts`, with the same bounds as the core schema. Neither zod
+   object is typed against `RoomSettings`/`RoomSettingsPatch`, so a field missing here is not a
+   compile error: the wire codec silently strips it out of anything a client sends or the server
+   broadcasts, `strictObject` and all — this step is easy to forget and nothing else catches it.
+5. Add a row for it in `settingsRows` (`packages/client/src/lobby/lobbyModel.ts`) so the host's
    lobby form shows and edits it, and a case in `settingsPatch` in the same file so a change to
    that row turns into the right `RoomSettingsPatch`.
 
 `applySettingsPatch` merges a patch onto the current settings and re-parses the whole object with
-the schema, so a bad value for the new field is rejected (`INVALID_SETTINGS`) without touching
-anything else in the room — there is nothing else to wire up for validation.
+the core schema, so a bad value for the new field is rejected (`INVALID_SETTINGS`) before it
+reaches the room — but only once it has survived the wire, which is what step 4 is for.
 
 ## Code style
 

@@ -60,6 +60,8 @@ export class HomeScreen implements Screen {
     // Une erreur ne survit pas au remontage de l'écran: elle parlait de la session précédente.
     this.errorList.replaceChildren();
     root.appendChild(this.root);
+    // Un code prérempli par `?room=` invite à vérifier le mot de passe puis appuyer sur Entrée.
+    if (this.codeInput.value.length > 0) this.codeInput.focus();
   }
 
   unmount(): void {

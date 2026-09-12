@@ -42,22 +42,22 @@ match in progress, and no spectating from the lobby.
 Every message below requires a prior `hello` (`NOT_INTRODUCED` otherwise); the room-scoped ones
 also require the session to be in a room (`NOT_IN_ROOM` otherwise).
 
-| Message                               | Preconditions                                                                             | Errors it can produce                                                              |
-| ------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected.               | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                       |
-| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`.                                           | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`                            |
-| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches.    | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD` |
-| `leaveRoom`                           | In a room.                                                                                | — (always succeeds; replies `roomLeft`)                                            |
-| `updateSettings { patch }`            | Host; status `WAITING`; patch produces valid settings that still fit the current roster.  | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                     |
-| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                              | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
-| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                 | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
-| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.       | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                    |
-| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                          | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                         |
-| `listMaps`                            | Introduced.                                                                               | —                                                                                  |
-| `getMap { id }`                       | Introduced.                                                                               | `MAP_NOT_FOUND`                                                                    |
-| `saveMap { document }`                | Introduced.                                                                               | `INVALID_MAP`, `MAP_STORE_FULL`                                                    |
-| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME). | — (silently ignored outside a match)                                               |
-| `ping { sentAt }`                     | Always.                                                                                   | —                                                                                  |
+| Message                               | Preconditions                                                                                                                        | Errors it can produce                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected.                                                          | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                       |
+| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`.                                                                                      | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`                            |
+| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches.                                               | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD` |
+| `leaveRoom`                           | In a room.                                                                                                                           | — (always succeeds; replies `roomLeft`)                                            |
+| `updateSettings { patch }`            | Host; status `WAITING`; patch produces valid settings that still fit the current roster.                                             | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                     |
+| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                         | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
+| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                            | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
+| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                  | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                    |
+| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                     | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                         |
+| `listMaps`                            | Introduced.                                                                                                                          | —                                                                                  |
+| `getMap { id }`                       | Introduced.                                                                                                                          | `MAP_NOT_FOUND`                                                                    |
+| `saveMap { document }`                | Introduced.                                                                                                                          | `INVALID_MAP`, `MAP_STORE_FULL`                                                    |
+| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME/FINISHED, until the room resets to WAITING). | — (silently ignored outside a match)                                               |
+| `ping { sentAt }`                     | Introduced.                                                                                                                          | —                                                                                  |
 
 A `joinRoom` or `createRoom` from a session already in a room does not move it — `ALREADY_IN_ROOM`
 either way. Repeating `join`/`leave` from the same session is idempotent: `Room.join` is a no-op if
@@ -73,9 +73,10 @@ was.
 
 ## Start blockers
 
-`Room.startBlockers()` (`packages/server/src/lobby/startBlockers.ts`) is recomputed on demand — it
-backs both `RoomView.startBlockers` (shown to every player) and the `startMatch` check — and is
-also what a client uses to grey out its Start button and explain why:
+`Room.startBlockers()` (`packages/server/src/lobby/room.ts`, delegating to `computeStartBlockers`
+in `packages/server/src/lobby/startBlockers.ts`) is recomputed on demand — it backs both
+`RoomView.startBlockers` (shown to every player) and the `startMatch` check — and is also what a
+client uses to grey out its Start button and explain why:
 
 - Fewer than two players in the room: `NOT_ENOUGH_PLAYERS`, and nothing else is even checked.
 - Otherwise, any combination of: `PLAYER_NOT_READY` (someone hasn't readied up), `INVALID_LOADOUT`

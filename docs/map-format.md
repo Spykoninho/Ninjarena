@@ -6,7 +6,7 @@ that will grow a step per future version rather than a second parser living next
 
 ## The v1 document
 
-```jsonc
+```json
 {
   "version": 1,
   "id": "training-ground",
@@ -25,7 +25,7 @@ that will grow a step per future version rather than a second parser living next
       [1, 0, 0, 2, 2, 0, 0, 1],
       [1, 0, 0, 0, 0, 0, 0, 1],
       [1, 0, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1]
     ],
     "objects": [
       [3, 3, 3, 3, 3, 3, 3, 3],
@@ -35,22 +35,24 @@ that will grow a step per future version rather than a second parser living next
       [3, null, null, null, null, null, null, 3],
       [3, null, 4, null, null, 4, null, 3],
       [3, null, null, null, null, null, null, 3],
-      [3, 3, 3, 3, 3, 3, 3, 3],
-    ],
+      [3, 3, 3, 3, 3, 3, 3, 3]
+    ]
   },
   "colliders": [],
   "spawns": [
     { "x": 2, "y": 1, "team": 0 },
     { "x": 5, "y": 1, "team": 0 },
     { "x": 2, "y": 6, "team": 1 },
-    { "x": 5, "y": 6, "team": 1 },
-  ],
+    { "x": 5, "y": 6, "team": 1 }
+  ]
 }
 ```
 
 This is a valid, self-contained map: an 8×8 arena with a wall ring, a small pond in the middle,
 four trees, and two spawns per team. It loads on the `default` tileset (`0` ground, `1` grass,
 `2` water, `3` wall, `4` tree, `5` building — see `packages/content/src/tilesets/default.json`).
+It is a **team** map — every spawn is tagged with a `team` — so a free-for-all room would need its
+own generic (untagged) spawns instead; see `spawnIssues` under "Validation" below.
 
 ## Fields
 
