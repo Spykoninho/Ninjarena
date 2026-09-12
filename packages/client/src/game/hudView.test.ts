@@ -44,6 +44,7 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: '2/2 ready',
       rttMs: 23,
+      spectating: null,
     });
     expect(view).toMatchObject({
       health: 60,
@@ -73,6 +74,7 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: '',
       rttMs: null,
+      spectating: null,
     });
     // Le slot 0 est l'attaque de base du personnage, le slot 1 son esquive.
     const basic = content.abilities.get(content.characters.get('ninja').basicAttackId);
@@ -95,6 +97,7 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: '',
       rttMs: null,
+      spectating: null,
     });
     expect(view.shield).toBe(18);
   });
@@ -107,6 +110,7 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: '',
       rttMs: null,
+      spectating: null,
     };
     expect(buildHudView({ ...base, match, tick: 100 }).roundTimer).toBe('00:09');
     expect(
@@ -129,6 +133,7 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: '',
       rttMs: null,
+      spectating: null,
     });
     expect(view.buildSummary).toBe('VIT 2 · STR 0 · POW 3 · SPD 0 · CHK 0 · REG 0 · DEF 0');
   });
@@ -142,11 +147,28 @@ describe('buildHudView', () => {
       tickDurationMs: 1000 / 60,
       status: 'connecting',
       rttMs: null,
+      spectating: null,
     });
     expect(view).toMatchObject({ health: 0, maxHealth: 0, matchPhase: 'WAITING', round: 0 });
     expect(view.abilities).toEqual([]);
     expect(view.scores).toEqual({});
     expect(view.roundTimer).toBeNull();
     expect(view.buildSummary).toBe('');
+    expect(view.spectating).toBeNull();
+  });
+
+  it('carries the spectated player name through to the view', () => {
+    const player = makePlayer();
+    const view = buildHudView({
+      localPlayer: player,
+      abilities: content.abilities,
+      match,
+      tick: 100,
+      tickDurationMs: 1000 / 60,
+      status: '',
+      rttMs: null,
+      spectating: 'Ally',
+    });
+    expect(view.spectating).toBe('Ally');
   });
 });

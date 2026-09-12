@@ -21,6 +21,7 @@ export interface HudView {
   buildSummary: string;
   status: string;
   rttMs: number | null;
+  spectating: string | null;
 }
 
 interface Bar {
@@ -143,8 +144,10 @@ function phaseText(view: HudView): string {
 }
 
 function statusText(view: HudView): string {
-  if (view.rttMs === null) return view.status;
-  return `${view.status} · ${Math.round(view.rttMs)} ms`;
+  const parts = [view.status];
+  if (view.spectating !== null) parts.push(`Spectating ${view.spectating}`);
+  if (view.rttMs !== null) parts.push(`${Math.round(view.rttMs)} ms`);
+  return parts.join(' · ');
 }
 
 function updateBar(bar: Bar, value: number, max: number): void {

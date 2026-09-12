@@ -18,6 +18,7 @@ export interface HudViewInput {
   tickDurationMs: number;
   status: string;
   rttMs: number | null;
+  spectating: string | null;
 }
 
 const MS_PER_SECOND = 1000;
@@ -51,6 +52,7 @@ export function buildHudView(input: HudViewInput): HudView {
     buildSummary: local === undefined ? '' : buildSummary(local.build),
     status: input.status,
     rttMs: input.rttMs,
+    spectating: input.spectating,
   };
 }
 

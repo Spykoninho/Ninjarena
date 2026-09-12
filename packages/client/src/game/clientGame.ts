@@ -9,7 +9,7 @@ import {
   sub,
   tickDurationMs,
 } from '@ninjarena/core';
-import type { ServerMessage } from '@ninjarena/protocol';
+import type { RoomPlayerInfo, ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
 import type { ClientConfig } from '../config/clientConfig';
@@ -33,6 +33,7 @@ import type { SetupPanel } from '../ui/setupPanel';
 import { routeEvents } from './eventRouter';
 import { buildHudView } from './hudView';
 import { buildRenderFrame } from './renderFrame';
+import { SpectatorController } from './spectatorController';
 
 export interface ClientGameDeps {
   config: ClientConfig;
@@ -66,6 +67,8 @@ export class ClientGame {
   private clock: ServerClock | null = null;
   private localPlayerId: PlayerId | null = null;
   private latestSnapshot: WorldState | null = null;
+  private roomPlayers: RoomPlayerInfo[] = [];
+  private spectator = new SpectatorController();
   private previousLocalPosition: Vec2 | null = null;
   private cameraPosition: Vec2 = { x: 0, y: 0 };
   private localRenderPosition: Vec2 = { x: 0, y: 0 };
@@ -150,6 +153,7 @@ export class ClientGame {
         this.handleWelcome(message);
         return;
       case 'roomState': {
+        this.roomPlayers = message.players;
         const ready = message.players.filter((player) => player.ready).length;
         this.setStatus(`${ready}/${message.players.length} ready`);
         return;
@@ -194,6 +198,7 @@ export class ClientGame {
     this.smoother = new CorrectionSmoother();
     this.latestSnapshot = null;
     this.previousLocalPosition = null;
+    this.spectator.reset();
     this.serverEvents = [];
     this.lastFrameMs = null;
     this.rttMs = null;
@@ -246,6 +251,7 @@ export class ClientGame {
     const predicted: WorldEvent[] = [];
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
+    this.updateSpectator();
     const offset = this.smoother.advance(elapsed);
     // Un gel de coup arrête l'image sans arrêter la simulation ni les entrées envoyées.
     if (!this.feedback.advance(elapsed).frozen) this.renderFrame(accumulator.alpha, offset);
@@ -263,6 +269,14 @@ export class ClientGame {
       events,
       feedbackView(simulation.world, localPlayerId, this.deps.content.abilities),
     );
+  }
+
+  private updateSpectator(): void {
+    const localPlayerId = this.localPlayerId;
+    const cyclePressed = this.deps.inputState.pressedOnce.has(this.deps.bindings.spectateNext);
+    this.deps.inputState.pressedOnce.clear();
+    if (localPlayerId === null) return;
+    this.spectator.update(this.latestSnapshot, localPlayerId, this.isFfa, cyclePressed);
   }
 
   private runTick(): readonly WorldEvent[] {
@@ -294,6 +308,7 @@ export class ClientGame {
       // La correction lissée déplace le corps, pas la caméra: l'image ne recule pas avec lui.
       this.localRenderPosition = add(this.cameraPosition, offset);
     }
+    const remotes = this.sampleRemotes();
     this.deps.renderer.render(
       buildRenderFrame({
         localPlayerId,
@@ -301,13 +316,19 @@ export class ClientGame {
         localRenderPosition: this.localRenderPosition,
         alpha,
         dt: this.tickMs / MS_PER_SECOND,
-        remotes: this.sampleRemotes(),
+        remotes,
         abilities: this.deps.content.abilities,
         tick: simulation.world.tick,
         isFfa: this.isFfa,
-        cameraTarget: this.cameraPosition,
+        cameraTarget: this.spectateCameraTarget(remotes) ?? this.cameraPosition,
       }),
     );
+  }
+
+  private spectateCameraTarget(remotes: InterpolatedWorld | null): Vec2 | null {
+    const target = this.spectator.current;
+    if (target === null) return null;
+    return remotes?.players[target]?.renderPosition ?? null;
   }
 
   private sampleRemotes(): InterpolatedWorld | null {
@@ -328,8 +349,15 @@ export class ClientGame {
         tickDurationMs: this.tickMs,
         status: this.status,
         rttMs: this.rttMs,
+        spectating: this.spectatingName(),
       }),
     );
+  }
+
+  private spectatingName(): string | null {
+    const target = this.spectator.current;
+    if (target === null) return null;
+    return this.roomPlayers.find((player) => player.id === target)?.name ?? target;
   }
 
   private localPlayer(): PlayerState | undefined {

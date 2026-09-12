@@ -39,6 +39,8 @@ export class DomInputAdapter {
     // Tab ne doit sortir le focus que du canevas, jamais des contrôles du panneau de préparation.
     if (event.code === 'Tab' && !isFormControl(event.target)) event.preventDefault();
     if (event.repeat) return;
+    // Le front montant n'est marqué qu'au premier appui, pas à sa répétition matérielle.
+    if (!this.state.keysDown.has(event.code)) this.state.pressedOnce.add(event.code);
     this.state.keysDown.add(event.code);
   };
 
@@ -71,6 +73,7 @@ export class DomInputAdapter {
   private clear(): void {
     this.state.keysDown.clear();
     this.state.buttonsDown.clear();
+    this.state.pressedOnce.clear();
   }
 }
 
