@@ -3,21 +3,13 @@ import type {
   AttributeId,
   Build,
   DefinitionCatalog,
+  Loadout,
   StatRulesDefinition,
 } from '@ninjarena/core';
 import { ATTRIBUTE_IDS, buildPointsSpent, emptyBuild } from '@ninjarena/core';
 import type { ClientConfig } from '../config/clientConfig';
 
-const NAME_MIN_LENGTH = 1;
-const NAME_MAX_LENGTH = 24;
-
-export interface SetupState {
-  name: string;
-  build: Build;
-  techniqueIds: (string | null)[];
-}
-
-// L'état que le panneau de Task 9 manipule: le nom vit désormais sur l'écran d'accueil.
+// L'état que le panneau du salon manipule: le nom vit sur l'écran d'accueil.
 export interface LoadoutState {
   build: Build;
   basicAttackId: string | null;
@@ -36,36 +28,49 @@ export interface TechniqueOption {
   cooldownMs: number;
 }
 
-export function createSetupState(
+export function createLoadoutState(
   config: ClientConfig,
   rules: StatRulesDefinition,
-  options: TechniqueOption[],
-): SetupState {
+  techniques: TechniqueOption[],
+  basics: BasicOption[],
+  budget: number,
+): LoadoutState {
   const build = emptyBuild();
   for (const id of ATTRIBUTE_IDS) {
     const range = rules.attributes[id];
     const requested = config.build[id] ?? range.min;
     build[id] = clamp(requested, range.min, range.max);
   }
-  reduceToBudget(build, rules, rules.defaultPointBudget);
+  reduceToBudget(build, rules, budget);
   return {
-    name: config.playerName,
     build,
-    techniqueIds: fillTechniques(config.techniqueIds, options, rules.techniqueSlots),
+    basicAttackId: pickBasic(config.basicAttackId, basics),
+    techniqueIds: fillTechniques(config.techniqueIds, techniques, rules.techniqueSlots),
   };
 }
 
-export function pointsLeft(state: SetupState, budget: number): number {
+export function toLoadout(state: LoadoutState): Loadout | null {
+  const { basicAttackId } = state;
+  if (basicAttackId === null) return null;
+  const techniqueIds: string[] = [];
+  for (const id of state.techniqueIds) {
+    if (id === null) return null;
+    techniqueIds.push(id);
+  }
+  return { build: { ...state.build }, basicAttackId, techniqueIds };
+}
+
+export function pointsLeft(state: LoadoutState, budget: number): number {
   return budget - buildPointsSpent(state.build);
 }
 
 export function setAttribute(
-  state: SetupState,
+  state: LoadoutState,
   attribute: AttributeId,
   value: number,
   rules: StatRulesDefinition,
   budget: number,
-): SetupState {
+): LoadoutState {
   const range = rules.attributes[attribute];
   const requested = clamp(Math.round(value), range.min, range.max);
   const spentByOthers = buildPointsSpent(state.build) - state.build[attribute];
@@ -75,11 +80,11 @@ export function setAttribute(
 }
 
 export function setTechnique(
-  state: SetupState,
+  state: LoadoutState,
   slot: number,
   id: string,
   options: TechniqueOption[],
-): SetupState {
+): LoadoutState {
   if (!options.some((option) => option.id === id)) return state;
   const techniqueIds = [...state.techniqueIds];
   const existingSlot = techniqueIds.indexOf(id);
@@ -90,20 +95,19 @@ export function setTechnique(
   return { ...state, techniqueIds };
 }
 
-export function setupErrors(
-  state: SetupState,
+export function loadoutErrors(
+  state: LoadoutState,
   rules: StatRulesDefinition,
   budget: number,
   options: TechniqueOption[],
 ): string[] {
   const errors: string[] = [];
-  const trimmedName = state.name.trim();
-  if (trimmedName.length < NAME_MIN_LENGTH || trimmedName.length > NAME_MAX_LENGTH) {
-    errors.push(`name must be between ${NAME_MIN_LENGTH} and ${NAME_MAX_LENGTH} characters`);
-  }
   const spent = buildPointsSpent(state.build);
   if (spent > budget) {
     errors.push(`build spends ${spent} points, budget is ${budget}`);
+  }
+  if (state.basicAttackId === null) {
+    errors.push('a basic attack must be selected');
   }
   if (state.techniqueIds.length !== rules.techniqueSlots) {
     errors.push(`exactly ${rules.techniqueSlots} techniques are required`);
@@ -115,23 +119,6 @@ export function setupErrors(
     errors.push('techniques must be distinct');
   }
   return errors;
-}
-
-export interface PlayAvailability {
-  errors: string[];
-  disabled: boolean;
-}
-
-// Le bouton reste verrouillé pendant la poignée de main: un second clic ouvrirait une seconde socket.
-export function playAvailability(
-  state: SetupState,
-  rules: StatRulesDefinition,
-  budget: number,
-  options: TechniqueOption[],
-  connecting: boolean,
-): PlayAvailability {
-  const errors = setupErrors(state, rules, budget, options);
-  return { errors, disabled: connecting || errors.length > 0 };
 }
 
 export function techniqueOptions(
@@ -155,6 +142,11 @@ export function basicOptions(abilities: DefinitionCatalog<AbilityDefinition>): B
     .filter((ability) => ability.kind === 'basic')
     .map((ability) => ({ id: ability.id, name: ability.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function pickBasic(requested: string | null, basics: BasicOption[]): string | null {
+  if (requested !== null && basics.some((basic) => basic.id === requested)) return requested;
+  return basics[0]?.id ?? null;
 }
 
 function fillTechniques(

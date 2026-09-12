@@ -327,3 +327,215 @@ body {
   color: #ff8a8a;
   font-size: 11px;
 }
+
+/* Lobby */
+
+.lobby {
+  width: 520px;
+}
+
+.lobby-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby-status {
+  flex: 1;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lobby-copy {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-link {
+  width: 100%;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+}
+
+.lobby-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lobby-team {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+}
+
+.lobby-team-header {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.lobby-player {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lobby-player.is-local .lobby-player-name {
+  font-weight: 700;
+}
+
+.lobby-player-note {
+  font-size: 10px;
+  color: #ff8a8a;
+}
+
+.badge-ready,
+.badge-not-ready {
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.badge-ready {
+  background: var(--hud-health);
+  color: #0a0a0d;
+}
+
+.badge-not-ready {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.lobby-join {
+  align-self: flex-start;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.lobby-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lobby-setting-control {
+  width: 130px;
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+}
+
+.lobby-setting-control[type='checkbox'] {
+  width: auto;
+}
+
+.lobby-setting-control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.lobby-loadout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hud-border);
+}
+
+.lobby-section-title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.loadout-basic {
+  width: 100%;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+}
+
+.loadout-verdict {
+  color: #ff8a8a;
+  font-size: 11px;
+}
+
+.loadout-verdict:empty {
+  display: none;
+}
+
+.lobby-blockers {
+  margin: 0;
+  padding: 0 0 0 16px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.lobby-blockers:empty {
+  display: none;
+}
+
+.lobby-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lobby-ready,
+.lobby-start {
+  flex: 1;
+  padding: 8px;
+  background: var(--hud-chakra);
+  border: none;
+  border-radius: 3px;
+  color: #0a0a0d;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lobby-actions .lobby-leave {
+  flex: 1;
+}
+
+.lobby-ready:disabled,
+.lobby-start:disabled {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}

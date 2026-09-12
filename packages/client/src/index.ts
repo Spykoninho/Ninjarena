@@ -38,3 +38,4 @@ export * from './ui/hud';
 export * from './ui/loadoutModel';
 export * from './ui/loadoutPanel';
 export * from './ui/lobbyScreen';
+export * from './ui/lobbySections';

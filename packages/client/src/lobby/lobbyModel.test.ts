@@ -8,7 +8,9 @@ import {
   isHost,
   isLoadoutError,
   roomLink,
+  settingsPatch,
   settingsRows,
+  statusText,
 } from './lobbyModel';
 
 const rules: StatRulesDefinition = {
@@ -190,6 +192,34 @@ describe('settingsRows', () => {
     const friendlyFire = rows.find((row) => row.key === 'friendlyFire');
     expect(friendlyFire?.kind).toBe('toggle');
     expect(friendlyFire?.value).toBe(false);
+  });
+});
+
+describe('statusText', () => {
+  it('names the room, its status and how full it is', () => {
+    expect(statusText(room())).toBe('Room AB7K2P · WAITING · 3/4 players');
+  });
+
+  it('says the match is over once the room reports FINISHED', () => {
+    expect(statusText(room({ status: 'FINISHED' }))).toBe('Room AB7K2P · Match over · 3/4 players');
+  });
+});
+
+describe('settingsPatch', () => {
+  it('builds a one-key patch for each kind of control', () => {
+    expect(settingsPatch('mode', 'ffa')).toEqual({ mode: 'ffa' });
+    expect(settingsPatch('mapId', 'garden')).toEqual({ mapId: 'garden' });
+    expect(settingsPatch('teamCount', '3')).toEqual({ teamCount: 3 });
+    expect(settingsPatch('roundDurationMs', '90000')).toEqual({ roundDurationMs: 90_000 });
+    expect(settingsPatch('bestOf', '5')).toEqual({ bestOf: 5 });
+    expect(settingsPatch('friendlyFire', true)).toEqual({ friendlyFire: true });
+  });
+
+  it('refuses a value the settings would never accept', () => {
+    expect(settingsPatch('teamCount', 'many')).toBeNull();
+    expect(settingsPatch('bestOf', '4')).toBeNull();
+    expect(settingsPatch('mode', 'duel')).toBeNull();
+    expect(settingsPatch('mapId', '')).toBeNull();
   });
 });
 

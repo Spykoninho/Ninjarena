@@ -12,6 +12,8 @@ import './styles.css';
 import { EditorScreen } from './ui/editorScreen';
 import { HomeScreen } from './ui/homeScreen';
 import { Hud } from './ui/hud';
+import { basicOptions, createLoadoutState, techniqueOptions } from './ui/loadoutModel';
+import { LoadoutPanel } from './ui/loadoutPanel';
 import { LobbyScreen } from './ui/lobbyScreen';
 
 const stage = document.querySelector<HTMLElement>('#app');
@@ -62,26 +64,40 @@ const home = new HomeScreen(
   { name: config.playerName, roomCode: config.roomCode },
 );
 
-const lobby = new LobbyScreen({
-  updateSettings: (patch) => {
-    app().send({ type: 'updateSettings', patch });
+const rules = content.statRules;
+const techniques = techniqueOptions(content.abilities);
+const basics = basicOptions(content.abilities);
+const loadoutPanel = new LoadoutPanel(rules, techniques, basics);
+
+const lobby = new LobbyScreen(
+  {
+    updateSettings: (patch) => {
+      app().send({ type: 'updateSettings', patch });
+    },
+    setLoadout: (loadout) => {
+      app().send({ type: 'setLoadout', loadout });
+    },
+    setReady: (ready) => {
+      app().send({ type: 'setReady', ready });
+    },
+    switchTeam: (team) => {
+      app().send({ type: 'switchTeam', team });
+    },
+    startMatch: () => {
+      app().send({ type: 'startMatch' });
+    },
+    leaveRoom: () => {
+      app().send({ type: 'leaveRoom' });
+    },
   },
-  setLoadout: (loadout) => {
-    app().send({ type: 'setLoadout', loadout });
-  },
-  setReady: (ready) => {
-    app().send({ type: 'setReady', ready });
-  },
-  switchTeam: (team) => {
-    app().send({ type: 'switchTeam', team });
-  },
-  startMatch: () => {
-    app().send({ type: 'startMatch' });
-  },
-  leaveRoom: () => {
-    app().send({ type: 'leaveRoom' });
-  },
-});
+  loadoutPanel,
+  rules,
+);
+
+// L'état initial n'est posé qu'une fois l'écran branché: il vaut premier changement de loadout.
+loadoutPanel.setState(
+  createLoadoutState(config, rules, techniques, basics, rules.defaultPointBudget),
+);
 
 const editor = new EditorScreen({
   saveMap: (document) => {

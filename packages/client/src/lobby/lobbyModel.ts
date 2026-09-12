@@ -1,4 +1,9 @@
-import type { MapSummary, RoomSettings, StatRulesDefinition } from '@ninjarena/core';
+import type {
+  MapSummary,
+  RoomSettings,
+  RoomSettingsPatch,
+  StatRulesDefinition,
+} from '@ninjarena/core';
 import {
   BEST_OF_OPTIONS,
   MAX_PLAYERS_PER_TEAM,
@@ -7,6 +12,7 @@ import {
   MIN_ROUND_DURATION_MS,
   MIN_TEAM_COUNT,
   buildPointRange,
+  roomMaxPlayers,
 } from '@ninjarena/core';
 import type { RoomPlayerView, RoomView, StartBlocker } from '@ninjarena/protocol';
 
@@ -89,6 +95,33 @@ export function canStart(room: RoomView, sessionId: string): boolean {
 
 export function roomLink(origin: string, pathname: string, code: string): string {
   return `${origin}${pathname}?room=${code}`;
+}
+
+export function statusText(room: RoomView): string {
+  const status = room.status === 'FINISHED' ? 'Match over' : room.status;
+  const capacity = roomMaxPlayers(room.settings);
+  return `Room ${room.code} · ${status} · ${room.players.length}/${capacity} players`;
+}
+
+// Chaque contrôle du formulaire hôte n'envoie que sa propre clé, dans le type qu'elle attend.
+export function settingsPatch(
+  key: keyof RoomSettings,
+  raw: string | boolean,
+): RoomSettingsPatch | null {
+  switch (key) {
+    case 'mode':
+      return raw === 'ffa' || raw === 'team' ? { mode: raw } : null;
+    case 'mapId':
+      return typeof raw === 'string' && raw.length > 0 ? { mapId: raw } : null;
+    case 'friendlyFire':
+      return typeof raw === 'boolean' ? { friendlyFire: raw } : null;
+    case 'bestOf': {
+      const bestOf = BEST_OF_OPTIONS.find((option) => `${option}` === String(raw));
+      return bestOf === undefined ? null : { bestOf };
+    }
+    default:
+      return integerPatch(key, raw);
+  }
 }
 
 export function isLoadoutError(message: string): boolean {
@@ -181,6 +214,23 @@ export function settingsRows(
       hidden: false,
     },
   ];
+}
+
+function integerPatch(key: keyof RoomSettings, raw: string | boolean): RoomSettingsPatch | null {
+  const value = Number.parseInt(String(raw), 10);
+  if (!Number.isInteger(value)) return null;
+  switch (key) {
+    case 'teamCount':
+      return { teamCount: value };
+    case 'playersPerTeam':
+      return { playersPerTeam: value };
+    case 'buildPoints':
+      return { buildPoints: value };
+    case 'roundDurationMs':
+      return { roundDurationMs: value };
+    default:
+      return null;
+  }
 }
 
 // La carte choisie reste listée tant que `mapList` n'est pas arrivée: sinon le select mentirait.

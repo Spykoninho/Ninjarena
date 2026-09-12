@@ -73,6 +73,7 @@ export class ClientApp {
   private lastError: string | null = null;
   private connected = false;
   private connecting = false;
+  private mapsRequested = false;
 
   constructor(deps: ClientAppDeps) {
     this.deps = deps;
@@ -188,6 +189,8 @@ export class ClientApp {
     const { game, screens } = this.deps;
     switch (message.type) {
       case 'roomState':
+        // Le formulaire de l'hôte a besoin des cartes: la liste est demandée dès la première salle.
+        this.requestMaps();
         game.setRoomPlayers(message.room.players);
         return;
       case 'matchStarted':
@@ -202,11 +205,18 @@ export class ClientApp {
     }
   }
 
+  private requestMaps(): void {
+    if (this.mapsRequested) return;
+    this.mapsRequested = true;
+    this.send({ type: 'listMaps' });
+  }
+
   private handleClose(): void {
     const { game } = this.deps;
     if (game.active) game.endMatch();
     this.connected = false;
     this.connecting = false;
+    this.mapsRequested = false;
     this.appState = {
       ...this.appState,
       screen: 'home',
