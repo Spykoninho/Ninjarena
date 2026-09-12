@@ -448,6 +448,11 @@ body {
   gap: 8px;
 }
 
+/* `display: flex` gagnerait sur l'attribut `hidden` du champ masqué en ffa. */
+.lobby-setting[hidden] {
+  display: none;
+}
+
 .lobby-setting-control {
   width: 130px;
   padding: 3px 6px;
