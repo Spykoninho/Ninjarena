@@ -1,7 +1,14 @@
 import type { GameContent } from '@ninjarena/content';
 import { loadMap } from '@ninjarena/content';
 import type { PlayerId, PlayerState, Vec2, WorldState } from '@ninjarena/core';
-import { FixedStepAccumulator, GameSimulation, lerp, tickDurationMs } from '@ninjarena/core';
+import {
+  FixedStepAccumulator,
+  GameSimulation,
+  add,
+  lerp,
+  sub,
+  tickDurationMs,
+} from '@ninjarena/core';
 import type { ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
@@ -10,6 +17,7 @@ import type { ClientConfig } from '../config/clientConfig';
 import type { InputBindings } from '../input/bindings';
 import { buildPlayerInput } from '../input/buildPlayerInput';
 import type { InputState } from '../input/inputState';
+import { CorrectionSmoother } from '../netcode/correctionSmoother';
 import { PredictionBuffer } from '../netcode/predictionBuffer';
 import { reconcile } from '../netcode/reconcile';
 import { ServerClock } from '../netcode/serverClock';
@@ -48,6 +56,7 @@ export class ClientGame {
   private readonly deps: ClientGameDeps;
   private buffer = new PredictionBuffer();
   private interpolator = new SnapshotInterpolator();
+  private smoother = new CorrectionSmoother();
   private simulation: GameSimulation | null = null;
   private accumulator: FixedStepAccumulator | null = null;
   private clock: ServerClock | null = null;
@@ -176,6 +185,7 @@ export class ClientGame {
     // Un second `welcome` repart d'un état propre: rien de la session précédente ne survit.
     this.buffer = new PredictionBuffer();
     this.interpolator = new SnapshotInterpolator();
+    this.smoother = new CorrectionSmoother();
     this.latestSnapshot = null;
     this.previousLocalPosition = null;
     this.lastFrameMs = null;
@@ -196,7 +206,14 @@ export class ClientGame {
     this.clock?.observe(message.tick, performance.now());
     this.interpolator.push(message.world);
     this.buffer.acknowledge(message.lastProcessedSeq);
+    const before = simulation.world.players[localPlayerId]?.position;
+    const previous = before === undefined ? null : { ...before };
     reconcile(simulation, localPlayerId, message.world, this.buffer.pending);
+    const corrected = simulation.world.players[localPlayerId];
+    // Une petite correction est absorbée par le rendu: le joueur glisse au lieu de sauter.
+    if (previous !== null && corrected !== undefined) {
+      this.smoother.absorb(sub(previous, corrected.position));
+    }
     this.latestSnapshot = message.world;
     for (const event of message.events) {
       const cue = cueForEvent(event);
@@ -221,7 +238,7 @@ export class ClientGame {
     this.lastFrameMs = timestamp;
     const steps = this.connected ? accumulator.advance(elapsed) : 0;
     for (let step = 0; step < steps; step++) this.runTick();
-    this.renderFrame(accumulator.alpha);
+    this.renderFrame(accumulator.alpha, this.smoother.advance(elapsed));
     this.updateHud();
   }
 
@@ -240,16 +257,15 @@ export class ClientGame {
     simulation.step({ [localPlayerId]: input });
   }
 
-  private renderFrame(alpha: number): void {
+  private renderFrame(alpha: number, offset: Vec2): void {
     const simulation = this.simulation;
     const localPlayerId = this.localPlayerId;
     if (simulation === null || localPlayerId === null) return;
     const local = simulation.world.players[localPlayerId];
     if (local !== undefined) {
-      this.cameraPosition = lerp(
-        this.previousLocalPosition ?? local.position,
-        local.position,
-        alpha,
+      this.cameraPosition = add(
+        lerp(this.previousLocalPosition ?? local.position, local.position, alpha),
+        offset,
       );
     }
     this.deps.renderer.render(
