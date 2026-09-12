@@ -1,7 +1,13 @@
 import type { GameContent } from '@ninjarena/content';
 import { loadMap } from '@ninjarena/content';
 import type { PlayerId, PlayerState, Vec2, WorldState } from '@ninjarena/core';
-import { FixedStepAccumulator, GameSimulation, lerp, tickDurationMs } from '@ninjarena/core';
+import {
+  FixedStepAccumulator,
+  GameSimulation,
+  emptyBuild,
+  lerp,
+  tickDurationMs,
+} from '@ninjarena/core';
 import type { ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
@@ -82,7 +88,14 @@ export class ClientGame {
       throw error;
     }
     this.connected = true;
-    network.send({ type: 'join', protocolVersion: PROTOCOL_VERSION, name: config.playerName });
+    // Loadout par défaut en attendant le panneau de préparation.
+    network.send({
+      type: 'join',
+      protocolVersion: PROTOCOL_VERSION,
+      name: config.playerName,
+      build: emptyBuild(),
+      techniqueIds: ['blink', 'chakra-shield', 'lightning-dash'],
+    });
     this.setStatus('joining');
   }
 
