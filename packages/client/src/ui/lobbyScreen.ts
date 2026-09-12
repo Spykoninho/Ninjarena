@@ -17,7 +17,7 @@ import {
   statusText,
 } from '../lobby/lobbyModel';
 import type { LoadoutPanel } from './loadoutPanel';
-import { button, createSettingsForm, element, renderBlockers, renderTeams } from './lobbySections';
+import { createSettingsForm, renderBlockers, renderTeams } from './lobbySections';
 import type { SettingsForm } from './lobbySections';
 
 export interface LobbyActions {
@@ -244,4 +244,20 @@ export class LobbyScreen implements Screen {
     this.errorLine.textContent = '';
     action();
   }
+}
+
+function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
+  const node = document.createElement('button');
+  node.type = 'button';
+  node.className = className;
+  node.textContent = label;
+  node.addEventListener('click', onClick);
+  return node;
+}
+
+function element(tag: string, className: string, parent: HTMLElement): HTMLElement {
+  const node = document.createElement(tag);
+  node.className = className;
+  parent.appendChild(node);
+  return node;
 }

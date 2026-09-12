@@ -63,7 +63,7 @@ export function renderBlockers(root: HTMLElement, room: RoomView): void {
   }
 }
 
-export function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
+function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
   const node = document.createElement('button');
   node.type = 'button';
   node.className = className;
@@ -72,7 +72,7 @@ export function button(label: string, className: string, onClick: () => void): H
   return node;
 }
 
-export function element(tag: string, className: string, parent: HTMLElement): HTMLElement {
+function element(tag: string, className: string, parent: HTMLElement): HTMLElement {
   const node = document.createElement(tag);
   node.className = className;
   parent.appendChild(node);

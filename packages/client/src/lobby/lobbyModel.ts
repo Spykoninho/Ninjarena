@@ -61,7 +61,6 @@ const LOADOUT_ERROR_MARKERS = [
   'basic attack',
   'basicattackid',
   'picked twice',
-  'points',
 ];
 
 export function groupPlayers(room: RoomView): TeamGroup[] {
