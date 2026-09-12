@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GameSimulation } from '@ninjarena/core';
 import type { ObstacleState, PendingEffect, ProjectileState, WorldState } from '@ninjarena/core';
 import { loadContent, loadMap } from '@ninjarena/content';
+import { duelConfig } from '../testing/matchConfig';
 import { SnapshotInterpolator } from './snapshotInterpolator';
 
 const makeSim = () => {
@@ -10,7 +11,7 @@ const makeSim = () => {
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: content.matchModes.get('duel'),
+    matchConfig: duelConfig(content),
     rules: content.statRules,
   });
   sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 100, y: 100 } });
@@ -75,7 +76,7 @@ describe('SnapshotInterpolator', () => {
       map: loadMap(content, 'arena'),
       abilities: content.abilities,
       characters: content.characters,
-      matchConfig: content.matchModes.get('duel'),
+      matchConfig: duelConfig(content),
       rules: content.statRules,
     });
     const p = sim.addPlayer({

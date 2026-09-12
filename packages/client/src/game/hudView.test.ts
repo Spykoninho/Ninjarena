@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { loadContent, loadMap } from '@ninjarena/content';
 import { GameSimulation } from '@ninjarena/core';
 import type { MatchState, PlayerState } from '@ninjarena/core';
+import { duelConfig } from '../testing/matchConfig';
 import { DEFAULT_BINDINGS } from '../input/bindings';
 import { buildHudView } from './hudView';
 
 const content = loadContent();
-
 const makePlayer = (): PlayerState => {
   const sim = new GameSimulation({
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: content.matchModes.get('duel'),
+    matchConfig: duelConfig(content),
     rules: content.statRules,
   });
   return sim.addPlayer({

@@ -1,20 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { loadContent, loadMap } from '@ninjarena/content';
 import { GameSimulation } from '@ninjarena/core';
-import type { WorldState } from '@ninjarena/core';
+import type { RoomSettingsPatch, WorldState } from '@ninjarena/core';
+import { matchConfigFor } from '../testing/matchConfig';
 import { nextSpectateTarget, spectatorCandidates } from './spectator';
 
 const content = loadContent();
 
+const TWO_V_TWO: RoomSettingsPatch = { mode: 'team', teamCount: 2, playersPerTeam: 2 };
+const FFA_FOUR: RoomSettingsPatch = { mode: 'ffa', teamCount: 4, playersPerTeam: 1 };
+
 const makeWorld = (
-  matchModeId: string,
+  settings: RoomSettingsPatch,
   players: ReadonlyArray<{ id: string; teamId: string }>,
 ): WorldState => {
   const sim = new GameSimulation({
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: content.matchModes.get(matchModeId),
+    matchConfig: matchConfigFor(content, settings),
     rules: content.statRules,
   });
   for (const player of players) {
@@ -31,7 +35,7 @@ const kill = (world: WorldState, id: string): void => {
 
 describe('spectatorCandidates', () => {
   it('only lists living teammates in team mode', () => {
-    const world = makeWorld('2v2', [
+    const world = makeWorld(TWO_V_TWO, [
       { id: 'me', teamId: 'team-0' },
       { id: 'ally', teamId: 'team-0' },
       { id: 'enemy1', teamId: 'team-1' },
@@ -42,7 +46,7 @@ describe('spectatorCandidates', () => {
   });
 
   it('excludes dead teammates', () => {
-    const world = makeWorld('2v2', [
+    const world = makeWorld(TWO_V_TWO, [
       { id: 'me', teamId: 'team-0' },
       { id: 'ally', teamId: 'team-0' },
       { id: 'enemy1', teamId: 'team-1' },
@@ -53,7 +57,7 @@ describe('spectatorCandidates', () => {
   });
 
   it('lists every living player in free-for-all', () => {
-    const world = makeWorld('ffa-4', [
+    const world = makeWorld(FFA_FOUR, [
       { id: 'me', teamId: 'team-0' },
       { id: 'p1', teamId: 'team-1' },
       { id: 'p2', teamId: 'team-2' },
@@ -65,7 +69,7 @@ describe('spectatorCandidates', () => {
   });
 
   it('returns nothing when no candidate is left', () => {
-    const world = makeWorld('2v2', [{ id: 'me', teamId: 'team-0' }]);
+    const world = makeWorld(TWO_V_TWO, [{ id: 'me', teamId: 'team-0' }]);
     kill(world, 'me');
     expect(spectatorCandidates(world, 'me', false)).toEqual([]);
   });

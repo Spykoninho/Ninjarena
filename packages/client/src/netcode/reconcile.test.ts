@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GameSimulation, neutralInput } from '@ninjarena/core';
 import { loadContent, loadMap } from '@ninjarena/content';
+import { duelConfig } from '../testing/matchConfig';
 import { PredictionBuffer } from './predictionBuffer';
 import { reconcile } from './reconcile';
 
@@ -10,7 +11,7 @@ const makeSim = () => {
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: { ...content.matchModes.get('duel'), countdownMs: 0 },
+    matchConfig: { ...duelConfig(content), countdownMs: 0 },
     rules: content.statRules,
   });
   sim.addPlayer({ id: 'me', teamId: 'team-0', characterId: 'ninja' });

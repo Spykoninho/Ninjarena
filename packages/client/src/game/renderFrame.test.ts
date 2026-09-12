@@ -3,6 +3,7 @@ import { loadContent, loadMap } from '@ninjarena/content';
 import { GameSimulation } from '@ninjarena/core';
 import type { ObstacleState, PendingEffect, ProjectileState, Vec2 } from '@ninjarena/core';
 import type { InterpolatedWorld } from '../netcode/snapshotInterpolator';
+import { duelConfig } from '../testing/matchConfig';
 import type { RenderFrameInput } from './renderFrame';
 import { buildRenderFrame } from './renderFrame';
 
@@ -14,7 +15,7 @@ const makeSim = (): GameSimulation => {
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: content.matchModes.get('duel'),
+    matchConfig: duelConfig(content),
     rules: content.statRules,
   });
   sim.addPlayer({
