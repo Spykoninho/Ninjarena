@@ -36,7 +36,6 @@ export * from './rendering/placeholderArt';
 export * from './rendering/renderer';
 export * from './rendering/telegraphArt';
 export * from './ui/editorScreen';
-export * from './ui/editorToolbar';
 export * from './ui/homeScreen';
 export * from './ui/hud';
 export * from './ui/loadoutModel';

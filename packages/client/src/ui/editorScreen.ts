@@ -30,6 +30,7 @@ export interface EditorActions {
   back(): void;
 }
 
+const TITLE = 'Map editor';
 const PIXELS_PER_TILE = 12;
 const DEFAULT_WIDTH = 24;
 const DEFAULT_HEIGHT = 18;
@@ -40,6 +41,7 @@ export class EditorScreen implements Screen {
   private readonly actions: EditorActions;
   private readonly tileset: TilesetDefinition;
   private readonly root: HTMLElement;
+  private readonly titleLine: HTMLElement;
   private readonly nameInput: HTMLInputElement;
   private readonly widthInput: HTMLInputElement;
   private readonly heightInput: HTMLInputElement;
@@ -61,7 +63,8 @@ export class EditorScreen implements Screen {
     this.tileset = tileset;
     this.root = document.createElement('div');
     this.root.className = 'screen editor';
-    element('h1', 'editor-title', this.root).textContent = 'Map editor';
+    this.titleLine = element('h1', 'editor-title', this.root);
+    this.titleLine.textContent = TITLE;
 
     const toolbar = element('div', 'editor-toolbar', this.root);
     this.nameInput = field(toolbar, 'Name', 'text', 'editor-input editor-name');
@@ -275,10 +278,13 @@ export class EditorScreen implements Screen {
         : `team 2×1: ${format.map((issue) => issue.message).join('; ')}`;
   }
 
+  // Une modification périme le repère d'anomalie: il désignait une case qui a pu changer.
   private update(next: EditorState): void {
     this.state = withIssues({ ...next, tool: this.palette.tool }, this.tileset, null);
+    this.canvas.setHighlight(null);
     this.canvas.draw(this.state);
     this.renderIssues();
+    this.titleLine.textContent = this.state.dirty ? `${TITLE} *` : TITLE;
   }
 
   private renderIssues(): void {
