@@ -8,6 +8,7 @@ import type {
   TilesetDefinition,
   Vec2,
 } from '@ninjarena/core';
+import type { VisualCue } from '../feedback/cues';
 
 export interface TelegraphView {
   kind: TelegraphKind;
@@ -74,6 +75,8 @@ export interface Renderer {
   init(container: HTMLElement): Promise<void>;
   setMap(map: LoadedMap, tileset: TilesetDefinition): void;
   render(frame: RenderFrame): void;
+  showCue(cue: VisualCue): void;
+  setShake(offset: Vec2): void;
   worldToScreen(position: Vec2): Vec2;
   dispose(): void;
 }

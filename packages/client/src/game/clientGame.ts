@@ -1,6 +1,6 @@
 import type { GameContent } from '@ninjarena/content';
 import { loadMap } from '@ninjarena/content';
-import type { PlayerId, PlayerState, Vec2, WorldState } from '@ninjarena/core';
+import type { PlayerId, PlayerState, Vec2, WorldEvent, WorldState } from '@ninjarena/core';
 import {
   FixedStepAccumulator,
   GameSimulation,
@@ -12,8 +12,9 @@ import {
 import type { ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
-import { cueForEvent } from '../audio/eventCues';
 import type { ClientConfig } from '../config/clientConfig';
+import { feedbackView } from '../feedback/cues';
+import { FeedbackController } from '../feedback/feedbackController';
 import type { InputBindings } from '../input/bindings';
 import { buildPlayerInput } from '../input/buildPlayerInput';
 import type { InputState } from '../input/inputState';
@@ -29,6 +30,7 @@ import type { Hud } from '../ui/hud';
 import { createSetupState, techniqueOptions } from '../ui/setupModel';
 import type { SetupState } from '../ui/setupModel';
 import type { SetupPanel } from '../ui/setupPanel';
+import { routeEvents } from './eventRouter';
 import { buildHudView } from './hudView';
 import { buildRenderFrame } from './renderFrame';
 
@@ -54,6 +56,8 @@ const DISCONNECTED = 'disconnected';
 
 export class ClientGame {
   private readonly deps: ClientGameDeps;
+  private readonly feedback: FeedbackController;
+  private serverEvents: WorldEvent[] = [];
   private buffer = new PredictionBuffer();
   private interpolator = new SnapshotInterpolator();
   private smoother = new CorrectionSmoother();
@@ -77,6 +81,7 @@ export class ClientGame {
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
+    this.feedback = new FeedbackController({ renderer: deps.renderer, audio: deps.audio });
   }
 
   async start(container: HTMLElement): Promise<void> {
@@ -188,6 +193,7 @@ export class ClientGame {
     this.smoother = new CorrectionSmoother();
     this.latestSnapshot = null;
     this.previousLocalPosition = null;
+    this.serverEvents = [];
     this.lastFrameMs = null;
     this.rttMs = null;
     this.seq = 0;
@@ -215,10 +221,8 @@ export class ClientGame {
       this.smoother.absorb(sub(previous, corrected.position));
     }
     this.latestSnapshot = message.world;
-    for (const event of message.events) {
-      const cue = cueForEvent(event);
-      if (cue !== null) this.deps.audio.play(cue);
-    }
+    // Les événements attendent la prochaine image: le routage a besoin des ticks prédits du tour.
+    this.serverEvents.push(...message.events);
   }
 
   private startLoop(): void {
@@ -237,15 +241,32 @@ export class ClientGame {
     const elapsed = Math.min(MAX_FRAME_MS, timestamp - (this.lastFrameMs ?? timestamp));
     this.lastFrameMs = timestamp;
     const steps = this.connected ? accumulator.advance(elapsed) : 0;
-    for (let step = 0; step < steps; step++) this.runTick();
-    this.renderFrame(accumulator.alpha, this.smoother.advance(elapsed));
+    const predicted: WorldEvent[] = [];
+    for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
+    this.applyFeedback(predicted);
+    const offset = this.smoother.advance(elapsed);
+    // Un gel de coup arrête l'image sans arrêter la simulation ni les entrées envoyées.
+    if (!this.feedback.advance(elapsed).frozen) this.renderFrame(accumulator.alpha, offset);
     this.updateHud();
   }
 
-  private runTick(): void {
+  private applyFeedback(predicted: readonly WorldEvent[]): void {
     const simulation = this.simulation;
     const localPlayerId = this.localPlayerId;
     if (simulation === null || localPlayerId === null) return;
+    const events = routeEvents(predicted, this.serverEvents, localPlayerId);
+    this.serverEvents = [];
+    if (events.length === 0) return;
+    this.feedback.apply(
+      events,
+      feedbackView(simulation.world, localPlayerId, this.deps.content.abilities),
+    );
+  }
+
+  private runTick(): readonly WorldEvent[] {
+    const simulation = this.simulation;
+    const localPlayerId = this.localPlayerId;
+    if (simulation === null || localPlayerId === null) return [];
     const local = simulation.world.players[localPlayerId];
     this.previousLocalPosition = local === undefined ? null : { ...local.position };
     // La visée part de l'endroit où le joueur est dessiné, pas de sa position simulée.
@@ -254,7 +275,7 @@ export class ClientGame {
     this.seq += 1;
     this.deps.network.send({ type: 'input', seq: this.seq, input });
     this.buffer.push(this.seq, input);
-    simulation.step({ [localPlayerId]: input });
+    return simulation.step({ [localPlayerId]: input });
   }
 
   private renderFrame(alpha: number, offset: Vec2): void {

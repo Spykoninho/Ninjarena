@@ -14,15 +14,26 @@ const DASH_ALPHA = 0.7;
 const TRAIL_LENGTH = 7;
 const TRAIL_ALPHA = 0.35;
 const MOVED_EPSILON = 1e-4;
+const FLASH_MS = 60;
+const FLASH_ALPHA = 0.85;
+const FLASH_COLOR = 0xffffff;
 
 interface PlayerNode {
   container: Container;
   aim: Graphics;
   arc: Graphics;
   vitals: Graphics;
+  flash: Graphics;
+  flashMs: number;
+  color: number;
   healthRatio: number;
   shieldRatio: number;
   arcKey: string;
+}
+
+export interface PlayerSample {
+  position: Vec2;
+  color: number;
 }
 
 interface ProjectileNode {
@@ -59,6 +70,34 @@ export class EntityLayer {
     this.syncZones(frame.zones);
     this.syncObstacles(frame.obstacles);
     this.syncProjectiles(frame.projectiles);
+  }
+
+  // Le flash de coup s'éteint tout seul: la couche avance avec le temps réel du rendu.
+  advance(dtMs: number): void {
+    for (const node of this.players.values()) {
+      if (node.flashMs <= 0) continue;
+      node.flashMs = Math.max(0, node.flashMs - dtMs);
+      node.flash.alpha = FLASH_ALPHA * (node.flashMs / FLASH_MS);
+      if (node.flashMs === 0) node.flash.visible = false;
+    }
+  }
+
+  flashPlayer(playerId: PlayerId, color: number = FLASH_COLOR): void {
+    const node = this.players.get(playerId);
+    if (node === undefined) return;
+    node.flash.tint = color;
+    node.flash.alpha = FLASH_ALPHA;
+    node.flash.visible = true;
+    node.flashMs = FLASH_MS;
+  }
+
+  playerSample(playerId: PlayerId): PlayerSample | null {
+    const node = this.players.get(playerId);
+    if (node === undefined) return null;
+    return {
+      position: { x: node.container.position.x, y: node.container.position.y },
+      color: node.color,
+    };
   }
 
   clear(): void {
@@ -184,8 +223,9 @@ export class EntityLayer {
     isFfa: boolean,
   ): PlayerNode {
     const container = new Container();
+    const color = teamColor(view.teamId, localTeamId, isFfa);
     const body = new Graphics();
-    drawPlayerGraphic(body, teamColor(view.teamId, localTeamId, isFfa), PLAYER_RADIUS);
+    drawPlayerGraphic(body, color, PLAYER_RADIUS);
     if (view.isLocal) {
       const outline = PLAYER_RADIUS + 2;
       body
@@ -199,13 +239,21 @@ export class EntityLayer {
     const vitals = new Graphics();
     vitals.position.set(0, VITALS_OFFSET);
     drawVitals(vitals, view.healthRatio, view.shieldRatio);
-    container.addChild(arc, aim, body, vitals);
+    const flash = new Graphics();
+    flash
+      .rect(-PLAYER_RADIUS, -PLAYER_RADIUS, PLAYER_RADIUS * 2, PLAYER_RADIUS * 2)
+      .fill(FLASH_COLOR);
+    flash.visible = false;
+    container.addChild(arc, aim, body, flash, vitals);
     this.entities.addChild(container);
     const node: PlayerNode = {
       container,
       aim,
       arc,
       vitals,
+      flash,
+      flashMs: 0,
+      color,
       healthRatio: view.healthRatio,
       shieldRatio: view.shieldRatio,
       arcKey: '',
