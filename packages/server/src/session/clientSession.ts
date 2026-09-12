@@ -1,6 +1,7 @@
 import type { PlayerId } from '@ninjarena/core';
 import type { ServerMessage } from '@ninjarena/protocol';
 import { serverMessageCodec } from '@ninjarena/protocol';
+import type { Room } from '../lobby/room';
 import type { Connection } from '../transport/types';
 import { InputQueue } from './inputQueue';
 
@@ -8,10 +9,10 @@ export class ClientSession {
   readonly id: string;
   readonly connection: Connection;
   readonly inputs: InputQueue;
-  playerId: PlayerId | null = null;
+  introduced = false;
   name: string;
-  techniqueIds: string[] = [];
-  ready = false;
+  room: Room | null = null;
+  playerId: PlayerId | null = null;
   invalidMessages = 0;
   closed = false;
 

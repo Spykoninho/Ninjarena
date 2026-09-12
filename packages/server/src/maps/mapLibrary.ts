@@ -52,6 +52,11 @@ export class MapLibrary {
     return LoadedMap.fromDocument(document, tileset);
   }
 
+  // Seule la bibliothèque sait d'où vient une carte: le résumé se demande ici.
+  summaryOf(document: MapDocument): MapSummary {
+    return summarizeMap(document, this.content.maps.has(document.id));
+  }
+
   issuesOf(document: MapDocument): MapIssue[] {
     const tileset = this.content.tilesets.get(document.tileset);
     return validateMapDocument(document, tileset);

@@ -44,6 +44,7 @@ export class MatchHost {
   }
 
   private sendSnapshots(sessions: readonly ClientSession[]): void {
+    // Point d'accroche du futur filtre de visibilité: le monde deviendra propre à chaque session.
     const world = this.simulation.snapshot();
     const events = this.pendingEvents;
     this.pendingEvents = [];

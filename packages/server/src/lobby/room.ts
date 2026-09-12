@@ -1,170 +1,406 @@
-import type {
-  AbilityDefinition,
-  CharacterDefinition,
-  DefinitionCatalog,
-  GameSimulation,
-  MatchConfig,
-  StatRulesDefinition,
-} from '@ninjarena/core';
-import { buildBudget, maxPlayers, pickTeamForNewPlayer, validateLoadout } from '@ninjarena/core';
-import type { RoomPlayerInfo, ServerMessage } from '@ninjarena/protocol';
+import type { GameContent } from '@ninjarena/content';
+import type { RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
+import { applySettingsPatch, roomMaxPlayers, teamsPresent, validateLoadout } from '@ninjarena/core';
+import type { RoomStatus, RoomView, StartBlocker } from '@ninjarena/protocol';
+import type { MapLibrary } from '../maps/mapLibrary';
+import type { MatchResult } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
+import { passwordMatches } from './password';
+import type { RoomMatch } from './roomMatch';
+import { RoomMapCache } from './roomMap';
+import { inJoinOrder, matchResultOf, startRoomMatch } from './roomMatch';
+import type { RoomPlayer } from './roomPlayer';
+import { computeStartBlockers } from './startBlockers';
 
-export type JoinError = { code: 'ROOM_FULL' | 'INVALID_LOADOUT'; message: string };
+export type RoomErrorCode =
+  | 'ROOM_FULL'
+  | 'WRONG_PASSWORD'
+  | 'ROOM_IN_GAME'
+  | 'NOT_HOST'
+  | 'WRONG_STATUS'
+  | 'INVALID_SETTINGS'
+  | 'INVALID_LOADOUT'
+  | 'TEAM_FULL'
+  | 'CANNOT_START';
 
-export type JoinResult = { ok: true } | { ok: false; error: JoinError };
+export type RoomError = { code: RoomErrorCode; message: string };
 
-export interface JoinRequest {
-  name: string;
-  build: unknown;
-  techniqueIds: unknown;
-}
+export type RoomResult = { ok: true } | { ok: false; error: RoomError };
 
-export interface RoomOptions {
-  id: string;
-  matchConfig: MatchConfig;
-  simulation: GameSimulation;
+export interface RoomDeps {
+  code: string;
+  passwordHash: Buffer | null;
+  settings: RoomSettings;
+  content: GameContent;
+  maps: MapLibrary;
+  tickRate: number;
+  snapshotEveryTicks: number;
+  postMatchTicks: number;
   characterId: string;
-  autoStartWhenFull: boolean;
-  rules: StatRulesDefinition;
-  abilities: DefinitionCatalog<AbilityDefinition>;
-  characters: DefinitionCatalog<CharacterDefinition>;
+  onMatchEnded?: (result: MatchResult) => void;
+  onEmpty?: (room: Room) => void;
 }
-
-const MIN_PLAYERS_TO_START = 2;
 
 export class Room {
-  readonly id: string;
-  readonly matchConfig: MatchConfig;
-  readonly simulation: GameSimulation;
+  readonly code: string;
+  private readonly passwordHash: Buffer | null;
+  private readonly content: GameContent;
+  private readonly mapCache: RoomMapCache;
+  private readonly tickRate: number;
+  private readonly snapshotEveryTicks: number;
+  private readonly postMatchTicks: number;
   private readonly characterId: string;
-  private readonly characterBasicAttack: string;
-  private readonly autoStartWhenFull: boolean;
-  private readonly rules: StatRulesDefinition;
-  private readonly abilities: DefinitionCatalog<AbilityDefinition>;
-  private readonly present: ClientSession[] = [];
+  private readonly onMatchEnded: ((result: MatchResult) => void) | null;
+  private readonly onEmpty: ((room: Room) => void) | null;
+  private readonly roster: RoomPlayer[] = [];
+  private roomSettings: RoomSettings;
+  private roomStatus: RoomStatus = 'WAITING';
+  private activeMatch: RoomMatch | null = null;
+  private ticksSinceEnd = 0;
+  private nextJoinedAt = 1;
 
-  constructor(options: RoomOptions) {
-    this.id = options.id;
-    this.matchConfig = options.matchConfig;
-    this.simulation = options.simulation;
-    this.characterId = options.characterId;
-    this.characterBasicAttack = options.characters.get(options.characterId).basicAttackId;
-    this.autoStartWhenFull = options.autoStartWhenFull;
-    this.rules = options.rules;
-    this.abilities = options.abilities;
+  constructor(deps: RoomDeps) {
+    this.code = deps.code;
+    this.passwordHash = deps.passwordHash;
+    this.roomSettings = deps.settings;
+    this.content = deps.content;
+    this.mapCache = new RoomMapCache(deps.maps, () => this.roomSettings);
+    this.tickRate = deps.tickRate;
+    this.snapshotEveryTicks = deps.snapshotEveryTicks;
+    this.postMatchTicks = deps.postMatchTicks;
+    this.characterId = deps.characterId;
+    this.onMatchEnded = deps.onMatchEnded ?? null;
+    this.onEmpty = deps.onEmpty ?? null;
   }
 
-  get sessions(): readonly ClientSession[] {
-    return this.present;
+  get status(): RoomStatus {
+    return this.roomStatus;
   }
 
-  get isFull(): boolean {
-    return this.present.length >= maxPlayers(this.matchConfig);
-  }
-
-  join(session: ClientSession, request: JoinRequest): JoinResult {
-    // Un `join` répété par la même session est sans effet plutôt que de dupliquer le joueur.
-    if (this.present.includes(session)) return { ok: true };
-    if (this.isFull)
-      return { ok: false, error: { code: 'ROOM_FULL', message: 'the room is full' } };
-    const raw = {
-      build: request.build,
-      basicAttackId: this.characterBasicAttack,
-      techniqueIds: request.techniqueIds,
-    };
-    const validation = validateLoadout(
-      raw,
-      this.abilities,
-      this.rules,
-      buildBudget(this.matchConfig, this.rules),
-    );
-    if (!validation.ok) {
-      return { ok: false, error: { code: 'INVALID_LOADOUT', message: validation.reason } };
+  // L'hôte est le plus ancien présent: un départ passe la main sans élection.
+  get hostId(): string | null {
+    let host: RoomPlayer | null = null;
+    for (const player of this.roster) {
+      if (host === null || player.joinedAt < host.joinedAt) host = player;
     }
-    const { loadout } = validation;
-    // L'identité du joueur vient de sa connexion: le client ne choisit jamais son identifiant.
-    const playerId = session.id;
-    session.playerId = playerId;
-    session.name = request.name;
-    session.techniqueIds = loadout.techniqueIds;
-    session.ready = false;
-    const teamId = pickTeamForNewPlayer(this.matchConfig, this.simulation.world, playerId);
-    this.simulation.addPlayer({
-      id: playerId,
-      teamId,
-      characterId: this.characterId,
-      build: loadout.build,
-      basicAttackId: loadout.basicAttackId,
-      techniqueIds: loadout.techniqueIds,
+    return host?.session.id ?? null;
+  }
+
+  get settings(): RoomSettings {
+    return this.roomSettings;
+  }
+
+  get players(): readonly RoomPlayer[] {
+    return this.roster;
+  }
+
+  get isEmpty(): boolean {
+    return this.roster.length === 0;
+  }
+
+  get match(): RoomMatch | null {
+    return this.activeMatch;
+  }
+
+  playerOf(session: ClientSession): RoomPlayer | undefined {
+    return this.roster.find((player) => player.session === session);
+  }
+
+  sessionsInMatch(): readonly ClientSession[] {
+    return this.roster
+      .filter((player) => player.session.playerId !== null)
+      .map((player) => player.session);
+  }
+
+  join(session: ClientSession, password: string | undefined): RoomResult {
+    const seated = this.playerOf(session);
+    if (seated !== undefined) return { ok: true };
+    if (this.roomStatus !== 'WAITING') {
+      return fail('ROOM_IN_GAME', 'the match has already started');
+    }
+    // Une salle sans mot de passe ignore celui qu'on lui envoie.
+    if (this.passwordHash !== null && !passwordMatches(this.passwordHash, password ?? '')) {
+      return fail('WRONG_PASSWORD', 'wrong password');
+    }
+    if (this.roster.length >= roomMaxPlayers(this.roomSettings)) {
+      return fail('ROOM_FULL', 'the room is full');
+    }
+    this.roster.push({
+      session,
+      team: this.roomSettings.mode === 'team' ? this.leastCrowdedTeam() : null,
+      ready: false,
+      loadout: null,
+      loadoutValid: false,
+      joinedAt: this.nextJoinedAt++,
     });
-    this.present.push(session);
+    session.room = this;
+    this.broadcastState();
     return { ok: true };
   }
 
-  announce(): void {
-    this.broadcastRoomState();
-    // Le démarrage automatique se joue aussi à l'arrivée: une salle pleine n'attend aucun `ready`.
-    if (this.shouldStart()) this.simulation.startMatch();
-  }
-
-  // La relance d'après-match rejoue la règle de démarrage sans exiger un nouveau `ready`.
-  tryStart(): void {
-    if (!this.canStart()) return;
-    if (this.present.length < MIN_PLAYERS_TO_START) return;
-    this.simulation.startMatch();
-    this.broadcastRoomState();
-  }
-
   leave(session: ClientSession): void {
-    const index = this.present.indexOf(session);
+    const index = this.roster.findIndex((player) => player.session === session);
     if (index === -1) return;
-    this.present.splice(index, 1);
-    if (session.playerId !== null) this.simulation.removePlayer(session.playerId);
+    this.roster.splice(index, 1);
+    session.room = null;
     session.playerId = null;
-    session.ready = false;
-    this.broadcastRoomState();
-  }
+    session.inputs.clear();
 
-  setReady(session: ClientSession, ready: boolean): void {
-    if (!this.present.includes(session)) return;
-    session.ready = ready;
-    this.announce();
-  }
-
-  roomStateMessage(): ServerMessage {
-    const players: RoomPlayerInfo[] = [];
-    for (const session of this.present) {
-      if (session.playerId === null) continue;
-      const player = this.simulation.world.players[session.playerId];
-      if (player === undefined) continue;
-      players.push({
-        id: session.playerId,
-        name: session.name,
-        teamId: player.teamId,
-        ready: session.ready,
-        techniqueIds: [...session.techniqueIds],
-      });
+    const match = this.activeMatch;
+    if (match !== null) {
+      match.simulation.removePlayer(session.id);
+      const running = this.roomStatus === 'STARTING' || this.roomStatus === 'IN_GAME';
+      // Une partie sans adversaire ne peut plus se conclure: elle s'arrête au départ.
+      if (running && teamsPresent(match.simulation.world).length < 2) {
+        this.finish(match.simulation.world.match.winner);
+        return;
+      }
     }
-    return { type: 'roomState', players };
+    if (this.roster.length === 0) {
+      this.onEmpty?.(this);
+      return;
+    }
+    this.broadcastState();
   }
 
-  // Une partie finie repart comme une salle en attente; une partie en cours ne redémarre jamais.
-  private canStart(): boolean {
-    const phase = this.simulation.world.match.phase;
-    return phase === 'WAITING' || phase === 'MATCH_END';
+  updateSettings(session: ClientSession, patch: unknown): RoomResult {
+    const denied = this.requireHostInLobby(session);
+    if (denied !== null) return denied;
+
+    const applied = applySettingsPatch(this.roomSettings, patch, this.content.statRules);
+    if (!applied.ok) return fail('INVALID_SETTINGS', applied.reason);
+    if (roomMaxPlayers(applied.settings) < this.roster.length) {
+      return fail('INVALID_SETTINGS', `the room already holds ${this.roster.length} players`);
+    }
+
+    const mapChanged = applied.settings.mapId !== this.roomSettings.mapId;
+    this.roomSettings = applied.settings;
+    this.reassignTeams();
+    this.revalidateLoadouts();
+    if (mapChanged) this.scheduleRefresh();
+    else this.mapCache.refreshIssues();
+    this.broadcastState();
+    return { ok: true };
   }
 
-  private shouldStart(): boolean {
-    if (!this.canStart()) return false;
-    if (this.autoStartWhenFull && this.isFull) return true;
-    return (
-      this.present.length >= MIN_PLAYERS_TO_START && this.present.every((session) => session.ready)
+  setLoadout(session: ClientSession, raw: unknown): RoomResult {
+    const player = this.playerOf(session);
+    if (player === undefined) return fail('WRONG_STATUS', 'the player is not in this room');
+    if (this.roomStatus !== 'WAITING') return fail('WRONG_STATUS', 'the lobby is closed');
+
+    const validation = validateLoadout(
+      raw,
+      this.content.abilities,
+      this.content.statRules,
+      this.roomSettings.buildPoints,
     );
+    if (!validation.ok) return fail('INVALID_LOADOUT', validation.reason);
+    player.loadout = validation.loadout;
+    player.loadoutValid = true;
+    this.broadcastState();
+    return { ok: true };
   }
 
-  private broadcastRoomState(): void {
-    const message = this.roomStateMessage();
-    for (const session of this.present) session.send(message);
+  setReady(session: ClientSession, ready: boolean): RoomResult {
+    const player = this.playerOf(session);
+    if (player === undefined) return fail('WRONG_STATUS', 'the player is not in this room');
+    if (this.roomStatus !== 'WAITING') return fail('WRONG_STATUS', 'the lobby is closed');
+    if (ready && (player.loadout === null || !player.loadoutValid)) {
+      return fail('INVALID_LOADOUT', 'a valid loadout is needed to be ready');
+    }
+    player.ready = ready;
+    this.broadcastState();
+    return { ok: true };
   }
+
+  switchTeam(session: ClientSession, team: number): RoomResult {
+    const player = this.playerOf(session);
+    if (player === undefined) return fail('WRONG_STATUS', 'the player is not in this room');
+    if (this.roomStatus !== 'WAITING') return fail('WRONG_STATUS', 'the lobby is closed');
+    if (this.roomSettings.mode !== 'team') return fail('WRONG_STATUS', 'free-for-all has no team');
+    if (!Number.isInteger(team) || team < 0 || team >= this.roomSettings.teamCount) {
+      return fail('INVALID_SETTINGS', `team ${team} is outside the room`);
+    }
+    if (player.team === team) return { ok: true };
+    if (this.countOnTeam(team) >= this.roomSettings.playersPerTeam) {
+      return fail('TEAM_FULL', `team ${team} is full`);
+    }
+    player.team = team;
+    this.broadcastState();
+    return { ok: true };
+  }
+
+  startBlockers(): StartBlocker[] {
+    return computeStartBlockers({
+      players: this.roster,
+      settings: this.roomSettings,
+      map: this.mapCache.document,
+      mapIssues: this.mapCache.issues,
+    });
+  }
+
+  start(session: ClientSession): RoomResult {
+    const denied = this.requireHostInLobby(session);
+    if (denied !== null) return denied;
+    const blockers = this.startBlockers();
+    if (blockers.length > 0) return fail('CANNOT_START', blockers.join(', '));
+    const map = this.mapCache.document;
+    if (map === null) return fail('CANNOT_START', 'MAP_MISSING');
+
+    this.activeMatch = startRoomMatch({
+      content: this.content,
+      map,
+      settings: this.roomSettings,
+      players: this.roster,
+      characterId: this.characterId,
+      tickRate: this.tickRate,
+      snapshotEveryTicks: this.snapshotEveryTicks,
+      sessions: () => this.sessionsInMatch(),
+      onEvents: (events) => {
+        this.handleEvents(events);
+      },
+    });
+    this.roomStatus = 'STARTING';
+    this.ticksSinceEnd = 0;
+    this.broadcastState();
+    return { ok: true };
+  }
+
+  tick(): void {
+    if (this.roomStatus === 'FINISHED') {
+      this.ticksSinceEnd += 1;
+      if (this.ticksSinceEnd >= this.postMatchTicks) this.resetToLobby();
+      return;
+    }
+    this.activeMatch?.host.tick();
+  }
+
+  // La salle se rediffuse une fois la carte lue: sa vue ne dépend pas de l'ordre des appels.
+  async refreshMap(): Promise<void> {
+    await this.mapCache.load();
+    this.broadcastState();
+  }
+
+  view(): RoomView {
+    return {
+      code: this.code,
+      hasPassword: this.passwordHash !== null,
+      // Une salle vide n'a pas d'hôte: le code tient lieu de valeur pour rester décodable.
+      hostId: this.hostId ?? this.code,
+      status: this.roomStatus,
+      settings: { ...this.roomSettings },
+      map: this.mapCache.summary,
+      players: this.roster.map((player) => ({
+        id: player.session.id,
+        name: player.session.name,
+        team: player.team,
+        ready: player.ready,
+        loadout: player.loadout,
+        loadoutValid: player.loadoutValid,
+      })),
+      startBlockers: this.startBlockers(),
+    };
+  }
+
+  broadcastState(): void {
+    const message = { type: 'roomState', room: this.view() } as const;
+    for (const player of this.roster) player.session.send(message);
+  }
+
+  private handleEvents(events: readonly WorldEvent[]): void {
+    for (const event of events) {
+      if (event.type === 'roundStarted' && event.round === 1 && this.roomStatus === 'STARTING') {
+        this.roomStatus = 'IN_GAME';
+        this.broadcastState();
+      } else if (event.type === 'matchEnded') {
+        this.finish(event.winnerTeamId);
+      }
+    }
+  }
+
+  private finish(winnerTeamId: TeamId | null): void {
+    if (this.roomStatus !== 'STARTING' && this.roomStatus !== 'IN_GAME') return;
+    this.roomStatus = 'FINISHED';
+    this.ticksSinceEnd = 0;
+    this.onMatchEnded?.(
+      matchResultOf({
+        roomCode: this.code,
+        settings: this.roomSettings,
+        players: this.roster,
+        winnerTeamId,
+        scores: this.activeMatch?.simulation.world.match.scores ?? {},
+        endedAt: Date.now(),
+      }),
+    );
+    this.broadcastState();
+  }
+
+  private resetToLobby(): void {
+    this.activeMatch = null;
+    this.ticksSinceEnd = 0;
+    this.roomStatus = 'WAITING';
+    for (const player of this.roster) {
+      player.ready = false;
+      player.session.playerId = null;
+      player.session.inputs.clear();
+    }
+    this.broadcastState();
+  }
+
+  private requireHostInLobby(session: ClientSession): RoomResult | null {
+    if (this.playerOf(session) === undefined || session.id !== this.hostId) {
+      return fail('NOT_HOST', 'only the host can do that');
+    }
+    if (this.roomStatus !== 'WAITING') return fail('WRONG_STATUS', 'the lobby is closed');
+    return null;
+  }
+
+  private countOnTeam(team: number): number {
+    return this.roster.filter((player) => player.team === team).length;
+  }
+
+  private leastCrowdedTeam(): number {
+    let best = 0;
+    for (let team = 1; team < this.roomSettings.teamCount; team++) {
+      if (this.countOnTeam(team) < this.countOnTeam(best)) best = team;
+    }
+    return best;
+  }
+
+  private reassignTeams(): void {
+    if (this.roomSettings.mode !== 'team') {
+      for (const player of this.roster) player.team = null;
+      return;
+    }
+    for (const player of inJoinOrder(this.roster)) {
+      if (player.team !== null && player.team < this.roomSettings.teamCount) continue;
+      player.team = this.leastCrowdedTeam();
+    }
+  }
+
+  private revalidateLoadouts(): void {
+    for (const player of this.roster) {
+      if (player.loadout === null) continue;
+      const validation = validateLoadout(
+        player.loadout,
+        this.content.abilities,
+        this.content.statRules,
+        this.roomSettings.buildPoints,
+      );
+      player.loadoutValid = validation.ok;
+      if (!validation.ok) player.ready = false;
+    }
+  }
+
+  // Une carte illisible vaut une carte absente: la salle reste utilisable et l'annonce.
+  private scheduleRefresh(): void {
+    void this.refreshMap().catch(() => {
+      this.mapCache.accept(null);
+      this.broadcastState();
+    });
+  }
+}
+
+function fail(code: RoomErrorCode, message: string): RoomResult {
+  return { ok: false, error: { code, message } };
 }

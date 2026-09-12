@@ -1,8 +1,15 @@
-import type { TeamId } from '@ninjarena/core';
+import type { RoomSettings, TeamId } from '@ninjarena/core';
+
+export interface MatchResultPlayer {
+  id: string;
+  name: string;
+  teamId: TeamId;
+}
 
 export interface MatchResult {
-  roomId: string;
-  matchModeId: string;
+  roomCode: string;
+  settings: RoomSettings;
+  players: MatchResultPlayer[];
   winnerTeamId: TeamId | null;
   scores: Record<TeamId, number>;
   endedAt: number;

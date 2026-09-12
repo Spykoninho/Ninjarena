@@ -34,6 +34,13 @@ export class InputQueue {
     return this.lastConsumed;
   }
 
+  // Une nouvelle partie repart d'une file vide: les entrées de la précédente n'ont plus de sens.
+  clear(): void {
+    this.queued.length = 0;
+    this.lastQueuedSeq = -1;
+    this.lastConsumed = null;
+  }
+
   get lastProcessedSeq(): number {
     return this.lastConsumed?.seq ?? -1;
   }
