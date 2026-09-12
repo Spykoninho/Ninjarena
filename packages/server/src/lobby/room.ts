@@ -106,8 +106,7 @@ export class Room {
 
   // La relance d'après-match rejoue la règle de démarrage sans exiger un nouveau `ready`.
   tryStart(): void {
-    const phase = this.simulation.world.match.phase;
-    if (phase !== 'WAITING' && phase !== 'MATCH_END') return;
+    if (!this.canStart()) return;
     if (this.present.length < MIN_PLAYERS_TO_START) return;
     this.simulation.startMatch();
     this.broadcastRoomState();
@@ -146,9 +145,14 @@ export class Room {
     return { type: 'roomState', players };
   }
 
+  // Une partie finie repart comme une salle en attente; une partie en cours ne redémarre jamais.
+  private canStart(): boolean {
+    const phase = this.simulation.world.match.phase;
+    return phase === 'WAITING' || phase === 'MATCH_END';
+  }
+
   private shouldStart(): boolean {
-    // Une partie en cours ne redémarre pas parce qu'un joueur bascule son état prêt.
-    if (this.simulation.world.match.phase !== 'WAITING') return false;
+    if (!this.canStart()) return false;
     if (this.autoStartWhenFull && this.isFull) return true;
     return (
       this.present.length >= MIN_PLAYERS_TO_START && this.present.every((session) => session.ready)

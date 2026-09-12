@@ -316,8 +316,9 @@ through the `MatchResultRepository` port. `GameSimulation.startMatch()` accepts 
 starting phase, same as `WAITING`, and the server uses it to restart: `matchEnded` schedules
 `Room.tryStart()` after `NINJARENA_MATCH_RESTART_MS` (8 seconds by default), which starts a new
 match at round one with fresh scores as long as at least two players are still in the room. A room
-that emptied below that stays in `MATCH_END` until enough players are back and one of them is
-ready.
+that emptied below that stays in `MATCH_END` until it fills again: a finished match starts over on
+the same condition as a waiting one, so the next `join` or `ready` that brings two ready players
+together — or fills the room when `NINJARENA_AUTO_START` is on — restarts it.
 
 Ending a round clears the projectiles still in flight, every pending zone and every spawned wall,
 so a shot, a delayed area or an obstacle from before the last kill cannot linger into the next

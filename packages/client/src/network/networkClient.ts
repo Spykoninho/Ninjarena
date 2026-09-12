@@ -21,6 +21,7 @@ export class NetworkClient {
         resolve();
       });
       socket.addEventListener('error', () => {
+        if (this.socket !== socket) return;
         // Une erreur après l'ouverture n'a plus de promesse à rejeter: la fermeture suit de toute façon.
         this.handshake = null;
         reject(new Error(`failed to connect to ${url}`));
@@ -37,6 +38,8 @@ export class NetworkClient {
         this.messageHandler?.(message);
       });
       socket.addEventListener('close', () => {
+        // Une socket périmée ne doit rien invalider de celle qui l'a remplacée.
+        if (this.socket !== socket) return;
         this.socket = null;
         this.handshake = null;
         this.closeHandler?.();

@@ -189,6 +189,33 @@ describe('Room', () => {
     expect(match.winner).toBe('team-0');
   });
 
+  it('restarts a finished match when a replacement player is ready', () => {
+    const room = createRoom();
+    const first = createSession('c1');
+    const second = createSession('c2');
+    joinAndAnnounce(room, first.session, 'one');
+    joinAndAnnounce(room, second.session, 'two');
+    room.setReady(first.session, true);
+    room.setReady(second.session, true);
+    const match = room.simulation.world.match;
+    match.phase = 'MATCH_END';
+    match.round = 2;
+    match.scores = { 'team-0': 2, 'team-1': 1 };
+    match.winner = 'team-0';
+    // Le perdant quitte l'écran de résultat avant que le minuteur de relance ne tombe.
+    room.leave(second.session);
+    room.tryStart();
+    expect(match.phase).toBe('MATCH_END');
+    const third = createSession('c3');
+    joinAndAnnounce(room, third.session, 'three');
+    expect(match.phase).toBe('MATCH_END');
+    room.setReady(third.session, true);
+    expect(match.phase).not.toBe('MATCH_END');
+    expect(match.round).toBe(1);
+    expect(match.scores).toEqual({ 'team-0': 0, 'team-1': 0 });
+    expect(match.winner).toBeNull();
+  });
+
   it('removes a leaving player from the simulation', () => {
     const room = createRoom();
     const { session } = createSession('c1');
