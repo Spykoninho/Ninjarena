@@ -166,6 +166,17 @@ describe('buildRenderFrame', () => {
     expect(frame.players[0]?.shieldRatio).toBeCloseTo(0.4);
   });
 
+  it('extrapolates the projectiles it owns from the predicted world', () => {
+    const sim = makeSim();
+    sim.world.projectiles['mine'] = projectileOf('mine', 'me', { x: 0, y: 0 }, { x: 120, y: 0 });
+    const frame = buildRenderFrame(inputFor(sim, { alpha: 0.5 }));
+    expect(frame.projectiles).toHaveLength(1);
+    const own = frame.projectiles[0]!;
+    expect(own).toMatchObject({ id: 'mine', radius: 4, color: '#ff6a3d', trail: true });
+    expect(own.position.x).toBeCloseTo(1);
+    expect(own.position.y).toBeCloseTo(0);
+  });
+
   it('takes the projectiles of other players from the interpolated world', () => {
     const sim = makeSim();
     sim.world.projectiles['theirs'] = projectileOf(
@@ -257,6 +268,17 @@ describe('buildRenderFrame', () => {
     expect(recovering.players[0]?.activeArc).toBeNull();
   });
 
+  it('turns the zones it owns into views progressing toward their trigger', () => {
+    const sim = makeSim();
+    sim.world.pending['z1'] = pendingOf('z1', 'me', 40);
+    sim.world.pending['hidden'] = pendingOf('hidden', 'me', null);
+    sim.world.pending['theirs'] = pendingOf('theirs', 'other', 40);
+    const frame = buildRenderFrame(inputFor(sim, { tick: 10 }));
+    expect(frame.zones).toEqual([
+      { id: 'z1', position: { x: 60, y: 70 }, radius: 40, color: '#c9a26b', progress: 0.25 },
+    ]);
+  });
+
   it('takes the zones and obstacles of other players from the interpolated world', () => {
     const sim = makeSim();
     const remotes: InterpolatedWorld = {
@@ -274,14 +296,9 @@ describe('buildRenderFrame', () => {
 
   it('passes the points of an obstacle through and fades it over its last second', () => {
     const sim = makeSim();
-    const remotes: InterpolatedWorld = {
-      ...emptyRemotes(),
-      obstacles: {
-        far: obstacleOf('far', 'other', 300),
-        soon: obstacleOf('soon', 'other', 90),
-      },
-    };
-    const frame = buildRenderFrame(inputFor(sim, { tick: 60, remotes }));
+    sim.world.obstacles['far'] = obstacleOf('far', 'me', 300);
+    sim.world.obstacles['soon'] = obstacleOf('soon', 'me', 90);
+    const frame = buildRenderFrame(inputFor(sim, { tick: 60 }));
     const far = frame.obstacles.find((obstacle) => obstacle.id === 'far');
     const soon = frame.obstacles.find((obstacle) => obstacle.id === 'soon');
     expect(far).toMatchObject({ color: '#8a6a4b', remaining: 1 });

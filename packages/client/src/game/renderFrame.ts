@@ -63,23 +63,52 @@ export function buildRenderFrame(input: RenderFrameInput): RenderFrame {
 }
 
 function projectileViews(input: RenderFrameInput): ProjectileView[] {
-  return Object.values(input.remotes?.projectiles ?? {}).map((projectile) =>
-    toProjectileView(projectile, projectile.renderPosition),
-  );
+  const views: ProjectileView[] = [];
+  // Les tirs du joueur local partent de sa simulation: ils apparaissent sans attendre le serveur.
+  for (const projectile of own(input.predicted.projectiles, input.localPlayerId)) {
+    const position = add(projectile.position, scale(projectile.velocity, input.dt * input.alpha));
+    views.push(toProjectileView(projectile, position));
+  }
+  for (const projectile of others(input.remotes?.projectiles, input.localPlayerId)) {
+    views.push(toProjectileView(projectile, projectile.renderPosition));
+  }
+  return views;
 }
 
 function zoneViews(input: RenderFrameInput): ZoneView[] {
   const views: ZoneView[] = [];
-  for (const pending of Object.values(input.remotes?.pending ?? {})) {
+  for (const pending of own(input.predicted.pending, input.localPlayerId)) {
+    push(views, toZoneView(pending, input.tick));
+  }
+  for (const pending of others(input.remotes?.pending, input.localPlayerId)) {
     push(views, toZoneView(pending, input.tick));
   }
   return views;
 }
 
 function obstacleViews(input: RenderFrameInput): ObstacleView[] {
-  return Object.values(input.remotes?.obstacles ?? {}).map((obstacle) =>
-    toObstacleView(obstacle, input.tick),
-  );
+  const views: ObstacleView[] = [];
+  for (const obstacle of own(input.predicted.obstacles, input.localPlayerId)) {
+    views.push(toObstacleView(obstacle, input.tick));
+  }
+  for (const obstacle of others(input.remotes?.obstacles, input.localPlayerId)) {
+    views.push(toObstacleView(obstacle, input.tick));
+  }
+  return views;
+}
+
+function own<T extends { ownerId: PlayerId }>(
+  entities: Record<string, T>,
+  localPlayerId: PlayerId,
+): T[] {
+  return Object.values(entities).filter((entity) => entity.ownerId === localPlayerId);
+}
+
+function others<T extends { ownerId: PlayerId }>(
+  entities: Record<string, T> | undefined,
+  localPlayerId: PlayerId,
+): T[] {
+  return Object.values(entities ?? {}).filter((entity) => entity.ownerId !== localPlayerId);
 }
 
 function push<T>(views: T[], view: T | null): void {
