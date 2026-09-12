@@ -127,6 +127,7 @@ export class ClientGame {
       abilities: content.abilities,
       characters: content.characters,
       matchConfig: message.matchConfig,
+      rules: content.statRules,
       config: { tickRate: message.tickRate },
     });
     this.localPlayerId = message.playerId;

@@ -84,6 +84,7 @@ export class GameServer {
       abilities: this.content.abilities,
       characters: this.content.characters,
       matchConfig,
+      rules: this.content.statRules,
       config: { tickRate: this.config.tickRate },
     });
     return new Room({

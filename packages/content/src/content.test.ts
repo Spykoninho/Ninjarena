@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildBudget } from '@ninjarena/core';
 import { DEFAULT_MAP_ID, loadContent, loadMap } from './index';
 
 describe('content', () => {
@@ -6,7 +7,8 @@ describe('content', () => {
 
   it('validates every definition and exposes the default loadout', () => {
     const ninja = content.characters.get('ninja');
-    for (const id of ninja.abilities) expect(content.abilities.has(id)).toBe(true);
+    expect(content.abilities.has(ninja.basicAttackId)).toBe(true);
+    expect(content.abilities.has(ninja.dashId)).toBe(true);
     expect(content.matchModes.all().map((m) => m.id)).toEqual([
       'duel',
       'ffa-3',
@@ -14,6 +16,17 @@ describe('content', () => {
       '2v2',
       '3v3',
     ]);
+  });
+
+  it('gives every mode a build budget and a four-minute round', () => {
+    for (const mode of content.matchModes.all()) {
+      expect(mode.buildPoints).toBe(10);
+      expect(buildBudget(mode, content.statRules)).toBe(10);
+      expect(mode.roundDurationMs).toBe(240000);
+      expect(mode.roundsToWin).toBe(mode.id === '3v3' ? 3 : 2);
+    }
+    expect(content.statRules.defaultPointBudget).toBe(10);
+    expect(content.statRules.techniqueSlots).toBe(3);
   });
 
   it('builds the arena with merged wall colliders, a polygon and spawns for 6 players', () => {

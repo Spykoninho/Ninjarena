@@ -12,6 +12,7 @@ const makePlayer = (): PlayerState => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: content.matchModes.get('duel'),
+    rules: content.statRules,
   });
   return sim.addPlayer({ id: 'me', teamId: 'team-0', characterId: 'ninja' });
 };
@@ -66,8 +67,10 @@ describe('buildHudView', () => {
       status: '',
       rttMs: null,
     });
-    expect(view.abilities[0]?.name).toBe(content.abilities.get('shuriken').name);
-    expect(view.abilities[0]?.cooldownMs).toBe(content.abilities.get('shuriken').cooldownMs);
+    // Le slot 0 est l'attaque de base du personnage, le slot 1 son esquive.
+    const basic = content.abilities.get(content.characters.get('ninja').basicAttackId);
+    expect(view.abilities[0]?.name).toBe(basic.name);
+    expect(view.abilities[0]?.cooldownMs).toBe(basic.cooldownMs);
     expect(view.abilities[0]?.remainingMs).toBeCloseTo(500);
     expect(view.abilities[1]?.remainingMs).toBe(0);
   });

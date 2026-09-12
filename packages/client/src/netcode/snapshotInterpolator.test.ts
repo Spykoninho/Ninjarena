@@ -11,6 +11,7 @@ const makeSim = () => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: content.matchModes.get('duel'),
+    rules: content.statRules,
   });
   sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 100, y: 100 } });
   return sim;
@@ -43,6 +44,7 @@ describe('SnapshotInterpolator', () => {
       abilities: content.abilities,
       characters: content.characters,
       matchConfig: content.matchModes.get('duel'),
+      rules: content.statRules,
     });
     const p = sim.addPlayer({
       id: 'a',

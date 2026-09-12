@@ -5,6 +5,7 @@ import {
   LoadedMap,
   MapDefinitionSchema,
   MatchConfigSchema,
+  StatRulesDefinitionSchema,
   TilesetDefinitionSchema,
 } from '@ninjarena/core';
 import type {
@@ -12,6 +13,7 @@ import type {
   CharacterDefinition,
   MapDefinition,
   MatchConfig,
+  StatRulesDefinition,
   TilesetDefinition,
 } from '@ninjarena/core';
 
@@ -22,6 +24,7 @@ import shuriken from './abilities/shuriken.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
 import matchModes from './match-modes.json';
+import statRules from './stat-rules.json';
 import defaultTileset from './tilesets/default.json';
 
 export const DEFAULT_MAP_ID = 'arena';
@@ -33,6 +36,7 @@ export interface GameContent {
   tilesets: DefinitionCatalog<TilesetDefinition>;
   maps: DefinitionCatalog<MapDefinition>;
   matchModes: DefinitionCatalog<MatchConfig>;
+  statRules: StatRulesDefinition;
 }
 
 interface DefinitionParser<T> {
@@ -61,6 +65,7 @@ export function loadContent(): GameContent {
         parseFile(MatchConfigSchema, `match-modes.json[${index}]`, mode),
       ),
     ),
+    statRules: parseFile(StatRulesDefinitionSchema, 'stat-rules.json', statRules),
   };
 }
 

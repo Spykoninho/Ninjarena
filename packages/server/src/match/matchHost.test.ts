@@ -13,6 +13,7 @@ const setup = () => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: content.matchModes.get('duel'),
+    rules: content.statRules,
   });
   const connection = new FakeConnection('c1');
   const session = new ClientSession(connection, 8);

@@ -1,12 +1,13 @@
 {
   "id": "ninja",
   "name": "Ninja",
-  "stats": {
+  "baseStats": {
     "maxHealth": 100,
     "maxChakra": 100,
-    "moveSpeed": 140,
     "chakraRegenPerSecond": 8,
+    "moveSpeed": 140,
     "colliderRadius": 5
   },
-  "abilities": ["shuriken", "kunai-slash", "shadow-step", "paralysis-seal"]
+  "basicAttackId": "kunai-slash",
+  "dashId": "shadow-step"
 }

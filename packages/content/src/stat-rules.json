@@ -1,0 +1,22 @@
+{
+  "defaultPointBudget": 10,
+  "attributes": {
+    "vitality": { "min": 0, "max": 5 },
+    "strength": { "min": 0, "max": 5 },
+    "power": { "min": 0, "max": 5 },
+    "speed": { "min": 0, "max": 5 },
+    "maxChakra": { "min": 0, "max": 5 },
+    "chakraRegen": { "min": 0, "max": 5 },
+    "defense": { "min": 0, "max": 5 }
+  },
+  "coefficients": {
+    "healthPerVitality": 12,
+    "physicalDamagePerStrength": 0.06,
+    "techniqueDamagePerPower": 0.06,
+    "moveSpeedPerSpeed": 0.03,
+    "chakraPerPoint": 10,
+    "chakraRegenPerPoint": 1,
+    "defensePerPoint": 8
+  },
+  "techniqueSlots": 3
+}

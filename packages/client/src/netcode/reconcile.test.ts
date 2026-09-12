@@ -11,6 +11,7 @@ const makeSim = () => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: { ...content.matchModes.get('duel'), countdownMs: 0 },
+    rules: content.statRules,
   });
   sim.addPlayer({ id: 'me', teamId: 'team-0', characterId: 'ninja' });
   sim.addPlayer({ id: 'other', teamId: 'team-1', characterId: 'ninja' });

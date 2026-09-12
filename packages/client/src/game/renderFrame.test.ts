@@ -13,6 +13,7 @@ const makePlayers = (): { me: PlayerState; other: PlayerState } => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: content.matchModes.get('duel'),
+    rules: content.statRules,
   });
   const me = sim.addPlayer({ id: 'me', teamId: 'team-0', characterId: 'ninja' });
   const other = sim.addPlayer({ id: 'other', teamId: 'team-1', characterId: 'ninja' });

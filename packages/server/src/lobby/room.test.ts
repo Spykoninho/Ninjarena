@@ -14,6 +14,7 @@ const createRoom = (autoStartWhenFull = false) => {
     abilities: content.abilities,
     characters: content.characters,
     matchConfig,
+    rules: content.statRules,
   });
   return new Room({
     id: 'default',
