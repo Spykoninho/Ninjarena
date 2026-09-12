@@ -82,6 +82,8 @@ export class EffectsLayer {
 
   impact(position: Vec2, color: string, size: number): void {
     const node = this.ringPool.pop() ?? new Graphics();
+    // Un anneau recyclé garde son tracé: il s'efface avant d'être remis en scène.
+    node.clear();
     node.position.set(position.x, position.y);
     this.container.addChild(node);
     this.rings.push({ node, color, size, ageMs: 0 });
@@ -117,14 +119,10 @@ export class EffectsLayer {
 
   clear(): void {
     this.container.removeChildren();
-    this.particles.length = 0;
-    this.rings.length = 0;
-    this.afterimages.length = 0;
-    this.numbers.length = 0;
-    this.particlePool.length = 0;
-    this.ringPool.length = 0;
-    this.afterimagePool.length = 0;
-    this.numberPool.length = 0;
+    destroyAll(this.particles, (particle) => particle.node, this.particlePool);
+    destroyAll(this.rings, (ring) => ring.node, this.ringPool);
+    destroyAll(this.afterimages, (image) => image.node, this.afterimagePool);
+    destroyAll(this.numbers, (number) => number.node, this.numberPool);
   }
 
   private advanceParticles(dtMs: number, seconds: number): void {
@@ -205,6 +203,14 @@ export class EffectsLayer {
     value = Math.imul(value, 0xc2b2ae35) >>> 0;
     return ((value ^ (value >>> 16)) >>> 0) / 0x100000000;
   }
+}
+
+// Les nœuds vivants et ceux du réservoir se détruisent ensemble: rien ne reste sur le GPU.
+function destroyAll<T>(live: T[], nodeOf: (item: T) => Container, pool: Container[]): void {
+  for (const item of live) nodeOf(item).destroy();
+  for (const node of pool) node.destroy();
+  live.length = 0;
+  pool.length = 0;
 }
 
 function newParticle(): Graphics {

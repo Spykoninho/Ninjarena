@@ -1,13 +1,13 @@
 import type { LoadedMap, PlayerId, TilesetDefinition, Vec2 } from '@ninjarena/core';
 import { Application, Container, Graphics, TextureStyle } from 'pixi.js';
 import type { VisualCue } from '../feedback/cues';
+import { cameraTranslation } from './cameraTranslation';
 import { EffectsLayer } from './effectsLayer';
 import { EntityLayer } from './entityLayer';
 import type { RenderFrame, Renderer } from './renderer';
 
 const BACKGROUND_COLOR = '#101014';
 const EMPTY_TILE_ID = -1;
-const MAX_EFFECT_STEP_MS = 100;
 const DASH_TRAIL_INTERVAL_MS = 35;
 
 export class PixiRenderer implements Renderer {
@@ -18,7 +18,7 @@ export class PixiRenderer implements Renderer {
   private app: Application | null = null;
   private mapLayer: Container | null = null;
   private shake: Vec2 = { x: 0, y: 0 };
-  private lastRenderMs: number | null = null;
+  private translation: Vec2 = { x: 0, y: 0 };
   private dashTrailMs = 0;
 
   constructor(options: { zoom: number }) {
@@ -52,19 +52,22 @@ export class PixiRenderer implements Renderer {
     this.mapLayer = layer;
   }
 
-  render(frame: RenderFrame): void {
+  render(frame: RenderFrame, elapsedMs: number): void {
     const app = this.app;
     if (app === null) return;
-    // Les effets avancent avec le temps du rendu: un gel côté jeu les figent aussi.
-    const elapsed = this.step();
+    this.translation = cameraTranslation(frame.camera, this.zoom, {
+      x: app.screen.width,
+      y: app.screen.height,
+    });
+    // Le tremblement ne secoue que l'image: `worldToScreen` garde la translation nette.
     this.worldContainer.position.set(
-      Math.round(app.screen.width / 2 - (frame.camera.x - this.shake.x) * this.zoom),
-      Math.round(app.screen.height / 2 - (frame.camera.y - this.shake.y) * this.zoom),
+      this.translation.x + Math.round(this.shake.x * this.zoom),
+      this.translation.y + Math.round(this.shake.y * this.zoom),
     );
     this.entityLayer.sync(frame);
-    this.entityLayer.advance(elapsed);
-    this.effectsLayer.advance(elapsed);
-    this.trailDashers(frame, elapsed);
+    this.entityLayer.advance(elapsedMs);
+    this.effectsLayer.advance(elapsedMs);
+    this.trailDashers(frame, elapsedMs);
   }
 
   showCue(cue: VisualCue): void {
@@ -90,8 +93,8 @@ export class PixiRenderer implements Renderer {
 
   worldToScreen(position: Vec2): Vec2 {
     return {
-      x: this.worldContainer.position.x + position.x * this.zoom,
-      y: this.worldContainer.position.y + position.y * this.zoom,
+      x: this.translation.x + position.x * this.zoom,
+      y: this.translation.y + position.y * this.zoom,
     };
   }
 
@@ -101,20 +104,13 @@ export class PixiRenderer implements Renderer {
     this.app?.destroy({ removeView: true }, { children: true });
     this.app = null;
     this.mapLayer = null;
-    this.lastRenderMs = null;
   }
 
-  private step(): number {
-    const now = performance.now();
-    const elapsed = Math.min(MAX_EFFECT_STEP_MS, now - (this.lastRenderMs ?? now));
-    this.lastRenderMs = now;
-    return elapsed;
-  }
-
-  private trailDashers(frame: RenderFrame, elapsed: number): void {
-    this.dashTrailMs += elapsed;
+  private trailDashers(frame: RenderFrame, elapsedMs: number): void {
+    this.dashTrailMs += elapsedMs;
     if (this.dashTrailMs < DASH_TRAIL_INTERVAL_MS) return;
-    this.dashTrailMs = 0;
+    // Le reste est reporté: un intervalle remis à zéro étirerait la traînée quand l'image rame.
+    this.dashTrailMs -= DASH_TRAIL_INTERVAL_MS;
     for (const player of frame.players) {
       if (player.isDashing && player.visible) this.afterimage(player.id);
     }

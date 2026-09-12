@@ -117,6 +117,70 @@ describe('cuesForEvent', () => {
     expect(cue.audio).toBe('dash');
   });
 
+  it('sizes an area blast to its radius and paints it with its visual', () => {
+    const cue = cuesForEvent(
+      {
+        type: 'areaResolved',
+        tick: 8,
+        ownerId: 'me',
+        position: { x: 12, y: 34 },
+        radius: 40,
+        visual: { color: '#ff3300', size: 6, trail: false },
+      },
+      view,
+    );
+    expect(cue.visual).toEqual([
+      { kind: 'impact', position: { x: 12, y: 34 }, color: '#ff3300', size: 40 },
+      { kind: 'burst', position: { x: 12, y: 34 }, color: '#ff3300', count: 12 },
+    ]);
+    expect(cue.audio).toBe('impact');
+  });
+
+  it('falls back to white when an area carries no visual', () => {
+    const cue = cuesForEvent(
+      {
+        type: 'areaResolved',
+        tick: 8,
+        ownerId: 'me',
+        position: { x: 0, y: 0 },
+        radius: 20,
+        visual: null,
+      },
+      view,
+    );
+    expect(cue.visual.map((visual) => 'color' in visual && visual.color)).toEqual([
+      '#ffffff',
+      '#ffffff',
+    ]);
+  });
+
+  it('bursts where a zone fires', () => {
+    const cue = cuesForEvent(
+      { type: 'zoneTriggered', tick: 6, id: 'z1', position: { x: 7, y: 8 } },
+      view,
+    );
+    expect(cue.visual).toEqual([
+      { kind: 'burst', position: { x: 7, y: 8 }, color: '#ffffff', count: 14 },
+    ]);
+    expect(cue.audio).toBe('impact');
+  });
+
+  it('marks a spawned wall on its owner and stays silent about an unknown one', () => {
+    const spawned = cuesForEvent(
+      { type: 'obstacleSpawned', tick: 4, id: 'w1', ownerId: 'other' },
+      view,
+    );
+    expect(spawned.visual).toEqual([
+      { kind: 'impact', position: { x: 30, y: 40 }, color: '#ffffff', size: 8 },
+    ]);
+    const unknown = cuesForEvent(
+      { type: 'obstacleSpawned', tick: 4, id: 'w2', ownerId: 'ghost' },
+      view,
+    );
+    expect(unknown.visual).toEqual([]);
+    expect(unknown.audio).toBe('impact');
+  });
+
   it('keeps the round cues of the previous mapping', () => {
     expect(cuesForEvent({ type: 'roundStarted', tick: 0, round: 1 }, view).audio).toBe(
       'round-start',

@@ -254,7 +254,9 @@ export class ClientGame {
     this.updateSpectator();
     const offset = this.smoother.advance(elapsed);
     // Un gel de coup arrête l'image sans arrêter la simulation ni les entrées envoyées.
-    if (!this.feedback.advance(elapsed).frozen) this.renderFrame(accumulator.alpha, offset);
+    if (!this.feedback.advance(elapsed).frozen) {
+      this.renderFrame(accumulator.alpha, offset, elapsed);
+    }
     this.updateHud();
   }
 
@@ -294,7 +296,7 @@ export class ClientGame {
     return simulation.step({ [localPlayerId]: input });
   }
 
-  private renderFrame(alpha: number, offset: Vec2): void {
+  private renderFrame(alpha: number, offset: Vec2, elapsedMs: number): void {
     const simulation = this.simulation;
     const localPlayerId = this.localPlayerId;
     if (simulation === null || localPlayerId === null) return;
@@ -322,6 +324,7 @@ export class ClientGame {
         isFfa: this.isFfa,
         cameraTarget: this.spectateCameraTarget(remotes) ?? this.cameraPosition,
       }),
+      elapsedMs,
     );
   }
 

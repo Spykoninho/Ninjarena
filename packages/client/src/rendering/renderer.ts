@@ -75,7 +75,7 @@ export interface RenderFrame {
 export interface Renderer {
   init(container: HTMLElement): Promise<void>;
   setMap(map: LoadedMap, tileset: TilesetDefinition): void;
-  render(frame: RenderFrame): void;
+  render(frame: RenderFrame, elapsedMs: number): void;
   showCue(cue: VisualCue): void;
   setShake(offset: Vec2): void;
   worldToScreen(position: Vec2): Vec2;
