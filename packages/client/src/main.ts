@@ -23,6 +23,8 @@ if (stage === null || hudRoot === null || uiRoot === null) {
   throw new Error('missing #app, #hud or #ui element');
 }
 
+const DEFAULT_TILESET_ID = 'default';
+
 const config = loadClientConfig(window.location.search);
 const content = loadContent();
 const inputState = createInputState();
@@ -99,24 +101,27 @@ loadoutPanel.setState(
   createLoadoutState(config, rules, techniques, basics, rules.defaultPointBudget),
 );
 
-const editor = new EditorScreen({
-  saveMap: (document) => {
-    app().send({ type: 'saveMap', document });
+const editor = new EditorScreen(
+  {
+    saveMap: (document) => {
+      app().send({ type: 'saveMap', document });
+    },
+    listMaps: () => {
+      app().send({ type: 'listMaps' });
+    },
+    getMap: (id) => {
+      app().send({ type: 'getMap', id });
+    },
+    testMap: (document) => {
+      app().testMap(document);
+    },
+    back: () => {
+      app().leaveEditor();
+    },
   },
-  listMaps: () => {
-    app().send({ type: 'listMaps' });
-  },
-  getMap: (id) => {
-    app().send({ type: 'getMap', id });
-  },
-  testMap: () => {
-    // Le lancement d'essai arrive avec l'éditeur de la Task 10.
-    editor.setStatus('not available yet');
-  },
-  back: () => {
-    app().leaveEditor();
-  },
-});
+  content.tilesets.get(DEFAULT_TILESET_ID),
+  'New map',
+);
 
 deferred.app = new ClientApp({
   config,

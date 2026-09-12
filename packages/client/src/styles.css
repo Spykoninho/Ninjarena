@@ -544,3 +544,148 @@ body {
   color: rgba(255, 255, 255, 0.4);
   cursor: not-allowed;
 }
+
+/* Editor */
+.editor {
+  width: auto;
+  max-width: 96vw;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.editor-input,
+.editor-select {
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+}
+
+.editor-name {
+  width: 140px;
+}
+
+.editor-size {
+  width: 56px;
+}
+
+.editor-import {
+  width: 150px;
+  font-size: 10px;
+}
+
+.editor-button {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.editor-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.editor-back {
+  padding: 6px 10px;
+}
+
+.editor-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 90vw;
+  overflow: auto;
+}
+
+.editor-palette {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 132px;
+}
+
+.editor-tool {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  color: var(--hud-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.editor-tool.active {
+  background: rgba(74, 163, 255, 0.22);
+  border-color: var(--hud-chakra);
+}
+
+.editor-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+}
+
+.editor-canvas {
+  flex: none;
+  background: #000;
+  border: 1px solid var(--hud-border);
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.editor-issues {
+  margin: 0;
+  padding: 0 0 0 16px;
+  max-height: 110px;
+  overflow-y: auto;
+  color: #ffcf7a;
+  font-size: 11px;
+}
+
+.editor-issues:empty {
+  display: none;
+}
+
+.editor-issue-located {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.editor-status {
+  opacity: 0.8;
+}
+
+.editor-status:empty {
+  display: none;
+}
+
+.editor-format {
+  font-size: 11px;
+  opacity: 0.6;
+}

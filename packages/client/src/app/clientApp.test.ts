@@ -219,6 +219,7 @@ class FakeLobby implements LobbyView {
 
 class FakeEditor implements EditorView {
   readonly calls: string[] = [];
+  readonly saved: string[] = [];
 
   mount(): void {
     this.calls.push('mount');
@@ -234,6 +235,11 @@ class FakeEditor implements EditorView {
 
   showDocument(): void {
     this.calls.push('showDocument');
+  }
+
+  showSaved(id: string): void {
+    this.calls.push('showSaved');
+    this.saved.push(id);
   }
 
   setStatus(): void {
@@ -326,6 +332,61 @@ describe('ClientApp message routing', () => {
     h.network.deliver(matchStarted);
     expect(h.game.begun).toEqual([players]);
     expect(h.app.state.screen).toBe('game');
+  });
+});
+
+// Les envois passent par une connexion asynchrone: le test laisse la microtâche s'exécuter.
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+describe('ClientApp editor', () => {
+  it('asks for the map list and stays on a room state it did not request', () => {
+    h.app.openEditor();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'listMaps' });
+    h.network.deliver({ type: 'roomState', room: room('WAITING') });
+    expect(h.app.state.screen).toBe('editor');
+  });
+
+  it('pushes a fresh map list to the editor', () => {
+    h.app.openEditor();
+    h.network.deliver({ type: 'mapList', maps: [] });
+    expect(h.editor.calls).toContain('setMaps');
+  });
+
+  it('reports a save without opening a room', () => {
+    h.app.openEditor();
+    h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
+    expect(h.editor.saved).toEqual(['dojo-a1b2']);
+    expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
+    expect(h.app.state.screen).toBe('editor');
+  });
+
+  it('opens a room on the saved map when a test run is pending', async () => {
+    h.app.openEditor();
+    h.app.testMap(mapDocument);
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'saveMap', document: mapDocument });
+    h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
+    expect(h.network.sent.at(-1)).toEqual({
+      type: 'createRoom',
+      settings: { mapId: 'dojo-a1b2' },
+    });
+    h.network.deliver({ type: 'roomState', room: room('WAITING') });
+    expect(h.app.state.screen).toBe('lobby');
+  });
+
+  it('forgets a pending test run when the save is refused', async () => {
+    h.app.openEditor();
+    h.app.testMap(mapDocument);
+    await flush();
+    h.network.deliver({
+      type: 'error',
+      code: 'INVALID_MAP',
+      message: 'the map has no spawn point',
+    });
+    h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
+    expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
   });
 });
 

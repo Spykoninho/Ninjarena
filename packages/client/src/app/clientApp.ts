@@ -41,6 +41,7 @@ export interface LobbyView extends Screen {
 export interface EditorView extends Screen {
   setMaps(maps: MapSummary[]): void;
   showDocument(document: MapDocument): void;
+  showSaved(id: string): void;
   setStatus(status: string): void;
   showError(message: string): void;
 }
@@ -74,6 +75,7 @@ export class ClientApp {
   private connected = false;
   private connecting = false;
   private mapsRequested = false;
+  private pendingTest = false;
 
   constructor(deps: ClientAppDeps) {
     this.deps = deps;
@@ -126,8 +128,17 @@ export class ClientApp {
     if (this.connected) this.send({ type: 'listMaps' });
   }
 
+  // L'essai enchaîne l'enregistrement et l'ouverture d'une salle: seul le serveur connaît l'identifiant final.
+  testMap(document: MapDocument): void {
+    void this.withSession(this.name, () => {
+      this.pendingTest = true;
+      this.send({ type: 'saveMap', document });
+    });
+  }
+
   leaveEditor(): void {
     this.intent = 'lobby';
+    this.pendingTest = false;
     this.appState = { ...this.appState, screen: 'home' };
     this.render();
   }
@@ -199,6 +210,16 @@ export class ClientApp {
         return;
       case 'mapDocument':
         screens.editor.showDocument(message.document);
+        return;
+      case 'mapSaved':
+        screens.editor.showSaved(message.id);
+        if (!this.pendingTest) return;
+        this.pendingTest = false;
+        this.intent = 'lobby';
+        this.send({ type: 'createRoom', settings: { mapId: message.id } });
+        return;
+      case 'error':
+        this.pendingTest = false;
         return;
       default:
         return;
