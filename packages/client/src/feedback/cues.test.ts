@@ -165,20 +165,22 @@ describe('cuesForEvent', () => {
     expect(cue.audio).toBe('impact');
   });
 
-  it('marks a spawned wall on its owner and stays silent about an unknown one', () => {
+  it('marks a spawned wall where the wall stands, not on its owner', () => {
     const spawned = cuesForEvent(
       { type: 'obstacleSpawned', tick: 4, id: 'w1', ownerId: 'other', position: { x: 60, y: 12 } },
       view,
     );
     expect(spawned.visual).toEqual([
-      { kind: 'impact', position: { x: 30, y: 40 }, color: '#ffffff', size: 8 },
+      { kind: 'impact', position: { x: 60, y: 12 }, color: '#ffffff', size: 8 },
     ]);
-    const unknown = cuesForEvent(
+    expect(spawned.audio).toBe('impact');
+    const unknownOwner = cuesForEvent(
       { type: 'obstacleSpawned', tick: 4, id: 'w2', ownerId: 'ghost', position: { x: 1, y: 2 } },
       view,
     );
-    expect(unknown.visual).toEqual([]);
-    expect(unknown.audio).toBe('impact');
+    expect(unknownOwner.visual).toEqual([
+      { kind: 'impact', position: { x: 1, y: 2 }, color: '#ffffff', size: 8 },
+    ]);
   });
 
   it('keeps the round cues of the previous mapping', () => {

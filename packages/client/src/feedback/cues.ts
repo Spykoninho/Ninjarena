@@ -141,7 +141,14 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
       });
     case 'obstacleSpawned':
       return cue({
-        visual: impactAt(view.positionOf(event.ownerId), NEUTRAL_COLOR, OBSTACLE_IMPACT_SIZE),
+        visual: [
+          {
+            kind: 'impact',
+            position: event.position,
+            color: NEUTRAL_COLOR,
+            size: OBSTACLE_IMPACT_SIZE,
+          },
+        ],
         audio: 'impact',
       });
     case 'roundStarted':
