@@ -208,7 +208,8 @@ subtracts from a `SHIELDED` status first (emitting `shieldAbsorbed`, then `shiel
 spent) before touching health, clamps the remaining amount to the target's health, emits
 `damageDealt`, and calls `killPlayer` at zero, which emits `playerDied`. `canAffect` is the single
 door to "may this hit that": never yourself, and never a team-mate unless the match config enables
-friendly fire.
+friendly fire. A `SHIELDED` status that simply runs out of time emits the same `shieldBroken`, from
+`playerStateSystem`, so the client has one cue for both endings.
 
 ## Effects, bricks and the executor
 

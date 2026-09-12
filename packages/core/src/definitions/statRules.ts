@@ -38,6 +38,7 @@ export const StatRulesDefinitionSchema = z.object({
     chakraRegenPerPoint: z.number().nonnegative(),
     defensePerPoint: z.number().nonnegative(),
   }),
+  // Plafond à 3: les 2 slots fixes (attaque de base, esquive) plus 3 techniques font MAX_ABILITY_SLOTS = 5.
   techniqueSlots: z.number().int().min(1).max(3),
 });
 

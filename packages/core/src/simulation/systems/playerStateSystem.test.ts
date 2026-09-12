@@ -32,4 +32,22 @@ describe('playerStateSystem', () => {
     sim.step({});
     expect(p.statuses).toHaveLength(0);
   });
+
+  it('announces a shield that runs out on its timer', () => {
+    const sim = createTestSimulation();
+    const p = sim.addPlayer({
+      id: 'p1',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+    });
+    upsertStatus(p, { type: 'SHIELDED', expiresAt: 1, magnitude: 40 });
+    upsertStatus(p, { type: 'SLOWED', expiresAt: 1 });
+    expect(sim.step({})).not.toContainEqual(
+      expect.objectContaining({ type: 'shieldBroken', playerId: 'p1' }),
+    );
+    const expiry = sim.step({});
+    expect(expiry).toContainEqual({ type: 'shieldBroken', tick: 1, playerId: 'p1' });
+    expect(expiry.filter((event) => event.type === 'shieldBroken')).toHaveLength(1);
+  });
 });

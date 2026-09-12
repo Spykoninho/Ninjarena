@@ -10,7 +10,11 @@ export function playerStateSystem(ctx: SimulationContext): void {
   for (const player of playersOf(ctx.world)) {
     if (!isAlive(player)) continue;
     expireTimedPhase(ctx, player);
-    removeExpiredStatuses(player, ctx.now);
+    const expired = removeExpiredStatuses(player, ctx.now);
+    // Un bouclier qui s'éteint sur son minuteur s'annonce comme celui qui casse sous les coups.
+    if (expired.includes('SHIELDED')) {
+      ctx.events.push({ type: 'shieldBroken', tick: ctx.now, playerId: player.id });
+    }
     regenerateChakra(player, ctx.dt);
   }
 }
