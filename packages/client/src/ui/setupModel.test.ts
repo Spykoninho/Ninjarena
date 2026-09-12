@@ -1,4 +1,5 @@
-import type { StatRulesDefinition } from '@ninjarena/core';
+import type { AbilityDefinition, StatRulesDefinition } from '@ninjarena/core';
+import { DefinitionCatalog } from '@ninjarena/core';
 import { describe, expect, it } from 'vitest';
 import { loadClientConfig } from '../config/clientConfig';
 import {
@@ -7,6 +8,7 @@ import {
   setAttribute,
   setTechnique,
   setupErrors,
+  techniqueOptions,
 } from './setupModel';
 import type { TechniqueOption } from './setupModel';
 
@@ -50,18 +52,18 @@ describe('createSetupState', () => {
     );
   });
 
-  it('reduces an over-budget build down to the budget', () => {
+  it('reduces an over-budget build down to the budget, trimming from the last attribute back', () => {
     const config = loadClientConfig('?name=kage&build=5,5,5,0,0,0,0');
     const state = createSetupState(config, rules, options);
-    const spent =
-      state.build.vitality +
-      state.build.strength +
-      state.build.power +
-      state.build.speed +
-      state.build.maxChakra +
-      state.build.chakraRegen +
-      state.build.defense;
-    expect(spent).toBeLessThanOrEqual(rules.defaultPointBudget);
+    expect(state.build).toEqual({
+      vitality: 5,
+      strength: 5,
+      power: 0,
+      speed: 0,
+      maxChakra: 0,
+      chakraRegen: 0,
+      defense: 0,
+    });
   });
 
   it('fills missing technique slots with the first unused options', () => {
@@ -121,5 +123,37 @@ describe('setupErrors', () => {
     const config = loadClientConfig('?name=kage&build=1,1,1,1,1,1,1');
     const state = createSetupState(config, rules, options);
     expect(setupErrors(state, rules, rules.defaultPointBudget, options)).toEqual([]);
+  });
+});
+
+function ability(id: string, name: string, kind: AbilityDefinition['kind']): AbilityDefinition {
+  return {
+    id,
+    name,
+    kind,
+    cooldownMs: 1000,
+    chakraCost: 10,
+    startupMs: 0,
+    activeMs: 0,
+    recoveryMs: 0,
+    canMoveWhileCasting: false,
+    telegraph: null,
+    tags: [],
+    effects: [{ type: 'stun', durationMs: 100 }],
+  };
+}
+
+describe('techniqueOptions', () => {
+  it('keeps only the technique abilities, sorted by name', () => {
+    const abilities = new DefinitionCatalog<AbilityDefinition>([
+      ability('kunai-strike', 'Kunai Strike', 'basic'),
+      ability('fireball', 'Fireball', 'technique'),
+      ability('blink', 'Blink', 'technique'),
+      ability('shadow-step', 'Shadow Step', 'dash'),
+    ]);
+    expect(techniqueOptions(abilities)).toEqual([
+      { id: 'blink', name: 'Blink', chakraCost: 10, cooldownMs: 1000 },
+      { id: 'fireball', name: 'Fireball', chakraCost: 10, cooldownMs: 1000 },
+    ]);
   });
 });

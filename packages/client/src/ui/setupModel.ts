@@ -47,17 +47,6 @@ export function pointsLeft(state: SetupState, rules: StatRulesDefinition, budget
   return budget - buildPointsSpent(state.build);
 }
 
-export function canIncrement(
-  state: SetupState,
-  attribute: AttributeId,
-  rules: StatRulesDefinition,
-  budget: number,
-): boolean {
-  return (
-    state.build[attribute] < rules.attributes[attribute].max && pointsLeft(state, rules, budget) > 0
-  );
-}
-
 export function setAttribute(
   state: SetupState,
   attribute: AttributeId,

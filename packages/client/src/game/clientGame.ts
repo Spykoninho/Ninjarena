@@ -76,6 +76,12 @@ export class ClientGame {
       this.handleMessage(message);
     });
     network.onClose(() => {
+      // Avant le `welcome` une fermeture sans message d'erreur (salle pleine, trames invalides) doit rester visible.
+      if (this.simulation === null) {
+        setupPanel.showError(
+          'disconnected: the server closed the connection (full or unreachable)',
+        );
+      }
       this.markDisconnected(DISCONNECTED);
     });
     setupPanel.onPlay((state) => {

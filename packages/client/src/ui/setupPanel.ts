@@ -61,6 +61,7 @@ export class SetupPanel {
     }
 
     this.errorList = element('ul', 'setup-errors', panel);
+    this.errorList.setAttribute('aria-live', 'polite');
 
     this.playButton = document.createElement('button');
     this.playButton.type = 'button';
@@ -119,6 +120,8 @@ export class SetupPanel {
   }
 
   private buildTechniqueSelect(parent: HTMLElement, slot: number): HTMLSelectElement {
+    const field = element('label', 'setup-field', parent);
+    field.textContent = `Technique ${slot + 1}`;
     const select = document.createElement('select');
     select.className = 'setup-technique';
     for (const option of this.options) {
@@ -128,7 +131,7 @@ export class SetupPanel {
       entry.textContent = `${option.name} · ${option.chakraCost} chakra · ${cooldownSeconds}s`;
       select.appendChild(entry);
     }
-    parent.appendChild(select);
+    field.appendChild(select);
     select.addEventListener('change', () => this.onTechniqueChanged(slot, select.value));
     return select;
   }
@@ -164,6 +167,8 @@ export class SetupPanel {
   }
 
   private onPlayClicked(): void {
+    this.serverError = null;
+    this.refresh();
     const state = this.state;
     if (state === null || this.playHandler === null) return;
     if (setupErrors(state, this.rules, this.budget, this.options).length > 0) return;

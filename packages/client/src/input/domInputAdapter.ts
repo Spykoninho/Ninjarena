@@ -36,8 +36,8 @@ export class DomInputAdapter {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    // Tab ne doit pas faire sortir le focus du canevas de jeu.
-    if (event.code === 'Tab') event.preventDefault();
+    // Tab ne doit sortir le focus que du canevas, jamais des contrôles du panneau de préparation.
+    if (event.code === 'Tab' && !isFormControl(event.target)) event.preventDefault();
     if (event.repeat) return;
     this.state.keysDown.add(event.code);
   };
@@ -72,4 +72,10 @@ export class DomInputAdapter {
     this.state.keysDown.clear();
     this.state.buttonsDown.clear();
   }
+}
+
+function isFormControl(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement && target.closest('input, select, textarea, button') !== null
+  );
 }
