@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MapDefinitionSchema, TilesetDefinitionSchema } from '../definitions';
+import type { MapDocument } from '../definitions';
+import { TilesetDefinitionSchema } from '../definitions';
 import { LoadedMap } from './loadedMap';
 
 const tileset = TilesetDefinitionSchema.parse({
@@ -11,20 +12,31 @@ const tileset = TilesetDefinitionSchema.parse({
     '2': { name: 'water', speedMultiplier: 0.5, tags: ['water'], color: '#222222' },
   },
 });
-const map = MapDefinitionSchema.parse({
+const map: MapDocument = {
+  version: 1,
   id: 'test',
   name: 'Test',
   tileset: 'test',
   width: 4,
   height: 3,
-  legend: { '.': 0, '#': 1, '~': 2 },
-  layers: { ground: ['....', '.~~.', '....'], objects: ['####', '#  #', '####'] },
+  layers: {
+    ground: [
+      [0, 0, 0, 0],
+      [0, 2, 2, 0],
+      [0, 0, 0, 0],
+    ],
+    objects: [
+      [1, 1, 1, 1],
+      [1, null, null, 1],
+      [1, 1, 1, 1],
+    ],
+  },
   colliders: [{ type: 'circle', x: 32, y: 24, radius: 4 }],
-  spawns: [{ x: 24, y: 24, team: 0 }],
-});
+  spawns: [{ x: 1, y: 1, team: 0 }],
+};
 
 describe('LoadedMap', () => {
-  const loaded = LoadedMap.fromDefinitions(map, tileset);
+  const loaded = LoadedMap.fromDocument(map, tileset);
 
   it('exposes dimensions in tiles and units', () => {
     expect(loaded.widthInUnits).toBe(64);
@@ -59,13 +71,14 @@ describe('LoadedMap', () => {
   });
 
   it('rejects a tileset that does not match the map', () => {
-    expect(() => LoadedMap.fromDefinitions({ ...map, tileset: 'other' }, tileset)).toThrow(
-      /tileset/,
-    );
+    expect(() => LoadedMap.fromDocument({ ...map, tileset: 'other' }, tileset)).toThrow(/tileset/);
   });
 
   it('rejects a tile id missing from the tileset', () => {
-    const broken = { ...map, legend: { ...map.legend, '.': 7 } };
-    expect(() => LoadedMap.fromDefinitions(broken, tileset)).toThrow(/tile/);
+    const broken: MapDocument = {
+      ...map,
+      layers: { ...map.layers, ground: map.layers.ground.map((row) => row.map(() => 7)) },
+    };
+    expect(() => LoadedMap.fromDocument(broken, tileset)).toThrow(/tile/);
   });
 });

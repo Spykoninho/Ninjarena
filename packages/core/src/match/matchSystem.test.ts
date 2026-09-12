@@ -101,7 +101,7 @@ describe('match rules', () => {
       expect(sim.world.match.phase).toBe('COUNTDOWN');
     }
     expect(a.velocity).toEqual({ x: 0, y: 0 });
-    expect(a.position).toEqual({ x: 48, y: 120 });
+    expect(a.position).toEqual({ x: 56, y: 120 });
 
     // Tick 30: la manche 1 s'ouvre et le gameplay reprend.
     expect(sim.step({})).toContainEqual(
@@ -190,14 +190,14 @@ describe('match rules', () => {
     const a = addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
     const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     const mate = addTestPlayer(sim, { id: 'mate', teamId: 'team-0', characterId: 'ninja' });
-    expect(a.position).toEqual({ x: 48, y: 120 });
-    expect(b.position).toEqual({ x: 432, y: 120 });
-    expect(mate.position).toEqual({ x: 48, y: 120 }); // une seule base par équipe: on y revient
+    expect(a.position).toEqual({ x: 56, y: 120 });
+    expect(b.position).toEqual({ x: 440, y: 120 });
+    expect(mate.position).toEqual({ x: 56, y: 120 }); // une seule base par équipe: on y revient
 
     const ffa = createTestSimulation({ matchConfig: { mode: 'ffa', playersPerTeam: 1 } });
     const x = addTestPlayer(ffa, { id: 'x', teamId: 'x', characterId: 'ninja' });
     const y = addTestPlayer(ffa, { id: 'y', teamId: 'y', characterId: 'ninja' });
-    expect(x.position).toEqual({ x: 240, y: 40 });
-    expect(y.position).toEqual({ x: 240, y: 200 });
+    expect(x.position).toEqual({ x: 248, y: 40 });
+    expect(y.position).toEqual({ x: 248, y: 200 });
   });
 });

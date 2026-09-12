@@ -6,6 +6,7 @@ export const TileTypeSchema = z.object({
   speedMultiplier: z.number().positive().default(1),
   tags: z.array(z.string()).default([]),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  layer: z.enum(['ground', 'objects']).default('ground'),
 });
 
 export const TilesetDefinitionSchema = z.object({

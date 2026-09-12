@@ -1,7 +1,7 @@
 import type { AABB, Shape } from '../collision';
 import { SpatialGrid, mergeSolidTiles, shapeBounds } from '../collision';
-import type { MapDefinition, ShapeDefinition, TileType, TilesetDefinition } from '../definitions';
-import { EMPTY_TILE_CHAR } from '../definitions';
+import type { MapDocument, ShapeDefinition, TileType, TilesetDefinition } from '../definitions';
+import { spawnWorldPosition } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 
 export interface TerrainInfo {
@@ -64,12 +64,12 @@ export class LoadedMap {
     for (const collider of this.colliders) this.broadphase.insert(collider, shapeBounds(collider));
   }
 
-  static fromDefinitions(map: MapDefinition, tileset: TilesetDefinition): LoadedMap {
-    if (map.tileset !== tileset.id) {
-      throw new Error(`map "${map.id}" expects tileset "${map.tileset}" but got "${tileset.id}"`);
+  static fromDocument(doc: MapDocument, tileset: TilesetDefinition): LoadedMap {
+    if (doc.tileset !== tileset.id) {
+      throw new Error(`map "${doc.id}" expects tileset "${doc.tileset}" but got "${tileset.id}"`);
     }
-    const groundTiles = readLayer(map, map.layers.ground, tileset);
-    const objectTiles = readLayer(map, map.layers.objects, tileset);
+    const groundTiles = readLayer(doc, doc.layers.ground, tileset);
+    const objectTiles = readLayer(doc, doc.layers.objects, tileset);
     const terrain: TerrainInfo[] = [];
     for (let i = 0; i < groundTiles.length; i++) {
       terrain.push(
@@ -78,21 +78,24 @@ export class LoadedMap {
     }
     const colliders: Shape[] = mergeSolidTiles(
       terrain.map((info) => info.solid),
-      map.width,
-      map.height,
+      doc.width,
+      doc.height,
       tileset.tileSize,
     );
-    for (const collider of map.colliders) colliders.push(toShape(collider));
+    for (const collider of doc.colliders) colliders.push(toShape(collider));
     return new LoadedMap({
-      id: map.id,
+      id: doc.id,
       tileSize: tileset.tileSize,
-      widthInTiles: map.width,
-      heightInTiles: map.height,
+      widthInTiles: doc.width,
+      heightInTiles: doc.height,
       groundTiles,
       objectTiles,
       terrain,
       colliders,
-      spawns: map.spawns.map((spawn) => ({ x: spawn.x, y: spawn.y, team: spawn.team })),
+      spawns: doc.spawns.map((spawn) => ({
+        ...spawnWorldPosition(spawn, tileset.tileSize),
+        team: spawn.team,
+      })),
     });
   }
 
@@ -133,28 +136,22 @@ export class LoadedMap {
 }
 
 function readLayer(
-  map: MapDefinition,
-  rows: readonly string[],
+  doc: MapDocument,
+  rows: readonly (number | null)[][],
   tileset: TilesetDefinition,
 ): number[] {
   const tiles: number[] = [];
-  for (let ty = 0; ty < map.height; ty++) {
-    const row = rows[ty] ?? '';
-    for (let tx = 0; tx < map.width; tx++) {
-      const char = row[tx];
-      if (char === undefined || char === EMPTY_TILE_CHAR) {
+  for (let ty = 0; ty < doc.height; ty++) {
+    const row = rows[ty] ?? [];
+    for (let tx = 0; tx < doc.width; tx++) {
+      const id = row[tx] ?? null;
+      if (id === null) {
         tiles.push(EMPTY_TILE_ID);
         continue;
       }
-      const id = map.legend[char];
-      if (id === undefined) {
-        throw new Error(
-          `map "${map.id}" uses character "${char}" which is missing from the legend`,
-        );
-      }
       if (tileset.tiles[String(id)] === undefined) {
         throw new Error(
-          `map "${map.id}" uses tile id ${id} which is missing from tileset "${tileset.id}"`,
+          `map "${doc.id}" uses tile id ${id} which is missing from tileset "${tileset.id}"`,
         );
       }
       tiles.push(id);

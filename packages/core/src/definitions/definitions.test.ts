@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AbilityDefinitionSchema } from './ability';
-import { MapDefinitionSchema } from './map';
+import { migrateMapDocument, spawnWorldPosition } from './mapDocument';
 import { MatchConfigSchema } from './matchConfig';
 
 describe('AbilityDefinitionSchema', () => {
@@ -82,45 +82,57 @@ describe('AbilityDefinitionSchema', () => {
   });
 });
 
-describe('MapDefinitionSchema', () => {
-  const base = {
-    id: 'm',
-    name: 'm',
+describe('MapDocument', () => {
+  const smallMap = (): unknown => ({
+    version: 1,
+    id: 'tiny',
+    name: 'Tiny',
     tileset: 'default',
-    width: 3,
-    height: 2,
-    legend: { '.': 0, '#': 1 },
-    layers: { ground: ['...', '...'], objects: ['# #', '   '] },
-    spawns: [{ x: 8, y: 8 }],
-  };
-
-  it('accepts ASCII layers matching the declared size', () => {
-    expect(MapDefinitionSchema.safeParse(base).success).toBe(true);
+    width: 8,
+    height: 8,
+    layers: {
+      ground: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 0)),
+      objects: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => null)),
+    },
+    spawns: [
+      { x: 1, y: 1 },
+      { x: 6, y: 6, team: 1 },
+    ],
   });
 
-  it('rejects rows of the wrong width and characters missing from the legend', () => {
-    expect(
-      MapDefinitionSchema.safeParse({
-        ...base,
-        layers: { ground: ['....', '...'], objects: base.layers.objects },
-      }).success,
-    ).toBe(false);
-    expect(
-      MapDefinitionSchema.safeParse({
-        ...base,
-        layers: { ground: ['..?', '...'], objects: base.layers.objects },
-      }).success,
-    ).toBe(false);
+  it('parses a v1 document and defaults colliders to an empty list', () => {
+    const doc = migrateMapDocument(smallMap());
+    expect(doc.colliders).toEqual([]);
+    expect(doc.spawns[1]).toEqual({ x: 6, y: 6, team: 1 });
   });
 
-  it('rejects the empty character in the ground layer even when the legend declares it', () => {
-    expect(
-      MapDefinitionSchema.safeParse({
-        ...base,
-        legend: { ...base.legend, ' ': 2 },
-        layers: { ground: ['. .', '...'], objects: base.layers.objects },
-      }).success,
-    ).toBe(false);
+  it('rejects a ground row of the wrong width', () => {
+    const raw = smallMap() as { layers: { ground: number[][] } };
+    raw.layers.ground[2] = [0, 0, 0];
+    expect(() => migrateMapDocument(raw)).toThrow(/row 2/);
+  });
+
+  it('rejects a null ground tile but accepts a null object tile', () => {
+    const raw = smallMap() as { layers: { ground: (number | null)[][] } };
+    raw.layers.ground[0]![0] = null;
+    expect(() => migrateMapDocument(raw)).toThrow(/ground/);
+  });
+
+  it('rejects an unknown format version with a clear message', () => {
+    expect(() => migrateMapDocument({ ...(smallMap() as object), version: 7 })).toThrow(
+      'unsupported map format version 7',
+    );
+  });
+
+  it('rejects sizes outside 8..128 and more than 64 spawns', () => {
+    expect(() => migrateMapDocument({ ...(smallMap() as object), width: 129 })).toThrow();
+    const raw = smallMap() as { spawns: unknown[] };
+    raw.spawns = Array.from({ length: 65 }, (_, i) => ({ x: i % 8, y: Math.floor(i / 8) }));
+    expect(() => migrateMapDocument(raw)).toThrow();
+  });
+
+  it('places a spawn at the centre of its tile', () => {
+    expect(spawnWorldPosition({ x: 2, y: 3 }, 16)).toEqual({ x: 40, y: 56 });
   });
 });
 
