@@ -4,6 +4,8 @@
   --hud-text: #e8e8f0;
   --hud-health: #6bd46b;
   --hud-chakra: #4aa3ff;
+  --hud-shield: #7fe0c8;
+  --hud-cooldown: #ffb05a;
 }
 
 * {
@@ -57,8 +59,26 @@ body {
   letter-spacing: 0.08em;
 }
 
+.hud-timer {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
 .hud-status {
   opacity: 0.7;
+}
+
+.hud-shield {
+  color: var(--hud-shield);
+  font-size: 11px;
+}
+
+.hud-build {
+  font-size: 10px;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
 }
 
 .hud-panel {
@@ -140,6 +160,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.hud-chip-cost {
+  position: relative;
+  font-size: 9px;
+  color: var(--hud-chakra);
+}
+
 .hud-chip-timer {
   position: relative;
   font-size: 10px;
@@ -148,7 +174,7 @@ body {
 
 .hud-chip.is-cooling .hud-chip-timer {
   opacity: 1;
-  color: #ffb05a;
+  color: var(--hud-cooldown);
 }
 
 #setup {

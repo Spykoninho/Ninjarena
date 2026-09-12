@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameSimulation } from '@ninjarena/core';
-import type { ProjectileState, WorldState } from '@ninjarena/core';
+import type { ObstacleState, PendingEffect, ProjectileState, WorldState } from '@ninjarena/core';
 import { loadContent, loadMap } from '@ninjarena/content';
 import { SnapshotInterpolator } from './snapshotInterpolator';
 
@@ -35,6 +35,37 @@ const projectileAt = (id: string, x: number): ProjectileState => ({
   expiresAt: 100,
   visual: { color: '#d0d0d0', size: 4, trail: false },
   source: { abilityId: 'shuriken', path: '0' },
+});
+
+const pendingAt = (id: string, x: number): PendingEffect => ({
+  id,
+  ownerId: 'a',
+  teamId: 'team-0',
+  position: { x, y: 0 },
+  direction: { x: 1, y: 0 },
+  createdAt: 0,
+  fireAt: 36,
+  source: { abilityId: 'seismic-slam', path: '0' },
+  radius: 40,
+  visual: { color: '#c9a26b', size: 40, trail: false },
+});
+
+const obstacleAt = (id: string, x: number): ObstacleState => ({
+  id,
+  ownerId: 'a',
+  teamId: 'team-0',
+  shape: {
+    type: 'polygon',
+    points: [
+      { x, y: 0 },
+      { x: x + 8, y: 0 },
+      { x: x + 8, y: 48 },
+      { x, y: 48 },
+    ],
+  },
+  expiresAt: 240,
+  visual: { color: '#8a6a4b', size: 8, trail: false },
+  source: { abilityId: 'earth-wall', path: '0' },
 });
 
 describe('SnapshotInterpolator', () => {
@@ -137,6 +168,26 @@ describe('SnapshotInterpolator', () => {
     const sampled = interpolator.sample(1)!;
     expect(sampled.players['a']!.health).toBe(80);
     expect(sampled.players['a']!.renderPosition.x).toBeCloseTo(110);
+  });
+
+  it('reads pending zones and obstacles from the newer snapshot', () => {
+    const sim = makeSim();
+    const from = worldAt(sim, 0, 100);
+    from.pending['z1'] = pendingAt('z1', 10);
+    from.obstacles['o1'] = obstacleAt('o1', 0);
+    const to = worldAt(sim, 2, 120);
+    to.pending['z1'] = pendingAt('z1', 10);
+    to.pending['z2'] = pendingAt('z2', 50);
+    to.obstacles['o2'] = obstacleAt('o2', 30);
+    const interpolator = new SnapshotInterpolator();
+    interpolator.push(from);
+    interpolator.push(to);
+    const sampled = interpolator.sample(1)!;
+    // Zones et murs sont statiques: le rendu prend l'état le plus récent, sans interpolation.
+    expect(Object.keys(sampled.pending).sort()).toEqual(['z1', 'z2']);
+    expect(sampled.pending['z2']!.position).toEqual({ x: 50, y: 0 });
+    expect(Object.keys(sampled.obstacles)).toEqual(['o2']);
+    expect(sampled.obstacles['o2']!.shape.points[0]).toEqual({ x: 30, y: 0 });
   });
 
   it('has nothing to sample before the first snapshot', () => {

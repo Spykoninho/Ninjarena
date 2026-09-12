@@ -40,6 +40,7 @@ type WelcomeMessage = Extract<ServerMessage, { type: 'welcome' }>;
 type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
 
 const MAX_FRAME_MS = 250;
+const MS_PER_SECOND = 1000;
 const PING_INTERVAL_MS = 1000;
 const DISCONNECTED = 'disconnected';
 
@@ -240,9 +241,10 @@ export class ClientGame {
   }
 
   private renderFrame(alpha: number): void {
+    const simulation = this.simulation;
     const localPlayerId = this.localPlayerId;
-    if (localPlayerId === null) return;
-    const local = this.localPlayer();
+    if (simulation === null || localPlayerId === null) return;
+    const local = simulation.world.players[localPlayerId];
     if (local !== undefined) {
       this.cameraPosition = lerp(
         this.previousLocalPosition ?? local.position,
@@ -253,10 +255,15 @@ export class ClientGame {
     this.deps.renderer.render(
       buildRenderFrame({
         localPlayerId,
-        localPlayer: local,
-        localPosition: this.cameraPosition,
+        predicted: simulation.world,
+        localRenderPosition: this.cameraPosition,
+        alpha,
+        dt: this.tickMs / MS_PER_SECOND,
         remotes: this.sampleRemotes(),
+        abilities: this.deps.content.abilities,
+        tick: simulation.world.tick,
         isFfa: this.isFfa,
+        cameraTarget: this.cameraPosition,
       }),
     );
   }

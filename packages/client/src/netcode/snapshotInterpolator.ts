@@ -1,6 +1,8 @@
 import { lerp } from '@ninjarena/core';
 import type {
   EntityId,
+  ObstacleState,
+  PendingEffect,
   PlayerId,
   PlayerState,
   ProjectileState,
@@ -15,6 +17,8 @@ export interface EntityView {
 export interface InterpolatedWorld {
   players: Record<PlayerId, PlayerState & { renderPosition: Vec2 }>;
   projectiles: Record<EntityId, ProjectileState & { renderPosition: Vec2 }>;
+  pending: Record<EntityId, PendingEffect>;
+  obstacles: Record<EntityId, ObstacleState>;
 }
 
 const DEFAULT_MAX_SNAPSHOTS = 32;
@@ -63,6 +67,9 @@ function blendWorlds(from: WorldState, to: WorldState, t: number): InterpolatedW
   return {
     players: blendEntities(from.players, to.players, t),
     projectiles: blendEntities(from.projectiles, to.projectiles, t),
+    // Zones et murs ne bougent pas: seul l'état le plus récent compte, sans interpolation.
+    pending: to.pending,
+    obstacles: to.obstacles,
   };
 }
 
