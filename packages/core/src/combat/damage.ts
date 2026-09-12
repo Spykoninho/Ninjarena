@@ -2,6 +2,7 @@ import type { DamageScaling } from '../definitions';
 import { setPhase } from '../player/phaseTransitions';
 import { isDamageable } from '../player/rules';
 import type { PlayerState } from '../player/state';
+import { getStatus } from '../player/status';
 import type { SimulationContext } from '../simulation/context';
 import type { PlayerId } from '../simulation/ids';
 
@@ -17,7 +18,9 @@ export function applyDamage(
   meta?: DamageMeta,
 ): number {
   if (!isDamageable(target) || amount <= 0) return 0;
-  const dealt = Math.min(target.health, amount);
+  const remaining = absorbWithShield(ctx, target, amount);
+  if (remaining <= 0) return 0;
+  const dealt = Math.min(target.health, remaining);
   target.health -= dealt;
   ctx.events.push({
     type: 'damageDealt',
@@ -55,4 +58,24 @@ export function canAffect(
   if (source === undefined) return true;
   if (source.id === target.id) return false;
   return ctx.matchConfig.friendlyFire || source.teamId !== target.teamId;
+}
+
+function absorbWithShield(ctx: SimulationContext, target: PlayerState, amount: number): number {
+  const shield = getStatus(target, 'SHIELDED');
+  const magnitude = shield?.magnitude ?? 0;
+  if (shield === undefined || magnitude <= 0) return amount;
+  const absorbed = Math.min(magnitude, amount);
+  shield.magnitude = magnitude - absorbed;
+  ctx.events.push({
+    type: 'shieldAbsorbed',
+    tick: ctx.now,
+    playerId: target.id,
+    amount: absorbed,
+    remaining: shield.magnitude,
+  });
+  if (shield.magnitude <= 0) {
+    target.statuses = target.statuses.filter((status) => status.type !== 'SHIELDED');
+    ctx.events.push({ type: 'shieldBroken', tick: ctx.now, playerId: target.id });
+  }
+  return amount - absorbed;
 }

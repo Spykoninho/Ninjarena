@@ -158,6 +158,43 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
       },
     ],
   }),
+  AbilityDefinitionSchema.parse({
+    id: 'spark-dash',
+    name: 'Spark Dash',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'dash',
+        distance: 64,
+        durationMs: 100,
+        onContact: [{ type: 'damage', amount: 10 }],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'blink',
+    name: 'Blink',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [{ type: 'teleport', distance: 80 }],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'chakra-shield-test',
+    name: 'Chakra Shield',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [{ type: 'shield', amount: 25, durationMs: 2000 }],
+  }),
 ];
 
 const RANGE = { min: 0, max: 5 };
@@ -226,9 +263,9 @@ export function createTestSimulation(overrides?: {
   });
 }
 
-// Les tests d'abilités veulent les quatre slots: 0 slash, 1 dash, 2 shuriken, 3 seal.
+// Les tests d'abilités veulent les cinq slots: 0 slash, 1 dash, 2 shuriken, 3 seal, 4 blink.
 export function addTestPlayer(sim: GameSimulation, params: AddPlayerParams): PlayerState {
-  return sim.addPlayer({ techniqueIds: ['shuriken', 'seal'], ...params });
+  return sim.addPlayer({ techniqueIds: ['shuriken', 'seal', 'blink'], ...params });
 }
 
 export function contextOf(sim: GameSimulation): SimulationContext {

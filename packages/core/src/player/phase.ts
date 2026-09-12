@@ -1,5 +1,11 @@
+import type { EffectRef } from '../abilities/effectRef';
 import type { Vec2 } from '../math/vec2';
-import type { Tick } from '../simulation/ids';
+import type { PlayerId, Tick } from '../simulation/ids';
+
+export interface DashContact {
+  source: EffectRef;
+  hitPlayerIds: PlayerId[];
+}
 
 export type CombatPhaseState =
   | { kind: 'NORMAL' }
@@ -13,7 +19,7 @@ export type CombatPhaseState =
       endsAt: Tick;
       activated: boolean;
     }
-  | { kind: 'DASHING'; direction: Vec2; speed: number; endsAt: Tick }
+  | { kind: 'DASHING'; direction: Vec2; speed: number; endsAt: Tick; contact?: DashContact }
   | { kind: 'STUNNED'; endsAt: Tick }
   | { kind: 'KNOCKBACK'; velocity: Vec2; endsAt: Tick }
   | { kind: 'DEAD'; diedAt: Tick };

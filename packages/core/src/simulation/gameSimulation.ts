@@ -23,6 +23,7 @@ import type { PlayerId, TeamId } from './ids';
 import type { PlayerInput, PlayerInputs } from './input';
 import { neutralInput, sanitizePlayerInput } from './input';
 import { abilitySystem } from './systems/abilitySystem';
+import { dashContactSystem } from './systems/dashContactSystem';
 import { movementSystem } from './systems/movementSystem';
 import { playerStateSystem } from './systems/playerStateSystem';
 import { projectileSystem } from './systems/projectileSystem';
@@ -127,6 +128,7 @@ export class GameSimulation {
     playerStateSystem(ctx);
     abilitySystem(ctx, effective);
     movementSystem(ctx, effective);
+    dashContactSystem(ctx);
     projectileSystem(ctx);
     matchPostStep(ctx);
     this.worldState.tick += 1;

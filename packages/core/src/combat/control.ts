@@ -33,9 +33,19 @@ export function applyStatusEffect(
   durationMs: number,
   magnitude?: number,
 ): void {
+  applyStatusEffectTicks(ctx, target, type, Math.max(1, ctx.ticks(durationMs)), magnitude);
+}
+
+export function applyStatusEffectTicks(
+  ctx: SimulationContext,
+  target: PlayerState,
+  type: StatusEffectType,
+  ticks: number,
+  magnitude?: number,
+): void {
   // Un mort n'a plus de statuts: playerStateSystem ne les ferait jamais expirer.
   if (!isAlive(target)) return;
-  const expiresAt = endOf(ctx, durationMs);
+  const expiresAt = ctx.now + Math.max(1, Math.round(ticks));
   upsertStatus(
     target,
     magnitude === undefined ? { type, expiresAt } : { type, expiresAt, magnitude },

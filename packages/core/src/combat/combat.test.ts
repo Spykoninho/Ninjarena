@@ -46,6 +46,18 @@ describe('applyDamage', () => {
     });
   });
 
+  it('spends a shield before health and breaks it when empty', () => {
+    const { p, ctx } = setup();
+    applyStatusEffect(ctx, p, 'SHIELDED', 1000, 25);
+    expect(applyDamage(ctx, p, 10, 'p2')).toBe(0);
+    expect(p.health).toBe(100);
+    expect(ctx.events.at(-1)).toMatchObject({ type: 'shieldAbsorbed', amount: 10, remaining: 15 });
+    expect(applyDamage(ctx, p, 20, 'p2')).toBe(5);
+    expect(p.health).toBe(95);
+    expect(p.statuses.some((s) => s.type === 'SHIELDED')).toBe(false);
+    expect(ctx.events.some((e) => e.type === 'shieldBroken')).toBe(true);
+  });
+
   it('ignores INVULNERABLE targets', () => {
     const { p, ctx } = setup();
     applyStatusEffect(ctx, p, 'INVULNERABLE', 1000);

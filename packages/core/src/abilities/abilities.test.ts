@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isDamageable } from '../player/rules';
 import { abilityMask, neutralInput } from '../simulation/input';
 import { addTestPlayer, createTestSimulation } from '../testing/fixtures';
 
@@ -8,7 +9,7 @@ const press = (slot: number, aim = { x: 1, y: 0 }) => ({
   abilityHeld: abilityMask([slot]),
 });
 const idle = (aim = { x: 1, y: 0 }) => ({ ...neutralInput(), aim });
-// slots: 0 slash, 1 dash, 2 shuriken, 3 seal
+// slots: 0 slash, 1 dash, 2 shuriken, 3 seal, 4 blink
 
 describe('ability validation', () => {
   it('starts a cast on press, deducts chakra and starts the cooldown', () => {
@@ -163,5 +164,20 @@ describe('ability validation', () => {
     sim.step({ a: press(0) });
     for (let i = 0; i < 8; i++) sim.step({ a: idle() });
     expect(mate.health).toBe(100);
+  });
+
+  it('leaves a shielded player damageable', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    const p = addTestPlayer(sim, {
+      id: 'p1',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+      techniqueIds: ['chakra-shield-test', 'seal', 'blink'],
+    });
+    sim.step({ p1: press(2) });
+    expect(p.statuses.some((s) => s.type === 'SHIELDED')).toBe(true);
+    expect(isDamageable(p)).toBe(true);
   });
 });
