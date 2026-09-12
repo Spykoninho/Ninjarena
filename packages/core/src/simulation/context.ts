@@ -1,4 +1,9 @@
-import type { AbilityDefinition, CharacterDefinition, MatchConfig } from '../definitions';
+import type {
+  AbilityDefinition,
+  CharacterDefinition,
+  MatchConfig,
+  StatRulesDefinition,
+} from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
 import type { SimulationConfig } from '../time/simulationConfig';
 import { msToTicks, secondsPerTick } from '../time/simulationConfig';
@@ -14,6 +19,7 @@ export interface SimulationContext {
   readonly characters: DefinitionCatalog<CharacterDefinition>;
   readonly config: SimulationConfig;
   readonly matchConfig: MatchConfig;
+  readonly rules: StatRulesDefinition;
   readonly events: WorldEvent[];
   readonly now: Tick;
   readonly dt: number;
@@ -31,6 +37,7 @@ export function createSimulationContext(
     characters: deps.characters,
     config,
     matchConfig: deps.matchConfig,
+    rules: deps.rules,
     events: [],
     now: deps.world.tick,
     dt: secondsPerTick(config),

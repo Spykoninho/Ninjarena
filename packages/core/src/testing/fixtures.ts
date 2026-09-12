@@ -1,15 +1,23 @@
-import type { AbilityDefinition, CharacterDefinition, MatchConfig } from '../definitions';
+import type {
+  AbilityDefinition,
+  CharacterDefinition,
+  MatchConfig,
+  StatRulesDefinition,
+} from '../definitions';
 import {
   AbilityDefinitionSchema,
   CharacterDefinitionSchema,
   MapDefinitionSchema,
   MatchConfigSchema,
+  StatRulesDefinitionSchema,
   TilesetDefinitionSchema,
 } from '../definitions';
 import { LoadedMap } from '../map/loadedMap';
+import type { PlayerState } from '../player/state';
 import { DefinitionCatalog } from '../simulation/catalog';
 import type { SimulationContext } from '../simulation/context';
 import { createSimulationContext } from '../simulation/context';
+import type { AddPlayerParams } from '../simulation/gameSimulation';
 import { GameSimulation } from '../simulation/gameSimulation';
 
 const TILESET = TilesetDefinitionSchema.parse({
@@ -146,17 +154,43 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
   }),
 ];
 
+const RANGE = { min: 0, max: 5 };
+
+export const TEST_RULES: StatRulesDefinition = StatRulesDefinitionSchema.parse({
+  defaultPointBudget: 10,
+  attributes: {
+    vitality: RANGE,
+    strength: RANGE,
+    power: RANGE,
+    speed: RANGE,
+    maxChakra: RANGE,
+    chakraRegen: RANGE,
+    defense: RANGE,
+  },
+  coefficients: {
+    healthPerVitality: 12,
+    physicalDamagePerStrength: 0.06,
+    techniqueDamagePerPower: 0.06,
+    moveSpeedPerSpeed: 0.03,
+    chakraPerPoint: 10,
+    chakraRegenPerPoint: 1,
+    defensePerPoint: 8,
+  },
+  techniqueSlots: 3,
+});
+
 export const NINJA: CharacterDefinition = CharacterDefinitionSchema.parse({
   id: 'ninja',
   name: 'Ninja',
-  stats: {
+  baseStats: {
     maxHealth: 100,
     maxChakra: 100,
-    moveSpeed: 140,
     chakraRegenPerSecond: 8,
+    moveSpeed: 140,
     colliderRadius: 5,
   },
-  abilities: ['shuriken', 'slash', 'dash', 'seal'],
+  basicAttackId: 'slash',
+  dashId: 'dash',
 });
 
 export const DUEL_CONFIG: MatchConfig = MatchConfigSchema.parse({
@@ -182,7 +216,13 @@ export function createTestSimulation(overrides?: {
     abilities: ABILITY_CATALOG,
     characters: CHARACTER_CATALOG,
     matchConfig: MatchConfigSchema.parse({ ...DUEL_CONFIG, ...overrides?.matchConfig }),
+    rules: TEST_RULES,
   });
+}
+
+// Les tests d'abilités veulent les quatre slots: 0 slash, 1 dash, 2 shuriken, 3 seal.
+export function addTestPlayer(sim: GameSimulation, params: AddPlayerParams): PlayerState {
+  return sim.addPlayer({ techniqueIds: ['shuriken', 'seal'], ...params });
 }
 
 export function contextOf(sim: GameSimulation): SimulationContext {
@@ -193,5 +233,6 @@ export function contextOf(sim: GameSimulation): SimulationContext {
     characters: CHARACTER_CATALOG,
     config: sim.config,
     matchConfig: sim.matchConfig,
+    rules: sim.rules,
   });
 }

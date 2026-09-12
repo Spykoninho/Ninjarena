@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { spawnProjectile } from '../../projectile/state';
 import { abilityMask, neutralInput } from '../input';
-import { contextOf, createTestSimulation } from '../../testing/fixtures';
+import { addTestPlayer, contextOf, createTestSimulation } from '../../testing/fixtures';
 import { projectileSystem } from './projectileSystem';
 
 const shoot = { ...neutralInput(), aim: { x: 1, y: 0 }, abilityHeld: abilityMask([3]) }; // seal: aucun temps d'armement
@@ -11,8 +11,13 @@ describe('projectileSystem', () => {
   it('hits an enemy in its path, applies hit effects and disappears', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 60, y: 200 } });
-    const target = sim.addPlayer({
+    addTestPlayer(sim, {
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 60, y: 200 },
+    });
+    const target = addTestPlayer(sim, {
       id: 'b',
       teamId: 'team-1',
       characterId: 'ninja',
@@ -29,7 +34,7 @@ describe('projectileSystem', () => {
   it('is destroyed by walls', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({
+    addTestPlayer(sim, {
       id: 'a',
       teamId: 'team-0',
       characterId: 'ninja',
@@ -48,7 +53,12 @@ describe('projectileSystem', () => {
     const sim = createTestSimulation();
     sim.startMatch();
     // La rangée 2 est libre de x=16 à x=464: 300 unités/s pendant 1000 ms n'atteint aucun mur.
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 40, y: 40 } });
+    addTestPlayer(sim, {
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 40, y: 40 },
+    });
     sim.step({ a: shoot });
     let reason: string | undefined;
     for (let i = 0; i < 70 && !reason; i++) {
@@ -62,14 +72,19 @@ describe('projectileSystem', () => {
   it('keeps the friendly-fire rules after its owner leaves the world', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja', position: { x: 60, y: 200 } });
-    const mate = sim.addPlayer({
+    addTestPlayer(sim, {
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 60, y: 200 },
+    });
+    const mate = addTestPlayer(sim, {
       id: 'b',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 120, y: 200 },
     });
-    const enemy = sim.addPlayer({
+    const enemy = addTestPlayer(sim, {
       id: 'c',
       teamId: 'team-1',
       characterId: 'ninja',
@@ -87,19 +102,19 @@ describe('projectileSystem', () => {
   it('hits the nearest player in reach rather than the first one added', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const owner = sim.addPlayer({
+    const owner = addTestPlayer(sim, {
       id: 'a',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    const far = sim.addPlayer({
+    const far = addTestPlayer(sim, {
       id: 'far',
       teamId: 'team-1',
       characterId: 'ninja',
       position: { x: 216, y: 200 },
     });
-    const near = sim.addPlayer({
+    const near = addTestPlayer(sim, {
       id: 'near',
       teamId: 'team-1',
       characterId: 'ninja',
@@ -123,7 +138,7 @@ describe('projectileSystem', () => {
   it('never hits its owner', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const a = sim.addPlayer({
+    const a = addTestPlayer(sim, {
       id: 'a',
       teamId: 'team-0',
       characterId: 'ninja',

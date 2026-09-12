@@ -1,10 +1,17 @@
-import type { AbilityDefinition, CharacterDefinition, MatchConfig } from '../definitions';
+import type {
+  AbilityDefinition,
+  CharacterDefinition,
+  MatchConfig,
+  StatRulesDefinition,
+} from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
 import { matchPostStep, matchPreStep, startMatch } from '../match/matchSystem';
 import { spawnPositionFor } from '../match/spawns';
 import type { Vec2 } from '../math/vec2';
 import type { PlayerState } from '../player/state';
 import { createPlayerState } from '../player/state';
+import type { Build } from '../stats/build';
+import { emptyBuild } from '../stats/build';
 import type { SimulationConfig } from '../time/simulationConfig';
 import { DEFAULT_SIMULATION_CONFIG } from '../time/simulationConfig';
 import type { DefinitionCatalog } from './catalog';
@@ -27,6 +34,7 @@ export interface GameSimulationOptions {
   abilities: DefinitionCatalog<AbilityDefinition>;
   characters: DefinitionCatalog<CharacterDefinition>;
   matchConfig: MatchConfig;
+  rules: StatRulesDefinition;
   config?: SimulationConfig;
 }
 
@@ -34,6 +42,8 @@ export interface AddPlayerParams {
   id: PlayerId;
   teamId: TeamId;
   characterId: string;
+  build?: Build;
+  techniqueIds?: readonly string[];
   position?: Vec2;
 }
 
@@ -44,6 +54,7 @@ export class GameSimulation {
   private readonly abilityCatalog: DefinitionCatalog<AbilityDefinition>;
   private readonly characterCatalog: DefinitionCatalog<CharacterDefinition>;
   private readonly match: MatchConfig;
+  private readonly statRules: StatRulesDefinition;
   private readonly simulationConfig: SimulationConfig;
 
   constructor(options: GameSimulationOptions) {
@@ -52,6 +63,7 @@ export class GameSimulation {
     this.abilityCatalog = options.abilities;
     this.characterCatalog = options.characters;
     this.match = options.matchConfig;
+    this.statRules = options.rules;
     this.simulationConfig = options.config ?? DEFAULT_SIMULATION_CONFIG;
   }
 
@@ -71,6 +83,10 @@ export class GameSimulation {
     return this.loadedMap;
   }
 
+  get rules(): StatRulesDefinition {
+    return this.statRules;
+  }
+
   addPlayer(params: AddPlayerParams): PlayerState {
     const character = this.characterCatalog.get(params.characterId);
     const player = createPlayerState({
@@ -78,6 +94,10 @@ export class GameSimulation {
       teamId: params.teamId,
       character,
       position: params.position ?? { x: 0, y: 0 },
+      build: params.build ?? emptyBuild(),
+      // L'ordre des slots est figé: attaque de base, esquive, puis les techniques choisies.
+      abilityIds: [character.basicAttackId, character.dashId, ...(params.techniqueIds ?? [])],
+      rules: this.statRules,
     });
     if (params.position === undefined) {
       player.position = spawnPositionFor(this.loadedMap, this.match, player, this.worldState);
@@ -129,6 +149,7 @@ export class GameSimulation {
       characters: this.characterCatalog,
       config: this.simulationConfig,
       matchConfig: this.match,
+      rules: this.statRules,
     });
   }
 }

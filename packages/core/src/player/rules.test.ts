@@ -1,23 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { CharacterDefinitionSchema } from '../definitions';
+import { emptyBuild } from '../stats/build';
+import { NINJA, TEST_RULES } from '../testing/fixtures';
 import { controlsMovement, isDamageable, statusSpeedMultiplier } from './rules';
 import { createPlayerState } from './state';
 import { upsertStatus } from './status';
 
-const ninja = CharacterDefinitionSchema.parse({
-  id: 'ninja',
-  name: 'Ninja',
-  stats: {
-    maxHealth: 100,
-    maxChakra: 100,
-    moveSpeed: 140,
-    chakraRegenPerSecond: 8,
-    colliderRadius: 5,
-  },
-  abilities: ['shuriken'],
-});
 const player = () =>
-  createPlayerState({ id: 'p1', teamId: 't1', character: ninja, position: { x: 0, y: 0 } });
+  createPlayerState({
+    id: 'p1',
+    teamId: 't1',
+    character: NINJA,
+    position: { x: 0, y: 0 },
+    build: emptyBuild(),
+    abilityIds: ['shuriken'],
+    rules: TEST_RULES,
+  });
 
 describe('player rules', () => {
   it('ROOTED blocks movement without changing the phase', () => {

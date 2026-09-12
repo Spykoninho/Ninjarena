@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { abilityMask, neutralInput } from '../simulation/input';
-import { createTestSimulation } from '../testing/fixtures';
+import { addTestPlayer, createTestSimulation } from '../testing/fixtures';
 
 const press = (slot: number, aim = { x: 1, y: 0 }) => ({
   ...neutralInput(),
@@ -8,49 +8,49 @@ const press = (slot: number, aim = { x: 1, y: 0 }) => ({
   abilityHeld: abilityMask([slot]),
 });
 const idle = (aim = { x: 1, y: 0 }) => ({ ...neutralInput(), aim });
-// slots: 0 shuriken, 1 slash, 2 dash, 3 seal
+// slots: 0 slash, 1 dash, 2 shuriken, 3 seal
 
 describe('ability validation', () => {
   it('starts a cast on press, deducts chakra and starts the cooldown', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const p = sim.addPlayer({
+    const p = addTestPlayer(sim, {
       id: 'p1',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    sim.step({ p1: press(0) });
+    sim.step({ p1: press(2) });
     expect(p.phase.kind).toBe('CASTING');
     expect(p.chakra).toBe(90);
-    expect(p.abilities[0]!.readyAt).toBe(54); // 900 ms à 60 Hz
+    expect(p.abilities[2]!.readyAt).toBe(54); // 900 ms à 60 Hz
   });
 
   it('rejects a press while on cooldown, out of chakra, or busy', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const p = sim.addPlayer({
+    const p = addTestPlayer(sim, {
       id: 'p1',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    p.abilities[0]!.readyAt = 100;
-    let events = sim.step({ p1: press(0) });
+    p.abilities[2]!.readyAt = 100;
+    let events = sim.step({ p1: press(2) });
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'abilityRejected', reason: 'ON_COOLDOWN' }),
     );
-    p.abilities[0]!.readyAt = 0;
+    p.abilities[2]!.readyAt = 0;
     p.chakra = 5;
     events = sim.step({ p1: idle() }); // relâchement du bouton
-    events = sim.step({ p1: press(0) });
+    events = sim.step({ p1: press(2) });
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'abilityRejected', reason: 'NOT_ENOUGH_CHAKRA' }),
     );
     p.chakra = 100;
     p.phase = { kind: 'STUNNED', endsAt: 1000 };
     sim.step({ p1: idle() });
-    events = sim.step({ p1: press(0) });
+    events = sim.step({ p1: press(2) });
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'abilityRejected', reason: 'BUSY' }),
     );
@@ -59,7 +59,7 @@ describe('ability validation', () => {
   it('requires a new press: holding the button does not recast', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({
+    addTestPlayer(sim, {
       id: 'p1',
       teamId: 'team-0',
       characterId: 'ninja',
@@ -67,7 +67,7 @@ describe('ability validation', () => {
     });
     let casts = 0;
     for (let i = 0; i < 120; i++) {
-      for (const e of sim.step({ p1: press(0) })) if (e.type === 'abilityCast') casts++;
+      for (const e of sim.step({ p1: press(2) })) if (e.type === 'abilityCast') casts++;
     }
     expect(casts).toBe(1); // le cooldown s'achève au tick 54 mais le bouton n'a jamais été relâché
   });
@@ -75,13 +75,13 @@ describe('ability validation', () => {
   it('follows the timeline startup → activation → recovery → NORMAL', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const p = sim.addPlayer({
+    const p = addTestPlayer(sim, {
       id: 'p1',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    sim.step({ p1: press(0) }); // tick 0: incantation, activation au tick 6, fin au tick 15
+    sim.step({ p1: press(2) }); // tick 0: incantation, activation au tick 6, fin au tick 15
     for (let i = 1; i < 6; i++) sim.step({ p1: idle() });
     expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
     sim.step({ p1: idle() }); // tick 6
@@ -94,24 +94,24 @@ describe('ability validation', () => {
   it('dash moves the caster along the aim and is stopped by walls', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    const p = sim.addPlayer({
+    const p = addTestPlayer(sim, {
       id: 'p1',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 60, y: 200 },
     });
-    sim.step({ p1: press(2) });
+    sim.step({ p1: press(1) });
     for (let i = 0; i < 6; i++) sim.step({ p1: idle() });
     expect(p.position.x).toBeCloseTo(60 + 64, 1);
     expect(p.phase.kind).toBe('NORMAL');
 
-    const blocked = sim.addPlayer({
+    const blocked = addTestPlayer(sim, {
       id: 'p2',
       teamId: 'team-1',
       characterId: 'ninja',
       position: { x: 140, y: 100 },
     });
-    sim.step({ p2: press(2) });
+    sim.step({ p2: press(1) });
     for (let i = 0; i < 6; i++) sim.step({ p2: idle() });
     expect(blocked.position.x).toBeCloseTo(160 - 5, 1); // mur à x = 160
   });
@@ -119,25 +119,25 @@ describe('ability validation', () => {
   it('melee hits targets inside the arc and applies knockback', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({
+    addTestPlayer(sim, {
       id: 'a',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    const inFront = sim.addPlayer({
+    const inFront = addTestPlayer(sim, {
       id: 'b',
       teamId: 'team-1',
       characterId: 'ninja',
       position: { x: 220, y: 200 },
     });
-    const behind = sim.addPlayer({
+    const behind = addTestPlayer(sim, {
       id: 'c',
       teamId: 'team-1',
       characterId: 'ninja',
       position: { x: 180, y: 200 },
     });
-    sim.step({ a: press(1) }); // armement 100 ms = 6 ticks, activation pendant le tick 6
+    sim.step({ a: press(0) }); // armement 100 ms = 6 ticks, activation pendant le tick 6
     for (let i = 0; i < 8; i++) sim.step({ a: idle() });
     expect(inFront.health).toBe(70);
     expect(inFront.phase.kind).toBe('KNOCKBACK');
@@ -147,19 +147,19 @@ describe('ability validation', () => {
   it('does not damage teammates without friendly fire', () => {
     const sim = createTestSimulation();
     sim.startMatch();
-    sim.addPlayer({
+    addTestPlayer(sim, {
       id: 'a',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    const mate = sim.addPlayer({
+    const mate = addTestPlayer(sim, {
       id: 'b',
       teamId: 'team-0',
       characterId: 'ninja',
       position: { x: 220, y: 200 },
     });
-    sim.step({ a: press(1) });
+    sim.step({ a: press(0) });
     for (let i = 0; i < 8; i++) sim.step({ a: idle() });
     expect(mate.health).toBe(100);
   });

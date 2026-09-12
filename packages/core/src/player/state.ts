@@ -1,6 +1,8 @@
-import type { CharacterDefinition } from '../definitions';
+import type { CharacterDefinition, StatRulesDefinition } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import type { PlayerId, TeamId, Tick } from '../simulation/ids';
+import type { Build } from '../stats/build';
+import { computeStats } from '../stats/formulas';
 import type { CombatPhaseState } from './phase';
 import { normalPhase } from './phase';
 import type { StatusEffect } from './status';
@@ -8,9 +10,12 @@ import type { StatusEffect } from './status';
 export interface PlayerStats {
   maxHealth: number;
   maxChakra: number;
-  moveSpeed: number;
   chakraRegenPerSecond: number;
+  moveSpeed: number;
   colliderRadius: number;
+  physicalDamageMultiplier: number;
+  techniqueDamageMultiplier: number;
+  defense: number;
 }
 
 export interface AbilitySlot {
@@ -28,6 +33,7 @@ export interface PlayerState {
   health: number;
   chakra: number;
   stats: PlayerStats;
+  build: Build;
   phase: CombatPhaseState;
   statuses: StatusEffect[];
   abilities: AbilitySlot[];
@@ -39,12 +45,14 @@ export interface CreatePlayerParams {
   teamId: TeamId;
   character: CharacterDefinition;
   position: Vec2;
-  abilityIds?: readonly string[];
+  build: Build;
+  abilityIds: readonly string[];
+  rules: StatRulesDefinition;
 }
 
 export function createPlayerState(params: CreatePlayerParams): PlayerState {
-  const stats: PlayerStats = { ...params.character.stats };
-  const abilityIds = params.abilityIds ?? params.character.abilities;
+  const build: Build = { ...params.build };
+  const stats = computeStats(params.character.baseStats, build, params.rules);
   return {
     id: params.id,
     teamId: params.teamId,
@@ -55,9 +63,10 @@ export function createPlayerState(params: CreatePlayerParams): PlayerState {
     health: stats.maxHealth,
     chakra: stats.maxChakra,
     stats,
+    build,
     phase: normalPhase(),
     statuses: [],
-    abilities: abilityIds.map((abilityId) => ({ abilityId, readyAt: 0 })),
+    abilities: params.abilityIds.map((abilityId) => ({ abilityId, readyAt: 0 })),
     previousAbilityHeld: 0,
   };
 }

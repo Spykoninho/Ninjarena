@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestSimulation, contextOf } from '../testing/fixtures';
+import { addTestPlayer, createTestSimulation, contextOf } from '../testing/fixtures';
 import { applyDamage } from '../combat/damage';
 import { abilityMask, neutralInput } from '../simulation/input';
 import { pickTeamForNewPlayer } from './teams';
@@ -10,7 +10,7 @@ const moveRight = () => ({ ...neutralInput(), move: { x: 1, y: 0 } });
 describe('match rules', () => {
   it('freezes gameplay until the match starts', () => {
     const sim = duelWith();
-    const p = sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const p = addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
     sim.step({ a: { ...neutralInput(), move: { x: 1, y: 0 } } });
     expect(p.velocity).toEqual({ x: 0, y: 0 });
     sim.startMatch();
@@ -20,8 +20,8 @@ describe('match rules', () => {
 
   it('ends the round when one team remains and scores it', () => {
     const sim = duelWith();
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     sim.startMatch();
     sim.step({});
     applyDamage(contextOf(sim), b, 999, 'a');
@@ -34,8 +34,8 @@ describe('match rules', () => {
 
   it('respawns everyone for the next round', () => {
     const sim = duelWith({ roundsToWin: 2, roundEndDelayMs: 0, countdownMs: 0 });
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     sim.startMatch();
     sim.step({});
     applyDamage(contextOf(sim), b, 999, 'a');
@@ -49,8 +49,8 @@ describe('match rules', () => {
 
   it('ends the match when a team reaches roundsToWin', () => {
     const sim = duelWith({ roundsToWin: 1 });
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     sim.startMatch();
     sim.step({});
     applyDamage(contextOf(sim), b, 999, 'a');
@@ -63,8 +63,8 @@ describe('match rules', () => {
 
   it('declares a draw when the round timer expires', () => {
     const sim = duelWith({ roundDurationMs: 100 });
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     sim.startMatch();
     const all = [];
     for (let i = 0; i < 10; i++) all.push(...sim.step({}));
@@ -75,9 +75,9 @@ describe('match rules', () => {
     const sim = createTestSimulation({
       matchConfig: { id: 'ffa-3', mode: 'ffa', teamCount: 3, playersPerTeam: 1 },
     });
-    sim.addPlayer({ id: 'a', teamId: 'a', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'b', characterId: 'ninja' });
-    const c = sim.addPlayer({ id: 'c', teamId: 'c', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'a', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'b', characterId: 'ninja' });
+    const c = addTestPlayer(sim, { id: 'c', teamId: 'c', characterId: 'ninja' });
     sim.startMatch();
     sim.step({});
     applyDamage(contextOf(sim), b, 999, 'a');
@@ -90,8 +90,8 @@ describe('match rules', () => {
 
   it('holds the countdown and the round-end delay when they are not instant', () => {
     const sim = duelWith({ countdownMs: 500, roundEndDelayMs: 500 }); // 30 ticks chacun
-    const a = sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    const a = addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     sim.startMatch();
     expect(sim.world.match.phase).toBe('COUNTDOWN');
 
@@ -152,9 +152,9 @@ describe('match rules', () => {
   it('fills the least populated team and gives ties to the lowest index', () => {
     const sim = createTestSimulation({ matchConfig: { teamCount: 2, playersPerTeam: 2 } });
     expect(pickTeamForNewPlayer(sim.matchConfig, sim.world, 'a')).toBe('team-0');
-    sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
     expect(pickTeamForNewPlayer(sim.matchConfig, sim.world, 'b')).toBe('team-1');
-    sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
     expect(pickTeamForNewPlayer(sim.matchConfig, sim.world, 'c')).toBe('team-0');
 
     const ffa = createTestSimulation({ matchConfig: { mode: 'ffa', playersPerTeam: 1 } });
@@ -163,16 +163,16 @@ describe('match rules', () => {
 
   it('spawns players on the points their format reserves for them', () => {
     const sim = createTestSimulation({ matchConfig: { teamCount: 2, playersPerTeam: 2 } });
-    const a = sim.addPlayer({ id: 'a', teamId: 'team-0', characterId: 'ninja' });
-    const b = sim.addPlayer({ id: 'b', teamId: 'team-1', characterId: 'ninja' });
-    const mate = sim.addPlayer({ id: 'mate', teamId: 'team-0', characterId: 'ninja' });
+    const a = addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    const mate = addTestPlayer(sim, { id: 'mate', teamId: 'team-0', characterId: 'ninja' });
     expect(a.position).toEqual({ x: 48, y: 120 });
     expect(b.position).toEqual({ x: 432, y: 120 });
     expect(mate.position).toEqual({ x: 48, y: 120 }); // une seule base par équipe: on y revient
 
     const ffa = createTestSimulation({ matchConfig: { mode: 'ffa', playersPerTeam: 1 } });
-    const x = ffa.addPlayer({ id: 'x', teamId: 'x', characterId: 'ninja' });
-    const y = ffa.addPlayer({ id: 'y', teamId: 'y', characterId: 'ninja' });
+    const x = addTestPlayer(ffa, { id: 'x', teamId: 'x', characterId: 'ninja' });
+    const y = addTestPlayer(ffa, { id: 'y', teamId: 'y', characterId: 'ninja' });
     expect(x.position).toEqual({ x: 240, y: 40 });
     expect(y.position).toEqual({ x: 240, y: 200 });
   });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { StatRulesDefinition } from './statRules';
 
 export const MatchConfigSchema = z
   .object({
@@ -11,12 +12,17 @@ export const MatchConfigSchema = z
     countdownMs: z.number().nonnegative(),
     roundEndDelayMs: z.number().nonnegative(),
     friendlyFire: z.boolean().default(false),
+    buildPoints: z.number().int().nonnegative().optional(),
   })
   .refine((c) => c.mode === 'team' || c.playersPerTeam === 1, {
     message: 'ffa uses one player per team',
   });
 
 export type MatchConfig = z.infer<typeof MatchConfigSchema>;
+
+export function buildBudget(config: MatchConfig, rules: StatRulesDefinition): number {
+  return config.buildPoints ?? rules.defaultPointBudget;
+}
 
 export function maxPlayers(config: MatchConfig): number {
   return config.teamCount * config.playersPerTeam;
