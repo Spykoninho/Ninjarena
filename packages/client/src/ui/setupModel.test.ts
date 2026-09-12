@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { loadClientConfig } from '../config/clientConfig';
 import {
   createSetupState,
+  playAvailability,
   pointsLeft,
   setAttribute,
   setTechnique,
@@ -123,6 +124,43 @@ describe('setupErrors', () => {
     const config = loadClientConfig('?name=kage&build=1,1,1,1,1,1,1');
     const state = createSetupState(config, rules, options);
     expect(setupErrors(state, rules, rules.defaultPointBudget, options)).toEqual([]);
+  });
+});
+
+describe('playAvailability', () => {
+  const validState = () =>
+    createSetupState(loadClientConfig('?name=kage&build=1,1,1,1,1,1,1'), rules, options);
+
+  it('allows a valid setup to play while no connection is in flight', () => {
+    const availability = playAvailability(
+      validState(),
+      rules,
+      rules.defaultPointBudget,
+      options,
+      false,
+    );
+    expect(availability).toEqual({ errors: [], disabled: false });
+  });
+
+  it('blocks a second play while the connection is in flight', () => {
+    const availability = playAvailability(
+      validState(),
+      rules,
+      rules.defaultPointBudget,
+      options,
+      true,
+    );
+    expect(availability.errors).toEqual([]);
+    expect(availability.disabled).toBe(true);
+  });
+
+  it('blocks an invalid setup and reports why', () => {
+    const state = { ...validState(), name: '   ' };
+    const availability = playAvailability(state, rules, rules.defaultPointBudget, options, false);
+    expect(availability.disabled).toBe(true);
+    expect(availability.errors).toEqual(
+      setupErrors(state, rules, rules.defaultPointBudget, options),
+    );
   });
 });
 

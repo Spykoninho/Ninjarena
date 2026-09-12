@@ -5,18 +5,24 @@ const MAX_LOGGED_CHARS = 120;
 
 export class NetworkClient {
   private socket: WebSocket | null = null;
+  private handshake: Promise<void> | null = null;
   private messageHandler: ((message: ServerMessage) => void) | null = null;
   private closeHandler: (() => void) | null = null;
 
   connect(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    // Un second appel n'ouvre jamais une deuxième socket: la première garde la place côté serveur.
+    if (this.handshake !== null) return this.handshake;
+    if (this.socket !== null && this.socket.readyState === WebSocket.OPEN) return Promise.resolve();
+    const handshake = new Promise<void>((resolve, reject) => {
       const socket = new WebSocket(url);
       this.socket = socket;
       socket.addEventListener('open', () => {
+        this.handshake = null;
         resolve();
       });
       socket.addEventListener('error', () => {
         // Une erreur après l'ouverture n'a plus de promesse à rejeter: la fermeture suit de toute façon.
+        this.handshake = null;
         reject(new Error(`failed to connect to ${url}`));
       });
       socket.addEventListener('message', (event: MessageEvent<unknown>) => {
@@ -32,9 +38,12 @@ export class NetworkClient {
       });
       socket.addEventListener('close', () => {
         this.socket = null;
+        this.handshake = null;
         this.closeHandler?.();
       });
     });
+    this.handshake = handshake;
+    return handshake;
   }
 
   send(message: ClientMessage): void {
@@ -54,5 +63,6 @@ export class NetworkClient {
   close(): void {
     this.socket?.close();
     this.socket = null;
+    this.handshake = null;
   }
 }

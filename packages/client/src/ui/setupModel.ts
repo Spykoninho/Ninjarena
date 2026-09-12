@@ -105,6 +105,23 @@ export function setupErrors(
   return errors;
 }
 
+export interface PlayAvailability {
+  errors: string[];
+  disabled: boolean;
+}
+
+// Le bouton reste verrouillé pendant la poignée de main: un second clic ouvrirait une seconde socket.
+export function playAvailability(
+  state: SetupState,
+  rules: StatRulesDefinition,
+  budget: number,
+  options: TechniqueOption[],
+  connecting: boolean,
+): PlayAvailability {
+  const errors = setupErrors(state, rules, budget, options);
+  return { errors, disabled: connecting || errors.length > 0 };
+}
+
 export function techniqueOptions(
   abilities: DefinitionCatalog<AbilityDefinition>,
 ): TechniqueOption[] {

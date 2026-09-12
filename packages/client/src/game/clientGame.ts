@@ -80,6 +80,7 @@ export class ClientGame {
   private lastFrameMs: number | null = null;
   private rttMs: number | null = null;
   private connected = false;
+  private connecting = false;
   private stopped = false;
   private status = 'connecting';
 
@@ -116,13 +117,18 @@ export class ClientGame {
 
   private async play(state: SetupState): Promise<void> {
     const { config, network, setupPanel } = this.deps;
+    // Un second clic pendant la poignée de main laisserait la première socket orpheline.
+    if (this.connecting) return;
     if (!this.connected) {
+      this.connecting = true;
       this.setStatus(`connecting to ${config.serverUrl}`);
       try {
         await network.connect(config.serverUrl);
       } catch (error) {
         setupPanel.showError(`failed to connect: ${reasonOf(error)}`);
         return;
+      } finally {
+        this.connecting = false;
       }
       this.connected = true;
     }
@@ -143,6 +149,7 @@ export class ClientGame {
     this.frameHandle = null;
     this.stopPing();
     this.connected = false;
+    this.connecting = false;
     this.deps.network.close();
     this.deps.renderer.dispose();
   }

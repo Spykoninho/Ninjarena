@@ -1,6 +1,6 @@
 import type { AttributeId, StatRulesDefinition } from '@ninjarena/core';
 import { ATTRIBUTE_IDS } from '@ninjarena/core';
-import { pointsLeft, setAttribute, setTechnique, setupErrors } from './setupModel';
+import { playAvailability, pointsLeft, setAttribute, setTechnique } from './setupModel';
 import type { SetupState, TechniqueOption } from './setupModel';
 
 const NAME_MAX_LENGTH = 24;
@@ -25,6 +25,7 @@ export class SetupPanel {
   private state: SetupState | null = null;
   private playHandler: ((state: SetupState) => void) | null = null;
   private serverError: string | null = null;
+  private connecting = false;
 
   constructor(
     root: HTMLElement,
@@ -74,6 +75,7 @@ export class SetupPanel {
   show(initial: SetupState): void {
     this.state = initial;
     this.serverError = null;
+    this.connecting = false;
     this.nameInput.value = initial.name;
     for (const id of ATTRIBUTE_IDS) {
       const row = this.attributeRows[id];
@@ -92,6 +94,7 @@ export class SetupPanel {
 
   hide(): void {
     this.root.hidden = true;
+    this.connecting = false;
   }
 
   onPlay(handler: (state: SetupState) => void): void {
@@ -100,6 +103,7 @@ export class SetupPanel {
 
   showError(message: string): void {
     this.serverError = message;
+    this.connecting = false;
     this.root.hidden = false;
     this.refresh();
   }
@@ -168,23 +172,40 @@ export class SetupPanel {
 
   private onPlayClicked(): void {
     this.serverError = null;
-    this.refresh();
     const state = this.state;
-    if (state === null || this.playHandler === null) return;
-    if (setupErrors(state, this.rules, this.budget, this.options).length > 0) return;
-    this.playHandler(state);
+    const handler = this.playHandler;
+    if (state === null || handler === null) return;
+    const availability = playAvailability(
+      state,
+      this.rules,
+      this.budget,
+      this.options,
+      this.connecting,
+    );
+    // Le panneau se verrouille au clic et ne rouvre qu'avec `showError` ou `hide`.
+    if (!availability.disabled) this.connecting = true;
+    this.refresh();
+    if (availability.disabled) return;
+    handler(state);
   }
 
   private refresh(): void {
     const state = this.state;
     if (state === null) return;
     this.pointsLabel.textContent = `${pointsLeft(state, this.rules, this.budget)} points left`;
-    const errors = setupErrors(state, this.rules, this.budget, this.options);
-    const messages = this.serverError === null ? errors : [this.serverError, ...errors];
+    const availability = playAvailability(
+      state,
+      this.rules,
+      this.budget,
+      this.options,
+      this.connecting,
+    );
+    const messages =
+      this.serverError === null ? availability.errors : [this.serverError, ...availability.errors];
     this.errorList.replaceChildren();
     for (const message of messages)
       element('li', 'setup-error', this.errorList).textContent = message;
-    this.playButton.disabled = errors.length > 0;
+    this.playButton.disabled = availability.disabled;
   }
 }
 
