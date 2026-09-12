@@ -29,12 +29,15 @@ export class LobbyScreen implements Screen {
     leave.className = 'lobby-leave';
     leave.textContent = 'Leave';
     leave.addEventListener('click', () => {
+      this.errorLine.textContent = '';
       actions.leaveRoom();
     });
     this.root.appendChild(leave);
   }
 
   mount(root: HTMLElement): void {
+    // Une erreur ne survit pas au remontage de l'écran: elle parlait de la salle précédente.
+    this.errorLine.textContent = '';
     root.appendChild(this.root);
   }
 
@@ -45,7 +48,6 @@ export class LobbyScreen implements Screen {
   update(room: RoomView, maps: MapSummary[], sessionId: string): void {
     const role = room.hostId === sessionId ? 'host' : 'guest';
     this.summary.textContent = `${room.code} · ${room.status} · ${String(room.players.length)} player(s) · ${role} · ${String(maps.length)} map(s)`;
-    this.errorLine.textContent = '';
   }
 
   showError(message: string): void {

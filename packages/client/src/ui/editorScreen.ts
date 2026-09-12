@@ -33,7 +33,12 @@ export class EditorScreen implements Screen {
   }
 
   mount(root: HTMLElement): void {
+    this.errorLine.textContent = '';
     root.appendChild(this.root);
+  }
+
+  setStatus(status: string): void {
+    this.summary.textContent = status;
   }
 
   unmount(): void {

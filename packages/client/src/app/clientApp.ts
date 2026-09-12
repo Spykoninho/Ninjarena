@@ -1,28 +1,61 @@
 import type { GameContent } from '@ninjarena/content';
-import type { MapSummary } from '@ninjarena/core';
-import type { ClientMessage, ServerMessage } from '@ninjarena/protocol';
+import type { MapDocument, MapSummary } from '@ninjarena/core';
+import type { ClientMessage, RoomPlayerView, RoomView, ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
-import type { ClientGame } from '../game/clientGame';
-import type { NetworkClient } from '../network/networkClient';
-import type { EditorScreen } from '../ui/editorScreen';
-import type { HomeScreen } from '../ui/homeScreen';
-import type { LobbyScreen } from '../ui/lobbyScreen';
+import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
 import { initialAppState, reduceServerMessage, screenFor } from './appModel';
 import type { AppState, ReduceIntent } from './appModel';
 import type { Screen, ScreenId } from './screen';
 
+// Les dépendances sont décrites par ce dont l'application se sert, pour que les tests puissent les doubler.
+export interface ClientAppNetwork {
+  connect(url: string): Promise<void>;
+  send(message: ClientMessage): void;
+  onMessage(handler: (message: ServerMessage) => void): void;
+  onClose(handler: () => void): void;
+}
+
+export interface ClientAppGame {
+  init(container: HTMLElement): Promise<void>;
+  readonly active: boolean;
+  beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void;
+  handleSnapshot(message: SnapshotMessage): void;
+  handlePong(message: PongMessage): void;
+  setRoomPlayers(players: RoomPlayerView[]): void;
+  setStatus(status: string): void;
+  endMatch(): void;
+  dispose(): void;
+}
+
+export interface HomeView extends Screen {
+  setStatus(status: string): void;
+  showError(message: string): void;
+}
+
+export interface LobbyView extends Screen {
+  update(room: RoomView, maps: MapSummary[], sessionId: string): void;
+  showError(message: string): void;
+}
+
+export interface EditorView extends Screen {
+  setMaps(maps: MapSummary[]): void;
+  showDocument(document: MapDocument): void;
+  setStatus(status: string): void;
+  showError(message: string): void;
+}
+
 export interface ClientAppScreens {
-  home: HomeScreen;
-  lobby: LobbyScreen;
-  editor: EditorScreen;
+  home: HomeView;
+  lobby: LobbyView;
+  editor: EditorView;
 }
 
 export interface ClientAppDeps {
   config: ClientConfig;
   content: GameContent;
-  network: NetworkClient;
-  game: ClientGame;
+  network: ClientAppNetwork;
+  game: ClientAppGame;
   screens: ClientAppScreens;
   stage: HTMLElement;
   uiRoot: HTMLElement;
@@ -147,7 +180,8 @@ export class ClientApp {
     if (this.appState.screen === 'game' && next.screen !== 'game' && game.active) game.endMatch();
     this.appState = next;
     this.applyMessage(message);
-    this.render();
+    if (message.type === 'error') this.showError(message.message);
+    else this.render();
   }
 
   private applyMessage(message: ServerMessage): void {
@@ -162,9 +196,6 @@ export class ClientApp {
         return;
       case 'mapDocument':
         screens.editor.showDocument(message.document);
-        return;
-      case 'error':
-        this.showError(message.message);
         return;
       default:
         return;
@@ -184,7 +215,6 @@ export class ClientApp {
       status: DISCONNECTED,
     };
     this.showError(DISCONNECTED);
-    this.render();
   }
 
   private setStatus(status: string): void {
@@ -194,8 +224,14 @@ export class ClientApp {
   }
 
   private showError(message: string): void {
-    const { game, screens } = this.deps;
     this.lastError = message;
+    // L'écran cible doit être monté avant de recevoir l'erreur: un montage efface les erreurs périmées.
+    this.render();
+    this.routeError(message);
+  }
+
+  private routeError(message: string): void {
+    const { game, screens } = this.deps;
     switch (screenFor(this.appState)) {
       case 'game':
         game.setStatus(`error: ${message}`);

@@ -93,8 +93,9 @@ const editor = new EditorScreen({
   getMap: (id) => {
     app().send({ type: 'getMap', id });
   },
-  testMap: (document) => {
-    app().send({ type: 'saveMap', document });
+  testMap: () => {
+    // Le lancement d'essai arrive avec l'éditeur de la Task 10.
+    editor.setStatus('not available yet');
   },
   back: () => {
     app().leaveEditor();

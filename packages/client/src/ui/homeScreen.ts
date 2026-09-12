@@ -57,6 +57,8 @@ export class HomeScreen implements Screen {
   }
 
   mount(root: HTMLElement): void {
+    // Une erreur ne survit pas au remontage de l'écran: elle parlait de la session précédente.
+    this.errorList.replaceChildren();
     root.appendChild(this.root);
   }
 
