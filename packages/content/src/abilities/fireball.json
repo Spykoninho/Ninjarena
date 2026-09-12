@@ -1,0 +1,55 @@
+{
+  "id": "fireball",
+  "name": "Fireball",
+  "kind": "technique",
+  "cooldownMs": 4000,
+  "chakraCost": 25,
+  "startupMs": 250,
+  "recoveryMs": 150,
+  "telegraph": { "kind": "orb", "color": "#ff6a3d", "size": 8, "anchor": "aim" },
+  "tags": ["ranged", "fire"],
+  "effects": [
+    {
+      "type": "projectile",
+      "speed": 380,
+      "radius": 4,
+      "lifetimeMs": 900,
+      "visual": { "color": "#ff6a3d", "size": 5, "trail": true },
+      "onHit": [
+        { "type": "damage", "amount": 22, "scaling": "technique" },
+        {
+          "type": "area",
+          "radius": 28,
+          "origin": "here",
+          "visual": { "color": "#ff9a3d", "size": 28 },
+          "onHit": [
+            {
+              "type": "damage",
+              "amount": 12,
+              "scaling": "technique",
+              "terrain": [{ "tag": "grass", "damageMultiplier": 1.25 }]
+            },
+            { "type": "knockback", "speed": 220, "durationMs": 100 }
+          ]
+        }
+      ],
+      "onExpire": [
+        {
+          "type": "area",
+          "radius": 28,
+          "origin": "here",
+          "visual": { "color": "#ff9a3d", "size": 28 },
+          "onHit": [
+            {
+              "type": "damage",
+              "amount": 12,
+              "scaling": "technique",
+              "terrain": [{ "tag": "grass", "damageMultiplier": 1.25 }]
+            },
+            { "type": "knockback", "speed": 220, "durationMs": 100 }
+          ]
+        }
+      ]
+    }
+  ]
+}

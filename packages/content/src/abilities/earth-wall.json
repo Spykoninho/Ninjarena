@@ -1,0 +1,22 @@
+{
+  "id": "earth-wall",
+  "name": "Earth Wall",
+  "kind": "technique",
+  "cooldownMs": 8000,
+  "chakraCost": 35,
+  "startupMs": 300,
+  "recoveryMs": 150,
+  "telegraph": { "kind": "ground-mark", "color": "#8a6a4b", "size": 24, "anchor": "aim" },
+  "tags": ["ground", "utility"],
+  "effects": [
+    {
+      "type": "spawnEntity",
+      "entity": "wall",
+      "width": 48,
+      "thickness": 8,
+      "offset": 32,
+      "lifetimeMs": 4000,
+      "visual": { "color": "#8a6a4b", "size": 8 }
+    }
+  ]
+}

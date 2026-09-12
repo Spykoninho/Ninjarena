@@ -19,9 +19,12 @@ import type {
 
 import blink from './abilities/blink.json';
 import chakraShield from './abilities/chakra-shield.json';
+import earthWall from './abilities/earth-wall.json';
+import fireball from './abilities/fireball.json';
 import kunaiStrike from './abilities/kunai-strike.json';
 import lightningDash from './abilities/lightning-dash.json';
 import paralysisSeal from './abilities/paralysis-seal.json';
+import seismicSlam from './abilities/seismic-slam.json';
 import shadowStep from './abilities/shadow-step.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
@@ -54,6 +57,9 @@ export function loadContent(): GameContent {
       parseFile(AbilityDefinitionSchema, 'abilities/lightning-dash.json', lightningDash),
       parseFile(AbilityDefinitionSchema, 'abilities/chakra-shield.json', chakraShield),
       parseFile(AbilityDefinitionSchema, 'abilities/paralysis-seal.json', paralysisSeal),
+      parseFile(AbilityDefinitionSchema, 'abilities/fireball.json', fireball),
+      parseFile(AbilityDefinitionSchema, 'abilities/seismic-slam.json', seismicSlam),
+      parseFile(AbilityDefinitionSchema, 'abilities/earth-wall.json', earthWall),
     ]),
     characters: new DefinitionCatalog<CharacterDefinition>([
       parseFile(CharacterDefinitionSchema, 'characters/ninja.json', ninja),

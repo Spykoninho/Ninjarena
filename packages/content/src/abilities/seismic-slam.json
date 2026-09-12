@@ -1,0 +1,25 @@
+{
+  "id": "seismic-slam",
+  "name": "Seismic Slam",
+  "kind": "technique",
+  "cooldownMs": 6000,
+  "chakraCost": 30,
+  "startupMs": 200,
+  "recoveryMs": 250,
+  "telegraph": { "kind": "ground-circle", "color": "#c9a26b", "size": 40, "anchor": "aim" },
+  "tags": ["ground", "control"],
+  "effects": [
+    {
+      "type": "area",
+      "origin": "aim",
+      "range": 140,
+      "radius": 40,
+      "delayMs": 600,
+      "visual": { "color": "#c9a26b", "size": 40 },
+      "onHit": [
+        { "type": "damage", "amount": 30, "scaling": "technique" },
+        { "type": "stun", "durationMs": 400 }
+      ]
+    }
+  ]
+}

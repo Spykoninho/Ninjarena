@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildBudget } from '@ninjarena/core';
+import type { Effect } from '@ninjarena/core';
 import { DEFAULT_MAP_ID, loadContent, loadMap } from './index';
 
 describe('content', () => {
@@ -26,6 +27,9 @@ describe('content', () => {
       'lightning-dash',
       'chakra-shield',
       'paralysis-seal',
+      'fireball',
+      'seismic-slam',
+      'earth-wall',
     ]);
     for (const ability of content.abilities.all()) {
       if (ability.kind !== 'technique') continue;
@@ -33,10 +37,16 @@ describe('content', () => {
     }
   });
 
-  it('gives every projectile a visual', () => {
+  it('gives every projectile, zone and wall a visual', () => {
     for (const ability of content.abilities.all()) {
-      for (const effect of ability.effects) {
-        if (effect.type !== 'projectile') continue;
+      for (const effect of flatten(ability.effects)) {
+        if (
+          effect.type !== 'projectile' &&
+          effect.type !== 'area' &&
+          effect.type !== 'spawnEntity'
+        ) {
+          continue;
+        }
         expect(effect.visual.color).toMatch(/^#[0-9a-f]{6}$/);
       }
     }
@@ -63,3 +73,16 @@ describe('content', () => {
     for (const spawn of map.spawns) expect(map.terrainAt(spawn).solid).toBe(false);
   });
 });
+
+// Les briques composables s'imbriquent: la vérification descend dans chaque sous-liste.
+function flatten(effects: readonly Effect[]): Effect[] {
+  const all: Effect[] = [];
+  for (const effect of effects) {
+    all.push(effect);
+    if ('onHit' in effect) all.push(...flatten(effect.onHit));
+    if (effect.type === 'projectile') all.push(...flatten(effect.onExpire));
+    if (effect.type === 'dash') all.push(...flatten(effect.onContact));
+    if (effect.type === 'delayedTrigger') all.push(...flatten(effect.effects));
+  }
+  return all;
+}
