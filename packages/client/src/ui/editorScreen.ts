@@ -1,4 +1,4 @@
-import { MAP_MAX_SIZE, MAP_MIN_SIZE, spawnIssues } from '@ninjarena/core';
+import { MAP_MAX_SIZE, MAP_MAX_SPAWNS, MAP_MIN_SIZE, spawnIssues } from '@ninjarena/core';
 import type {
   MapDocument,
   MapIssue,
@@ -34,6 +34,8 @@ const TITLE = 'Map editor';
 const PIXELS_PER_TILE = 12;
 const DEFAULT_WIDTH = 24;
 const DEFAULT_HEIGHT = 18;
+// Le nom de la carte suit la même borne que le schéma protocole/coeur (non exportée de core).
+const MAP_NAME_MAX_LENGTH = 40;
 // L'éditeur ignore le format de la future salle: la validation rappelle celui par défaut.
 const DEFAULT_REQUIREMENT: SpawnRequirement = { mode: 'team', teamCount: 2, playersPerTeam: 1 };
 
@@ -68,6 +70,7 @@ export class EditorScreen implements Screen {
 
     const toolbar = element('div', 'editor-toolbar', this.root);
     this.nameInput = field(toolbar, 'Name', 'text', 'editor-input editor-name');
+    this.nameInput.maxLength = MAP_NAME_MAX_LENGTH;
     this.nameInput.value = initialName;
     this.nameInput.addEventListener('input', () => {
       this.update(renameDocument(this.state, this.nameInput.value));
@@ -201,7 +204,13 @@ export class EditorScreen implements Screen {
     if (tile === null) return;
     if (this.lastTile !== null && this.lastTile.x === tile.x && this.lastTile.y === tile.y) return;
     this.lastTile = tile;
-    this.update(applyTool(this.state, tile.x, tile.y));
+    const next = applyTool(this.state, tile.x, tile.y);
+    // Une trame de spawn inchangée alors que l'outil "spawn" est actif signale le plafond atteint.
+    if (next === this.state && this.state.tool.kind === 'spawn') {
+      this.setStatus(`the map already has the maximum of ${String(MAP_MAX_SPAWNS)} spawns`);
+      return;
+    }
+    this.update(next);
   }
 
   private endStroke(): void {

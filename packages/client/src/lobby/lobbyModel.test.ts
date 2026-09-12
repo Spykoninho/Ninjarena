@@ -7,6 +7,7 @@ import {
   groupPlayers,
   isHost,
   isLoadoutError,
+  isRoomCode,
   roomLink,
   settingsPatch,
   settingsRows,
@@ -97,6 +98,19 @@ describe('groupPlayers', () => {
         capacity: null,
       },
     ]);
+  });
+});
+
+describe('isRoomCode', () => {
+  it('accepts exactly six letters or digits', () => {
+    expect(isRoomCode('AB12CD')).toBe(true);
+  });
+
+  it('rejects a code of the wrong length or with other characters', () => {
+    expect(isRoomCode('AB12C')).toBe(false);
+    expect(isRoomCode('AB12CD3')).toBe(false);
+    expect(isRoomCode('AB-2CD')).toBe(false);
+    expect(isRoomCode('')).toBe(false);
   });
 });
 

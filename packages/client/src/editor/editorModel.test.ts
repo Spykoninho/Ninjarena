@@ -1,4 +1,5 @@
 import { loadContent } from '@ninjarena/content';
+import { MAP_MAX_SPAWNS } from '@ninjarena/core';
 import { describe, expect, it } from 'vitest';
 import type { EditorState } from './editorModel';
 import {
@@ -120,6 +121,20 @@ describe('applyTool', () => {
     const state = selectTool(draft(), { kind: 'tile', id: GRASS, layer: 'ground' });
     expect(applyTool(state, 8, 0)).toBe(state);
     expect(applyTool(state, -1, 3)).toBe(state);
+  });
+
+  it('refuses a new spawn beyond the format cap and leaves the state untouched', () => {
+    let state = selectTool(loadDocument(newMapDocument('Test', MAP_MAX_SPAWNS + 1, 1, tileset)), {
+      kind: 'spawn',
+      team: null,
+    });
+    for (let x = 0; x < MAP_MAX_SPAWNS; x++) {
+      state = applyTool(state, x, 0);
+    }
+    expect(state.document.spawns).toHaveLength(MAP_MAX_SPAWNS);
+
+    const capped = applyTool(state, MAP_MAX_SPAWNS, 0);
+    expect(capped).toBe(state);
   });
 });
 

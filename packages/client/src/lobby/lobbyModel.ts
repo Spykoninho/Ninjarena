@@ -41,6 +41,7 @@ export interface SettingsRow {
 }
 
 const ROUND_DURATION_STEP_MS = 10_000;
+const CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 const BLOCKER_TEXTS: Record<StartBlocker, string> = {
   NOT_ENOUGH_PLAYERS: 'at least two players are needed',
@@ -82,6 +83,11 @@ export function groupPlayers(room: RoomView): TeamGroup[] {
 
 export function blockerText(blocker: StartBlocker): string {
   return BLOCKER_TEXTS[blocker];
+}
+
+// Un code local invalide n'a pas besoin d'un aller-retour serveur pour être rejeté.
+export function isRoomCode(code: string): boolean {
+  return CODE_PATTERN.test(code);
 }
 
 export function isHost(room: RoomView, sessionId: string): boolean {

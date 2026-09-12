@@ -1,4 +1,5 @@
 import type { Screen } from '../app/screen';
+import { isRoomCode } from '../lobby/lobbyModel';
 
 export interface HomeActions {
   createRoom(name: string, password: string): void;
@@ -85,8 +86,8 @@ export class HomeScreen implements Screen {
   private onJoin(): void {
     this.errorList.replaceChildren();
     const code = this.codeInput.value.trim().toUpperCase();
-    if (code.length === 0) {
-      this.showError('a room code is required to join');
+    if (!isRoomCode(code)) {
+      this.showError('room codes are 6 letters or digits');
       return;
     }
     this.actions.joinRoom(this.nameInput.value.trim(), code, this.joinPasswordInput.value);

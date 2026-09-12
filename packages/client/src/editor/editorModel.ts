@@ -1,4 +1,9 @@
-import { CURRENT_MAP_FORMAT_VERSION, MAP_MAX_SIZE, MAP_MIN_SIZE } from '@ninjarena/core';
+import {
+  CURRENT_MAP_FORMAT_VERSION,
+  MAP_MAX_SIZE,
+  MAP_MAX_SPAWNS,
+  MAP_MIN_SIZE,
+} from '@ninjarena/core';
 import { spawnIssues, validateMapDocument } from '@ninjarena/core';
 import type {
   MapDocument,
@@ -170,13 +175,16 @@ function eraseAt(state: EditorState, x: number, y: number): EditorState {
 }
 
 function toggleSpawn(state: EditorState, x: number, y: number, team: number | null): EditorState {
-  const current = state.document.spawns.find((spawn) => spawn.x === x && spawn.y === y);
+  const spawns = state.document.spawns;
+  const current = spawns.find((spawn) => spawn.x === x && spawn.y === y);
   const wanted = team === null ? undefined : team;
   if (current !== undefined && current.team === wanted) {
-    return withSpawns(state, withoutSpawnAt(state.document.spawns, x, y));
+    return withSpawns(state, withoutSpawnAt(spawns, x, y));
   }
+  // Le format borne le nombre de spawns: au plafond, un nouvel emplacement est refusé.
+  if (current === undefined && spawns.length >= MAP_MAX_SPAWNS) return state;
   const spawn: MapSpawn = team === null ? { x, y } : { x, y, team };
-  return withSpawns(state, [...withoutSpawnAt(state.document.spawns, x, y), spawn]);
+  return withSpawns(state, [...withoutSpawnAt(spawns, x, y), spawn]);
 }
 
 function withoutSpawnAt(spawns: MapSpawn[], x: number, y: number): MapSpawn[] {
