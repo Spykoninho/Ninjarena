@@ -1,4 +1,5 @@
 export * from './audio/audioPort';
+export * from './audio/webAudioSynth';
 export * from './config/clientConfig';
 export * from './feedback/cameraShake';
 export * from './feedback/cues';

@@ -1,5 +1,5 @@
 import { loadContent } from '@ninjarena/content';
-import { NullAudio } from './audio/audioPort';
+import { WebAudioSynth } from './audio/webAudioSynth';
 import { loadClientConfig } from './config/clientConfig';
 import { ClientGame } from './game/clientGame';
 import { DEFAULT_BINDINGS } from './input/bindings';
@@ -31,7 +31,7 @@ const game = new ClientGame({
   network: new NetworkClient(),
   renderer: new PixiRenderer({ zoom: config.zoom }),
   hud: new Hud(hudRoot),
-  audio: new NullAudio(),
+  audio: new WebAudioSynth(),
   inputState,
   bindings: DEFAULT_BINDINGS,
   setupPanel: new SetupPanel(
