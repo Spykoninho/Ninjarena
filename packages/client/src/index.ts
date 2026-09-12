@@ -4,6 +4,8 @@ export * from './app/screen';
 export * from './audio/audioPort';
 export * from './audio/webAudioSynth';
 export * from './config/clientConfig';
+export * from './editor/editorModel';
+export * from './editor/mapFile';
 export * from './feedback/cameraShake';
 export * from './feedback/cues';
 export * from './feedback/feedbackController';
