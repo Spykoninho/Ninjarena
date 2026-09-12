@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { StatRulesDefinition } from './statRules';
 
 export const MatchConfigSchema = z
   .object({
@@ -19,10 +18,6 @@ export const MatchConfigSchema = z
   });
 
 export type MatchConfig = z.infer<typeof MatchConfigSchema>;
-
-export function buildBudget(config: MatchConfig, rules: StatRulesDefinition): number {
-  return config.buildPoints ?? rules.defaultPointBudget;
-}
 
 export function maxPlayers(config: MatchConfig): number {
   return config.teamCount * config.playersPerTeam;
