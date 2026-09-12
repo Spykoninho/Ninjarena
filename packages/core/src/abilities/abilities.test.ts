@@ -82,6 +82,7 @@ describe('ability validation', () => {
       position: { x: 200, y: 200 },
     });
     sim.step({ p1: press(2) }); // tick 0: incantation, activation au tick 6, fin au tick 15
+    expect(p.phase).toMatchObject({ kind: 'CASTING', activatesAt: 6, activeUntil: 6, endsAt: 15 });
     for (let i = 1; i < 6; i++) sim.step({ p1: idle() });
     expect(Object.keys(sim.world.projectiles)).toHaveLength(0);
     sim.step({ p1: idle() }); // tick 6

@@ -1,5 +1,5 @@
 import type { AbilityUseRejection } from '../abilities/rejection';
-import type { StatusEffectType } from '../definitions';
+import type { DamageScaling, StatusEffectType } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import type { CombatPhaseKind } from '../player/phase';
 import type { EntityId, PlayerId, TeamId, Tick } from './ids';
@@ -35,6 +35,8 @@ export type WorldEvent =
       sourceId: PlayerId | null;
       amount: number;
       remainingHealth: number;
+      scaling: DamageScaling;
+      position: Vec2;
     }
   | { type: 'playerDied'; tick: Tick; playerId: PlayerId; killerId: PlayerId | null }
   | {

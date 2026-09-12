@@ -128,7 +128,8 @@ describe('projectileSystem', () => {
       speed: 60,
       radius: 3,
       lifetimeMs: 1000,
-      source: { abilityId: 'shuriken', effectIndex: 0 },
+      visual: { color: '#d0d0d0', size: 3, trail: false },
+      source: { abilityId: 'shuriken', path: '0' },
     });
     projectileSystem(ctx);
     expect(near.health).toBe(near.stats.maxHealth - 18);

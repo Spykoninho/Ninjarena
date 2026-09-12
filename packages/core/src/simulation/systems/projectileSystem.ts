@@ -1,11 +1,12 @@
-import { applyHitEffects } from '../../abilities/effects/hitEffects';
+import { effectList } from '../../abilities/effectRef';
+import type { EffectContext } from '../../abilities/effects/executor';
+import { executeList } from '../../abilities/effects/executor';
 import { circleBounds, circlePenetration } from '../../collision';
 import { canAffect } from '../../combat/damage';
 import { add, distanceSq, length, normalize, scale } from '../../math/vec2';
 import { isDamageable } from '../../player/rules';
 import type { PlayerState } from '../../player/state';
 import type { ProjectileState } from '../../projectile/state';
-import { projectileHitEffects } from '../../projectile/state';
 import type { SimulationContext } from '../context';
 import { playersOf } from '../world';
 
@@ -20,6 +21,7 @@ export function projectileSystem(ctx: SimulationContext): void {
 function advance(ctx: SimulationContext, projectile: ProjectileState): void {
   const remaining = projectile.expiresAt - ctx.now;
   if (remaining <= 0) {
+    runEffects(ctx, projectile, 'onExpire', undefined);
     destroy(ctx, projectile, 'expired');
     return;
   }
@@ -38,13 +40,34 @@ function advance(ctx: SimulationContext, projectile: ProjectileState): void {
     }
     const target = nearestPlayerHit(ctx, projectile, owner);
     if (target === undefined) continue;
-    applyHitEffects(ctx, target, projectileHitEffects(ctx, projectile), {
-      sourceId: projectile.ownerId,
-      direction: normalize(projectile.velocity),
-    });
+    runEffects(ctx, projectile, 'onHit', target);
     destroy(ctx, projectile, 'hit');
     return;
   }
+}
+
+function runEffects(
+  ctx: SimulationContext,
+  projectile: ProjectileState,
+  list: 'onHit' | 'onExpire',
+  target: PlayerState | undefined,
+): void {
+  const ability = ctx.abilities.get(projectile.source.abilityId);
+  if (effectList(ability, projectile.source.path, list).length === 0) return;
+  const context: EffectContext = {
+    ctx,
+    casterId: projectile.ownerId,
+    teamId: projectile.teamId,
+    origin: target === undefined ? { ...projectile.position } : { ...target.position },
+    direction: normalize(projectile.velocity),
+    source: projectile.source,
+  };
+  executeList(
+    ability,
+    projectile.source.path,
+    list,
+    target === undefined ? context : { ...context, target },
+  );
 }
 
 function hitsWall(ctx: SimulationContext, projectile: ProjectileState): boolean {

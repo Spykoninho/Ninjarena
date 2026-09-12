@@ -44,6 +44,7 @@ describe('player rules', () => {
       abilityId: 'shuriken',
       startedAt: 0,
       activatesAt: 6,
+      activeUntil: 6,
       endsAt: 15,
       activated: false,
     };

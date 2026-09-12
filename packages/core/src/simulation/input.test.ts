@@ -25,7 +25,7 @@ describe('sanitizePlayerInput', () => {
     expect(
       sanitizePlayerInput({ move: { x: 0, y: 0 }, aim: { x: 1, y: 0 }, abilityHeld: 0b110101 })
         .abilityHeld,
-    ).toBe(0b0101);
+    ).toBe(0b10101);
     expect(isAbilityHeld(abilityMask([0, 2]), 2)).toBe(true);
     expect(isAbilityHeld(abilityMask([0, 2]), 1)).toBe(false);
   });

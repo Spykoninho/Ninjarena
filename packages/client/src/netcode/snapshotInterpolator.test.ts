@@ -33,7 +33,8 @@ const projectileAt = (id: string, x: number): ProjectileState => ({
   velocity: { x: 0, y: 0 },
   radius: 4,
   expiresAt: 100,
-  source: { abilityId: 'shuriken', effectIndex: 0 },
+  visual: { color: '#d0d0d0', size: 4, trail: false },
+  source: { abilityId: 'shuriken', path: '0' },
 });
 
 describe('SnapshotInterpolator', () => {

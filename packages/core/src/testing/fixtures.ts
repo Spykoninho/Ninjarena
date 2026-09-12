@@ -88,25 +88,9 @@ export function createTestMap(): LoadedMap {
 
 export const TEST_ABILITIES: readonly AbilityDefinition[] = [
   AbilityDefinitionSchema.parse({
-    id: 'shuriken',
-    name: 'Shuriken',
-    cooldownMs: 900,
-    chakraCost: 10,
-    startupMs: 100,
-    recoveryMs: 150,
-    effects: [
-      {
-        type: 'projectile',
-        speed: 420,
-        radius: 3,
-        lifetimeMs: 900,
-        onHit: [{ type: 'damage', amount: 18 }],
-      },
-    ],
-  }),
-  AbilityDefinitionSchema.parse({
     id: 'slash',
     name: 'Slash',
+    kind: 'basic',
     cooldownMs: 500,
     chakraCost: 5,
     startupMs: 100,
@@ -117,7 +101,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
         range: 24,
         arcDegrees: 120,
         onHit: [
-          { type: 'damage', amount: 30 },
+          { type: 'damage', amount: 30, scaling: 'physical' },
           { type: 'knockback', speed: 200, durationMs: 100 },
         ],
       },
@@ -126,6 +110,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
   AbilityDefinitionSchema.parse({
     id: 'dash',
     name: 'Dash',
+    kind: 'dash',
     cooldownMs: 3000,
     chakraCost: 20,
     startupMs: 0,
@@ -133,8 +118,28 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     effects: [{ type: 'dash', distance: 64, durationMs: 100 }],
   }),
   AbilityDefinitionSchema.parse({
+    id: 'shuriken',
+    name: 'Shuriken',
+    kind: 'technique',
+    cooldownMs: 900,
+    chakraCost: 10,
+    startupMs: 100,
+    recoveryMs: 150,
+    effects: [
+      {
+        type: 'projectile',
+        speed: 420,
+        radius: 3,
+        lifetimeMs: 900,
+        visual: { color: '#d0d0d0', size: 3 },
+        onHit: [{ type: 'damage', amount: 18 }],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
     id: 'seal',
     name: 'Seal',
+    kind: 'technique',
     cooldownMs: 1000,
     chakraCost: 10,
     startupMs: 0,
@@ -145,6 +150,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
         speed: 300,
         radius: 4,
         lifetimeMs: 1000,
+        visual: { color: '#b58cff', size: 4 },
         onHit: [
           { type: 'stun', durationMs: 500 },
           { type: 'applyStatus', status: 'SLOWED', durationMs: 1000, magnitude: 0.5 },

@@ -8,7 +8,7 @@ export interface PlayerInput {
   abilityHeld: number;
 }
 
-export const MAX_ABILITY_SLOTS = 4;
+export const MAX_ABILITY_SLOTS = 5;
 
 const ABILITY_BITS = (1 << MAX_ABILITY_SLOTS) - 1;
 

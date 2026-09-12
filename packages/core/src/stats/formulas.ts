@@ -1,3 +1,4 @@
+import type { DamageScaling } from '../definitions/ability';
 import type { StatRulesDefinition } from '../definitions/statRules';
 import type { PlayerStats } from '../player/state';
 import type { Build } from './build';
@@ -27,8 +28,6 @@ export function computeStats(
     defense: build.defense * c.defensePerPoint,
   };
 }
-
-export type DamageScaling = 'physical' | 'technique' | 'none';
 
 export interface DamageInput {
   base: number;

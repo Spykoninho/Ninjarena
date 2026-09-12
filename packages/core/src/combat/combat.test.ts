@@ -36,6 +36,16 @@ describe('applyDamage', () => {
     expect(applyDamage(ctx, p, 10, 'p2')).toBe(0);
   });
 
+  it('reports the scaling and the position of the hit', () => {
+    const { p, ctx } = setup();
+    applyDamage(ctx, p, 12, 'p2', { scaling: 'physical' });
+    expect(ctx.events.at(-1)).toMatchObject({
+      type: 'damageDealt',
+      scaling: 'physical',
+      position: { x: 200, y: 200 },
+    });
+  });
+
   it('ignores INVULNERABLE targets', () => {
     const { p, ctx } = setup();
     applyStatusEffect(ctx, p, 'INVULNERABLE', 1000);
@@ -93,6 +103,7 @@ describe('stun and knockback', () => {
       abilityId: 'shuriken',
       startedAt: 0,
       activatesAt: 6,
+      activeUntil: 6,
       endsAt: 15,
       activated: false,
     };

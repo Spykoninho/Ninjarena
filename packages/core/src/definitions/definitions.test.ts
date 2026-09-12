@@ -4,37 +4,79 @@ import { MapDefinitionSchema } from './map';
 import { MatchConfigSchema } from './matchConfig';
 
 describe('AbilityDefinitionSchema', () => {
-  it('accepts a projectile ability and fills defaults', () => {
+  const base = {
+    id: 'fireball',
+    name: 'Fireball',
+    kind: 'technique',
+    cooldownMs: 4000,
+    chakraCost: 25,
+    startupMs: 200,
+    recoveryMs: 150,
+  };
+
+  it('accepts a nested projectile and fills defaults', () => {
     const ability = AbilityDefinitionSchema.parse({
-      id: 'shuriken',
-      name: 'Shuriken',
-      cooldownMs: 900,
-      chakraCost: 10,
-      startupMs: 100,
-      recoveryMs: 150,
+      ...base,
       effects: [
         {
           type: 'projectile',
-          speed: 420,
-          radius: 3,
+          speed: 320,
+          radius: 5,
           lifetimeMs: 900,
-          onHit: [{ type: 'damage', amount: 18 }],
+          visual: { color: '#ff8844', size: 5 },
+          onHit: [
+            {
+              type: 'area',
+              radius: 40,
+              origin: 'here',
+              visual: { color: '#ff8844', size: 40 },
+              onHit: [{ type: 'damage', amount: 26 }],
+            },
+          ],
         },
       ],
     });
+    const projectile = ability.effects[0];
+    expect(projectile?.type).toBe('projectile');
+    if (projectile?.type !== 'projectile') throw new Error('unreachable');
+    expect(projectile.onExpire).toEqual([]);
+    expect(projectile.visual.trail).toBe(false);
+    const area = projectile.onHit[0];
+    if (area?.type !== 'area') throw new Error('unreachable');
+    expect(area.delayMs).toBe(0);
+    expect(area.range).toBe(0);
+    expect(area.terrain).toEqual([]);
+    const damage = area.onHit[0];
+    if (damage?.type !== 'damage') throw new Error('unreachable');
+    expect(damage.scaling).toBe('technique');
+    expect(ability.telegraph).toBeNull();
+    expect(ability.activeMs).toBe(0);
     expect(ability.canMoveWhileCasting).toBe(false);
     expect(ability.tags).toEqual([]);
   });
 
+  it('keeps a telegraph and defaults its anchor to the caster', () => {
+    const ability = AbilityDefinitionSchema.parse({
+      ...base,
+      telegraph: { kind: 'ground-circle', color: '#ff8844', size: 40 },
+      effects: [{ type: 'teleport', distance: 120 }],
+    });
+    expect(ability.telegraph?.anchor).toBe('caster');
+  });
+
   it('rejects an unknown effect type', () => {
     const result = AbilityDefinitionSchema.safeParse({
-      id: 'x',
-      name: 'x',
-      cooldownMs: 0,
-      chakraCost: 0,
-      startupMs: 0,
-      recoveryMs: 0,
-      effects: [{ type: 'teleport' }],
+      ...base,
+      effects: [{ type: 'mindControl', durationMs: 100 }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a kind outside basic, dash and technique', () => {
+    const result = AbilityDefinitionSchema.safeParse({
+      ...base,
+      kind: 'ultimate',
+      effects: [{ type: 'teleport', distance: 120 }],
     });
     expect(result.success).toBe(false);
   });

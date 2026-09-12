@@ -3,7 +3,7 @@ import { normalPhase } from '../player/phase';
 import { setPhase } from '../player/phaseTransitions';
 import type { PlayerState } from '../player/state';
 import type { SimulationContext } from '../simulation/context';
-import { executeActivationEffects } from './effects/activationEffects';
+import { executeAbilityEffects } from './effects/executor';
 
 export function startCast(
   ctx: SimulationContext,
@@ -16,13 +16,16 @@ export function startCast(
   player.chakra -= ability.chakraCost;
   slot.readyAt = ctx.now + ctx.ticks(ability.cooldownMs);
   const activatesAt = ctx.now + ctx.ticks(ability.startupMs);
+  // La fenêtre active ne fait que prolonger CASTING: les effets partent tous à l'activation.
+  const activeUntil = activatesAt + ctx.ticks(ability.activeMs);
   setPhase(ctx, player, {
     kind: 'CASTING',
     slot: slotIndex,
     abilityId: ability.id,
     startedAt: ctx.now,
     activatesAt,
-    endsAt: activatesAt + ctx.ticks(ability.recoveryMs),
+    activeUntil,
+    endsAt: activeUntil + ctx.ticks(ability.recoveryMs),
     activated: false,
   });
   ctx.events.push({
@@ -41,7 +44,7 @@ export function progressCast(ctx: SimulationContext, player: PlayerState): void 
   if (phase.kind !== 'CASTING') return;
   if (!phase.activated && ctx.now >= phase.activatesAt) {
     phase.activated = true;
-    executeActivationEffects(ctx, player, ctx.abilities.get(phase.abilityId));
+    executeAbilityEffects(ctx, player, ctx.abilities.get(phase.abilityId));
     ctx.events.push({
       type: 'abilityActivated',
       tick: ctx.now,

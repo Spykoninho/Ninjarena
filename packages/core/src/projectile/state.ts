@@ -1,5 +1,5 @@
-import type { EffectRef } from '../abilities/effects/activationEffects';
-import type { HitEffect } from '../definitions';
+import type { EffectRef } from '../abilities/effectRef';
+import type { Visual } from '../definitions';
 import type { Vec2 } from '../math/vec2';
 import { add, normalize, scale } from '../math/vec2';
 import type { PlayerState } from '../player/state';
@@ -14,7 +14,8 @@ export interface ProjectileState {
   velocity: Vec2;
   radius: number;
   expiresAt: Tick;
-  source: { abilityId: string; effectIndex: number };
+  visual: Visual;
+  source: EffectRef;
 }
 
 export interface SpawnProjectileParams {
@@ -23,6 +24,7 @@ export interface SpawnProjectileParams {
   speed: number;
   radius: number;
   lifetimeMs: number;
+  visual: Visual;
   source: EffectRef;
 }
 
@@ -42,17 +44,9 @@ export function spawnProjectile(
     velocity: scale(direction, params.speed),
     radius: params.radius,
     expiresAt: ctx.now + ctx.ticks(params.lifetimeMs),
-    source: { abilityId: params.source.abilityId, effectIndex: params.source.effectIndex },
+    visual: { ...params.visual },
+    source: { abilityId: params.source.abilityId, path: params.source.path },
   };
   ctx.world.projectiles[id] = projectile;
   return projectile;
-}
-
-export function projectileHitEffects(
-  ctx: SimulationContext,
-  projectile: ProjectileState,
-): readonly HitEffect[] {
-  const ability = ctx.abilities.get(projectile.source.abilityId);
-  const effect = ability.effects[projectile.source.effectIndex];
-  return effect?.type === 'projectile' ? effect.onHit : [];
 }

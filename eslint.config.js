@@ -25,6 +25,24 @@ export default tseslint.config(
     },
   },
   {
+    // Les handlers d'effets vivent trois niveaux sous src: leur remontée s'arrête aussi à packages/core/src.
+    files: ['packages/core/src/*/*/*/*.ts', 'packages/core/src/*/*/*/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@ninjarena/*'], message: 'core must not depend on other packages' },
+            {
+              group: ['../../../../*'],
+              message: 'core must not reach outside packages/core/src',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

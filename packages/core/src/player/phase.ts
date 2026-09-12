@@ -9,6 +9,7 @@ export type CombatPhaseState =
       abilityId: string;
       startedAt: Tick;
       activatesAt: Tick;
+      activeUntil: Tick;
       endsAt: Tick;
       activated: boolean;
     }

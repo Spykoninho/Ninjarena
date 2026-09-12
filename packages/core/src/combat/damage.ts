@@ -1,14 +1,20 @@
+import type { DamageScaling } from '../definitions';
 import { setPhase } from '../player/phaseTransitions';
 import { isDamageable } from '../player/rules';
 import type { PlayerState } from '../player/state';
 import type { SimulationContext } from '../simulation/context';
 import type { PlayerId } from '../simulation/ids';
 
+export interface DamageMeta {
+  scaling?: DamageScaling;
+}
+
 export function applyDamage(
   ctx: SimulationContext,
   target: PlayerState,
   amount: number,
   sourceId: PlayerId | null,
+  meta?: DamageMeta,
 ): number {
   if (!isDamageable(target) || amount <= 0) return 0;
   const dealt = Math.min(target.health, amount);
@@ -20,6 +26,8 @@ export function applyDamage(
     sourceId,
     amount: dealt,
     remainingHealth: target.health,
+    scaling: meta?.scaling ?? 'none',
+    position: { x: target.position.x, y: target.position.y },
   });
   if (target.health <= 0) killPlayer(ctx, target, sourceId);
   return dealt;
