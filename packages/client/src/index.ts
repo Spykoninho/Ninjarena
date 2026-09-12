@@ -18,6 +18,7 @@ export * from './input/bindings';
 export * from './input/buildPlayerInput';
 export * from './input/domInputAdapter';
 export * from './input/inputState';
+export * from './lobby/lobbyModel';
 export * from './netcode/correctionSmoother';
 export * from './netcode/predictionBuffer';
 export * from './netcode/reconcile';
