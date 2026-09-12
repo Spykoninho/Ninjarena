@@ -17,10 +17,12 @@ import type {
   TilesetDefinition,
 } from '@ninjarena/core';
 
-import kunaiSlash from './abilities/kunai-slash.json';
+import blink from './abilities/blink.json';
+import chakraShield from './abilities/chakra-shield.json';
+import kunaiStrike from './abilities/kunai-strike.json';
+import lightningDash from './abilities/lightning-dash.json';
 import paralysisSeal from './abilities/paralysis-seal.json';
 import shadowStep from './abilities/shadow-step.json';
-import shuriken from './abilities/shuriken.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
 import matchModes from './match-modes.json';
@@ -46,9 +48,11 @@ interface DefinitionParser<T> {
 export function loadContent(): GameContent {
   return {
     abilities: new DefinitionCatalog<AbilityDefinition>([
-      parseFile(AbilityDefinitionSchema, 'abilities/shuriken.json', shuriken),
-      parseFile(AbilityDefinitionSchema, 'abilities/kunai-slash.json', kunaiSlash),
+      parseFile(AbilityDefinitionSchema, 'abilities/kunai-strike.json', kunaiStrike),
       parseFile(AbilityDefinitionSchema, 'abilities/shadow-step.json', shadowStep),
+      parseFile(AbilityDefinitionSchema, 'abilities/blink.json', blink),
+      parseFile(AbilityDefinitionSchema, 'abilities/lightning-dash.json', lightningDash),
+      parseFile(AbilityDefinitionSchema, 'abilities/chakra-shield.json', chakraShield),
       parseFile(AbilityDefinitionSchema, 'abilities/paralysis-seal.json', paralysisSeal),
     ]),
     characters: new DefinitionCatalog<CharacterDefinition>([

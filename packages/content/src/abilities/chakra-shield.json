@@ -1,0 +1,12 @@
+{
+  "id": "chakra-shield",
+  "name": "Chakra Shield",
+  "kind": "technique",
+  "cooldownMs": 9000,
+  "chakraCost": 30,
+  "startupMs": 150,
+  "recoveryMs": 100,
+  "telegraph": { "kind": "ring", "color": "#7fe0c8", "size": 18 },
+  "tags": ["defense"],
+  "effects": [{ "type": "shield", "amount": 40, "durationMs": 3000 }]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "lightning-dash",
+  "name": "Lightning Dash",
+  "kind": "technique",
+  "cooldownMs": 5000,
+  "chakraCost": 30,
+  "startupMs": 120,
+  "recoveryMs": 0,
+  "telegraph": { "kind": "flash", "color": "#ffe66d", "size": 18 },
+  "tags": ["mobility", "lightning"],
+  "effects": [
+    {
+      "type": "dash",
+      "distance": 140,
+      "durationMs": 180,
+      "onContact": [
+        {
+          "type": "damage",
+          "amount": 20,
+          "scaling": "technique",
+          "terrain": [{ "tag": "water", "damageMultiplier": 1.3 }]
+        },
+        { "type": "applyStatus", "status": "SLOWED", "durationMs": 1500, "magnitude": 0.5 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "blink",
+  "name": "Blink",
+  "kind": "technique",
+  "cooldownMs": 5000,
+  "chakraCost": 20,
+  "startupMs": 100,
+  "recoveryMs": 80,
+  "telegraph": { "kind": "charge", "color": "#c8a8ff", "size": 10 },
+  "tags": ["mobility"],
+  "effects": [{ "type": "teleport", "distance": 120 }]
+}

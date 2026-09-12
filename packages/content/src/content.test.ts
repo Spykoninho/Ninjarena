@@ -18,6 +18,30 @@ describe('content', () => {
     ]);
   });
 
+  it('ships the whole ability roster with a telegraph on every technique', () => {
+    expect(content.abilities.all().map((a) => a.id)).toEqual([
+      'kunai-strike',
+      'shadow-step',
+      'blink',
+      'lightning-dash',
+      'chakra-shield',
+      'paralysis-seal',
+    ]);
+    for (const ability of content.abilities.all()) {
+      if (ability.kind !== 'technique') continue;
+      expect(ability.telegraph).not.toBeNull();
+    }
+  });
+
+  it('gives every projectile a visual', () => {
+    for (const ability of content.abilities.all()) {
+      for (const effect of ability.effects) {
+        if (effect.type !== 'projectile') continue;
+        expect(effect.visual.color).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
   it('gives every mode a build budget and a four-minute round', () => {
     for (const mode of content.matchModes.all()) {
       expect(mode.buildPoints).toBe(10);

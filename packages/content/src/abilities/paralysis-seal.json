@@ -1,10 +1,12 @@
 {
   "id": "paralysis-seal",
   "name": "Paralysis Seal",
+  "kind": "technique",
   "cooldownMs": 6000,
   "chakraCost": 30,
   "startupMs": 200,
   "recoveryMs": 250,
+  "telegraph": { "kind": "orb", "color": "#b58cff", "size": 6 },
   "tags": ["ranged", "control"],
   "effects": [
     {
@@ -12,6 +14,7 @@
       "speed": 300,
       "radius": 4,
       "lifetimeMs": 700,
+      "visual": { "color": "#b58cff", "size": 4 },
       "onHit": [
         { "type": "stun", "durationMs": 800 },
         { "type": "applyStatus", "status": "SLOWED", "durationMs": 2000, "magnitude": 0.5 }

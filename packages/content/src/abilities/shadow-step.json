@@ -1,10 +1,12 @@
 {
   "id": "shadow-step",
   "name": "Shadow Step",
-  "cooldownMs": 4000,
-  "chakraCost": 25,
+  "kind": "dash",
+  "cooldownMs": 3000,
+  "chakraCost": 10,
   "startupMs": 0,
   "recoveryMs": 0,
+  "telegraph": { "kind": "flash", "color": "#9fd8ff", "size": 12 },
   "tags": ["mobility"],
-  "effects": [{ "type": "dash", "distance": 96, "durationMs": 150 }]
+  "effects": [{ "type": "dash", "distance": 96, "durationMs": 150, "invulnerableTicks": 0 }]
 }

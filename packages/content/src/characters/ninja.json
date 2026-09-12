@@ -8,6 +8,6 @@
     "moveSpeed": 140,
     "colliderRadius": 5
   },
-  "basicAttackId": "kunai-slash",
+  "basicAttackId": "kunai-strike",
   "dashId": "shadow-step"
 }

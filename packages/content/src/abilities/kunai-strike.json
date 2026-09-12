@@ -1,0 +1,20 @@
+{
+  "id": "kunai-strike",
+  "name": "Kunai Strike",
+  "kind": "basic",
+  "cooldownMs": 350,
+  "chakraCost": 0,
+  "startupMs": 60,
+  "activeMs": 80,
+  "recoveryMs": 120,
+  "telegraph": { "kind": "ring", "color": "#f2f2f2", "size": 14 },
+  "tags": ["melee"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 22,
+      "arcDegrees": 100,
+      "onHit": [{ "type": "damage", "amount": 14, "scaling": "physical" }]
+    }
+  ]
+}
