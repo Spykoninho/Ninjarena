@@ -6,8 +6,8 @@ import type { MapLibrary } from '../maps/mapLibrary';
 import type { MatchResult } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
 import { passwordMatches } from './password';
-import type { RoomMatch } from './roomMatch';
 import { RoomMapCache } from './roomMap';
+import type { RoomMatch } from './roomMatch';
 import { inJoinOrder, matchResultOf, startRoomMatch } from './roomMatch';
 import type { RoomPlayer } from './roomPlayer';
 import { computeStartBlockers } from './startBlockers';
@@ -113,8 +113,8 @@ export class Room {
   }
 
   join(session: ClientSession, password: string | undefined): RoomResult {
-    const seated = this.playerOf(session);
-    if (seated !== undefined) return { ok: true };
+    // Un `join` répété par la même session est sans effet plutôt que de dupliquer le joueur.
+    if (this.playerOf(session) !== undefined) return { ok: true };
     if (this.roomStatus !== 'WAITING') {
       return fail('ROOM_IN_GAME', 'the match has already started');
     }
@@ -153,7 +153,6 @@ export class Room {
       // Une partie sans adversaire ne peut plus se conclure: elle s'arrête au départ.
       if (running && teamsPresent(match.simulation.world).length < 2) {
         this.finish(match.simulation.world.match.winner);
-        return;
       }
     }
     if (this.roster.length === 0) {
