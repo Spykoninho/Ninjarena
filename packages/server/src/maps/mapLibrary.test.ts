@@ -132,12 +132,23 @@ describe('MapLibrary', () => {
 
   it('keeps the original createdAt when overwriting an existing stored map', async () => {
     const repository = new InMemoryMapRepository();
-    const library = new MapLibrary({ content, repository, maxStoredMaps: 10, random: () => 0 });
+    // Deux dates bien distinctes: si `save` retimbrait à l'écrasement, le test le verrait.
+    const dates = [new Date('2020-01-01T00:00:00.000Z'), new Date('2024-06-15T12:00:00.000Z')];
+    let call = 0;
+    const now = (): Date => dates[call++] ?? dates[dates.length - 1]!;
+    const library = new MapLibrary({
+      content,
+      repository,
+      maxStoredMaps: 10,
+      random: () => 0,
+      now,
+    });
 
     const first = await library.save(tinyMap({ name: 'First' }), 'kunoichi');
     expect(first.ok).toBe(true);
     if (!first.ok) throw new Error('expected save to succeed');
     const original = await repository.get(first.id);
+    expect(original?.createdAt).toBe(dates[0]!.toISOString());
 
     const overwrite = await library.save(
       tinyMap({ id: first.id, name: 'First renamed' }),
@@ -146,7 +157,8 @@ describe('MapLibrary', () => {
     expect(overwrite).toEqual({ ok: true, id: first.id });
 
     const updated = await repository.get(first.id);
-    expect(updated?.createdAt).toEqual(original?.createdAt);
+    expect(updated?.createdAt).toBe(dates[0]!.toISOString());
+    expect(updated?.createdAt).not.toBe(dates[1]!.toISOString());
     expect(updated?.name).toBe('First renamed');
   });
 
