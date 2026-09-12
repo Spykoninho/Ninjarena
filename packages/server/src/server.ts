@@ -19,6 +19,9 @@ export interface GameServerDeps {
   content: GameContent;
   repository: MatchResultRepository;
   log?: (line: string) => void;
+  now?: () => number;
+  schedule?: (callback: () => void, delayMs: number) => unknown;
+  cancel?: (handle: unknown) => void;
 }
 
 type JoinMessage = Extract<ClientMessage, { type: 'join' }>;
@@ -34,7 +37,11 @@ export class GameServer {
   private readonly repository: MatchResultRepository;
   private readonly log: (line: string) => void;
   private readonly rooms: RoomManager;
+  private readonly now: () => number;
+  private readonly schedule: (callback: () => void, delayMs: number) => unknown;
+  private readonly cancel: (handle: unknown) => void;
   private loop: TickLoop | null = null;
+  private restartHandle: unknown = null;
   private openConnections = 0;
 
   constructor(deps: GameServerDeps) {
@@ -44,6 +51,11 @@ export class GameServer {
     this.repository = deps.repository;
     this.log = deps.log ?? (() => {});
     this.rooms = new RoomManager(() => this.createDefaultRoom());
+    // Les minuteurs sont injectables: les tests pilotent la boucle et la relance sans horloge réelle.
+    this.now = deps.now ?? (() => performance.now());
+    this.schedule = deps.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
+    this.cancel =
+      deps.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
   }
 
   get defaultRoom(): Room {
@@ -57,12 +69,16 @@ export class GameServer {
       sessions: () => room.sessions,
       snapshotEveryTicks: this.snapshotEveryTicks(),
       onEvents: (events) => {
-        this.storeFinishedMatches(room, events);
+        this.handleEvents(room, events);
       },
     });
-    const loop = new TickLoop(tickDurationMs({ tickRate: this.config.tickRate }), () => {
-      host.tick();
-    });
+    const loop = new TickLoop(
+      tickDurationMs({ tickRate: this.config.tickRate }),
+      () => {
+        host.tick();
+      },
+      { now: this.now, schedule: this.schedule, cancel: this.cancel },
+    );
     this.transport.onConnection((connection) => {
       this.handleConnection(room, connection);
     });
@@ -74,6 +90,7 @@ export class GameServer {
   async stop(): Promise<void> {
     this.loop?.stop();
     this.loop = null;
+    this.cancelRestart();
     await this.transport.close();
   }
 
@@ -189,6 +206,26 @@ export class GameServer {
         return exhaustive;
       }
     }
+  }
+
+  private handleEvents(room: Room, events: readonly WorldEvent[]): void {
+    this.storeFinishedMatches(room, events);
+    if (events.some((event) => event.type === 'matchEnded')) this.scheduleRestart(room);
+  }
+
+  private scheduleRestart(room: Room): void {
+    this.cancelRestart();
+    this.log(`restarting room ${room.id} in ${this.config.matchRestartMs}ms`);
+    this.restartHandle = this.schedule(() => {
+      this.restartHandle = null;
+      room.tryStart();
+    }, this.config.matchRestartMs);
+  }
+
+  private cancelRestart(): void {
+    if (this.restartHandle === null) return;
+    this.cancel(this.restartHandle);
+    this.restartHandle = null;
   }
 
   private storeFinishedMatches(room: Room, events: readonly WorldEvent[]): void {

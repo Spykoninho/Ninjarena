@@ -160,6 +160,35 @@ describe('Room', () => {
     expect(room.simulation.world.match.round).toBe(1);
   });
 
+  it('restarts a finished match at round one with fresh scores', () => {
+    const room = createRoom();
+    const first = createSession('c1');
+    const second = createSession('c2');
+    joinAndAnnounce(room, first.session, 'one');
+    joinAndAnnounce(room, second.session, 'two');
+    const match = room.simulation.world.match;
+    match.phase = 'MATCH_END';
+    match.round = 2;
+    match.scores = { 'team-0': 2, 'team-1': 1 };
+    match.winner = 'team-0';
+    room.tryStart();
+    expect(match.phase).not.toBe('MATCH_END');
+    expect(match.round).toBe(1);
+    expect(match.scores).toEqual({ 'team-0': 0, 'team-1': 0 });
+    expect(match.winner).toBeNull();
+  });
+
+  it('keeps a finished match in MATCH_END while a single player remains', () => {
+    const room = createRoom();
+    joinAndAnnounce(room, createSession('c1').session, 'one');
+    const match = room.simulation.world.match;
+    match.phase = 'MATCH_END';
+    match.winner = 'team-0';
+    room.tryStart();
+    expect(match.phase).toBe('MATCH_END');
+    expect(match.winner).toBe('team-0');
+  });
+
   it('removes a leaving player from the simulation', () => {
     const room = createRoom();
     const { session } = createSession('c1');

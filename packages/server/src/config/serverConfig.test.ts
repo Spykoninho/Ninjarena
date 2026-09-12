@@ -13,6 +13,7 @@ describe('loadServerConfig', () => {
       inputQueueCapacity: 8,
       maxConnections: 32,
       autoStartWhenFull: true,
+      matchRestartMs: 8000,
     });
   });
 
@@ -23,12 +24,14 @@ describe('loadServerConfig', () => {
         NINJARENA_PORT: '9000',
         NINJARENA_TICK_RATE: '30',
         NINJARENA_AUTO_START: 'false',
+        NINJARENA_MATCH_RESTART_MS: '0',
       }),
     ).toMatchObject({
       host: '0.0.0.0',
       port: 9000,
       tickRate: 30,
       autoStartWhenFull: false,
+      matchRestartMs: 0,
     });
   });
 
@@ -38,6 +41,9 @@ describe('loadServerConfig', () => {
     );
     expect(() => loadServerConfig({ NINJARENA_MAX_CONNECTIONS: '0' })).toThrow(
       /^invalid configuration: maxConnections [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_MATCH_RESTART_MS: '-1' })).toThrow(
+      /^invalid configuration: matchRestartMs [^\n]+$/,
     );
   });
 });

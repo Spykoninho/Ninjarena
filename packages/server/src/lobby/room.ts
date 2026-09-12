@@ -104,6 +104,15 @@ export class Room {
     if (this.shouldStart()) this.simulation.startMatch();
   }
 
+  // La relance d'après-match rejoue la règle de démarrage sans exiger un nouveau `ready`.
+  tryStart(): void {
+    const phase = this.simulation.world.match.phase;
+    if (phase !== 'WAITING' && phase !== 'MATCH_END') return;
+    if (this.present.length < MIN_PLAYERS_TO_START) return;
+    this.simulation.startMatch();
+    this.broadcastRoomState();
+  }
+
   leave(session: ClientSession): void {
     const index = this.present.indexOf(session);
     if (index === -1) return;
