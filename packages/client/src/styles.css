@@ -3,7 +3,7 @@
   --hud-border: rgba(255, 255, 255, 0.12);
   --hud-text: #e8e8f0;
   --hud-health: #6bd46b;
-  --hud-energy: #4aa3ff;
+  --hud-chakra: #4aa3ff;
 }
 
 * {
@@ -92,8 +92,8 @@ body {
   background: var(--hud-health);
 }
 
-.hud-bar-energy .hud-bar-fill {
-  background: var(--hud-energy);
+.hud-bar-chakra .hud-bar-fill {
+  background: var(--hud-chakra);
 }
 
 .hud-bar-label {

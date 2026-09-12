@@ -19,6 +19,6 @@ export function validateAbilityUse(
   if (!canAct(player)) return { ok: false, reason: 'BUSY' };
   if (slot.readyAt > ctx.now) return { ok: false, reason: 'ON_COOLDOWN' };
   const ability = ctx.abilities.get(slot.abilityId);
-  if (player.energy < ability.energyCost) return { ok: false, reason: 'NOT_ENOUGH_ENERGY' };
+  if (player.chakra < ability.chakraCost) return { ok: false, reason: 'NOT_ENOUGH_CHAKRA' };
   return { ok: true, ability, slot };
 }

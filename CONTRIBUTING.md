@@ -87,7 +87,7 @@ Abilities are data. In the common case you write no TypeScript at all.
    click, Space, E).
 4. Add a test in `packages/core/src/abilities/abilities.test.ts` for the behaviour you introduced.
 
-An ability declares `cooldownMs`, `energyCost`, `startupMs`, `recoveryMs`, an optional
+An ability declares `cooldownMs`, `chakraCost`, `startupMs`, `recoveryMs`, an optional
 `canMoveWhileCasting`, `tags`, and one or more activation effects. Activation effects
 (`projectile`, `dash`, `melee`) fire when the cast activates; hit effects (`damage`, `knockback`,
 `stun`, `applyStatus`) apply to a target that was reached.

@@ -22,8 +22,8 @@ export function buildHudView(input: HudViewInput): HudView {
   return {
     health: local?.health ?? 0,
     maxHealth: local?.stats.maxHealth ?? 0,
-    energy: local?.energy ?? 0,
-    maxEnergy: local?.stats.maxEnergy ?? 0,
+    chakra: local?.chakra ?? 0,
+    maxChakra: local?.stats.maxChakra ?? 0,
     abilities: local === undefined ? [] : local.abilities.map((slot) => abilityView(input, slot)),
     // L'état de match affiché vient du serveur: la prédiction locale ne décide pas des phases.
     matchPhase: input.match?.phase ?? 'WAITING',

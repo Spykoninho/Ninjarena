@@ -156,9 +156,9 @@ interface StatusEffect {
 
 interface PlayerStats {
   maxHealth: number;
-  maxEnergy: number;
+  maxChakra: number;
   moveSpeed: number;
-  energyRegenPerSecond: number;
+  chakraRegenPerSecond: number;
   colliderRadius: number;
 }
 
@@ -175,7 +175,7 @@ interface PlayerState {
   velocity: Vec2;
   aim: Vec2;
   health: number;
-  energy: number;
+  chakra: number;
   stats: PlayerStats; // resolved from the character definition
   phase: CombatPhaseState; // exclusive primary state
   statuses: StatusEffect[]; // non-exclusive modifiers
@@ -201,11 +201,11 @@ runs, in this order:
 
 1. `matchSystem.preStep` — advances match phase timers; when the match is not
    `IN_ROUND`, gameplay inputs are neutralized (no movement, no abilities).
-2. `playerStateSystem` — expires phases and statuses, regenerates energy,
+2. `playerStateSystem` — expires phases and statuses, regenerates chakra,
    progresses casting timelines.
 3. `abilitySystem` — detects ability presses (held now, not held previously),
    validates (alive, phase `NORMAL`, slot exists, cooldown ready, enough
-   energy), starts a cast; fires activation effects when `activatesAt` is
+   chakra), starts a cast; fires activation effects when `activatesAt` is
    reached.
 4. `movementSystem` — computes the velocity from input and phase (dash and
    knockback impose their own velocity), applies terrain and status
@@ -267,7 +267,7 @@ Definitions are data (`packages/content/abilities/*.json`):
   "id": "shuriken",
   "name": "Shuriken",
   "cooldownMs": 900,
-  "energyCost": 10,
+  "chakraCost": 10,
   "startupMs": 100,
   "recoveryMs": 150,
   "canMoveWhileCasting": false,
@@ -294,7 +294,7 @@ Two effect families, each dispatched through a registry keyed by `type`
 durationMs }`, `stun { durationMs }`, `applyStatus { status, durationMs,
 magnitude? }`.
 
-Casting timeline: press → validation → energy deducted, cooldown starts,
+Casting timeline: press → validation → chakra deducted, cooldown starts,
 phase `CASTING` with `activatesAt = now + startup`, `endsAt = activatesAt +
 recovery` → activation effects fire once at `activatesAt` → back to `NORMAL`
 at `endsAt`. A stun or knockback during the cast cancels it (no refund).
@@ -339,7 +339,7 @@ Presets live in content (`match-modes.json`): `duel` (team, 2×1), `ffa-3`,
 one rule serves all formats: a round ends when at most one team has a living
 player, or when the round timer expires (draw). First team to `roundsToWin`
 wins the match. Between rounds the world is reset: players respawn at
-team-assigned spawn points with full health, energy and cooldowns, projectiles
+team-assigned spawn points with full health, chakra and cooldowns, projectiles
 are cleared, and a countdown freezes gameplay.
 
 ## 8. Protocol (`@ninjarena/protocol`)
@@ -416,7 +416,7 @@ src/
                  (remote entities), ServerClock (estimated server tick)
   rendering/     Renderer interface, PixiRenderer (tilemap, entity sprites,
                  camera, pixel-perfect integer scaling), placeholder pixel art
-  ui/            DOM HUD: health, energy, cooldowns, match phase and scores
+  ui/            DOM HUD: health, chakra, cooldowns, match phase and scores
   audio/         AudioPort interface + NullAudio (seam only in this step)
   game/          ClientGame: frame loop with FixedStepAccumulator, ties the above
   main.ts
@@ -446,8 +446,8 @@ Behaviour tests on the simulation, not getters:
   to the diameter, blocked by a narrower gap, tile merging output, grid queries
 - movement: speed × dt, diagonal normalization, water slows, `ROOTED` blocks,
   `SLOWED` multiplies, `STUNNED`/`DEAD` do not move, dash blocked by a wall
-- abilities: rejection on cooldown / energy / wrong phase, timeline
-  (startup → activation → recovery → NORMAL), cooldown and energy accounting,
+- abilities: rejection on cooldown / chakra / wrong phase, timeline
+  (startup → activation → recovery → NORMAL), cooldown and chakra accounting,
   press-edge detection, projectile spawn and hit, melee arc hit
 - combat: damage, `INVULNERABLE` ignores damage, death at zero, no damage on
   dead, knockback and stun expiry, status expiry, cast cancelled by stun

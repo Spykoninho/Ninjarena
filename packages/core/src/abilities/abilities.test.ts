@@ -11,7 +11,7 @@ const idle = (aim = { x: 1, y: 0 }) => ({ ...neutralInput(), aim });
 // slots: 0 shuriken, 1 slash, 2 dash, 3 seal
 
 describe('ability validation', () => {
-  it('starts a cast on press, deducts energy and starts the cooldown', () => {
+  it('starts a cast on press, deducts chakra and starts the cooldown', () => {
     const sim = createTestSimulation();
     sim.startMatch();
     const p = sim.addPlayer({
@@ -22,11 +22,11 @@ describe('ability validation', () => {
     });
     sim.step({ p1: press(0) });
     expect(p.phase.kind).toBe('CASTING');
-    expect(p.energy).toBe(90);
+    expect(p.chakra).toBe(90);
     expect(p.abilities[0]!.readyAt).toBe(54); // 900 ms à 60 Hz
   });
 
-  it('rejects a press while on cooldown, out of energy, or busy', () => {
+  it('rejects a press while on cooldown, out of chakra, or busy', () => {
     const sim = createTestSimulation();
     sim.startMatch();
     const p = sim.addPlayer({
@@ -41,13 +41,13 @@ describe('ability validation', () => {
       expect.objectContaining({ type: 'abilityRejected', reason: 'ON_COOLDOWN' }),
     );
     p.abilities[0]!.readyAt = 0;
-    p.energy = 5;
+    p.chakra = 5;
     events = sim.step({ p1: idle() }); // relâchement du bouton
     events = sim.step({ p1: press(0) });
     expect(events).toContainEqual(
-      expect.objectContaining({ type: 'abilityRejected', reason: 'NOT_ENOUGH_ENERGY' }),
+      expect.objectContaining({ type: 'abilityRejected', reason: 'NOT_ENOUGH_CHAKRA' }),
     );
-    p.energy = 100;
+    p.chakra = 100;
     p.phase = { kind: 'STUNNED', endsAt: 1000 };
     sim.step({ p1: idle() });
     events = sim.step({ p1: press(0) });

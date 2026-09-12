@@ -2,7 +2,7 @@
   "id": "paralysis-seal",
   "name": "Paralysis Seal",
   "cooldownMs": 6000,
-  "energyCost": 30,
+  "chakraCost": 30,
   "startupMs": 200,
   "recoveryMs": 250,
   "tags": ["ranged", "control"],

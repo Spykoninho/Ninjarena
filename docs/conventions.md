@@ -109,7 +109,7 @@ state, returned value, or emitted events. Prefer asserting on `WorldEvent`s over
 private fields: the events are the contract the client consumes.
 
 Cover the branch you added, including its rejection: an ability test that only checks the happy
-path leaves `ON_COOLDOWN` and `NOT_ENOUGH_ENERGY` undefended. A bug fix comes with the test that
+path leaves `ON_COOLDOWN` and `NOT_ENOUGH_CHAKRA` undefended. A bug fix comes with the test that
 fails without it.
 
 ## Data files

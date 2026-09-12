@@ -9,9 +9,9 @@ const ninja = CharacterDefinitionSchema.parse({
   name: 'Ninja',
   stats: {
     maxHealth: 100,
-    maxEnergy: 100,
+    maxChakra: 100,
     moveSpeed: 140,
-    energyRegenPerSecond: 8,
+    chakraRegenPerSecond: 8,
     colliderRadius: 5,
   },
   abilities: ['shuriken'],

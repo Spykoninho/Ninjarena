@@ -9,7 +9,7 @@ export function respawnPlayer(ctx: SimulationContext, player: PlayerState, posit
   player.position = { x: position.x, y: position.y };
   player.velocity = { x: 0, y: 0 };
   player.health = player.stats.maxHealth;
-  player.energy = player.stats.maxEnergy;
+  player.chakra = player.stats.maxChakra;
   player.statuses = [];
   for (const slot of player.abilities) slot.readyAt = 0;
   // setPhase refuse de quitter DEAD: la renaissance écrit la phase directement.

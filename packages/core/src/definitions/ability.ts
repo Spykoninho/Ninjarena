@@ -42,7 +42,7 @@ export const AbilityDefinitionSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   cooldownMs: z.number().nonnegative(),
-  energyCost: z.number().nonnegative(),
+  chakraCost: z.number().nonnegative(),
   startupMs: z.number().nonnegative(),
   recoveryMs: z.number().nonnegative(),
   canMoveWhileCasting: z.boolean().default(false),

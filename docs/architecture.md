@@ -78,7 +78,7 @@ plain functions over that context — there is no system base class and no regis
    sanitized. Outside `IN_ROUND` gameplay is neutralized: `move` is zeroed and `abilityHeld` is
    cleared, but the aim is kept so players can look around during a countdown.
 3. **`playerStateSystem`** — expires timed phases (`DASHING`, `STUNNED`, `KNOCKBACK` return to
-   `NORMAL`), drops expired statuses, regenerates energy. `CASTING` is deliberately excluded: the
+   `NORMAL`), drops expired statuses, regenerates chakra. `CASTING` is deliberately excluded: the
    ability system owns the end of a cast.
 4. **`abilitySystem`** — detects press edges (`held & ~previousAbilityHeld`), validates the first
    pressed slot, starts the cast, and progresses a cast in flight.
@@ -115,7 +115,7 @@ A player is in exactly one **phase** and carries any number of **statuses**.
 
 Every transition goes through `setPhase`, which refuses to leave `DEAD` — death is terminal within
 a round, and only the round reset writes the phase back directly. A stun or a knockback replaces
-`CASTING`, which cancels the cast with no refund of energy or cooldown.
+`CASTING`, which cancels the cast with no refund of chakra or cooldown.
 
 The rules that read this model are six small predicates in `player/rules.ts`: `isAlive`,
 `isDamageable` (alive and not `INVULNERABLE`), `canAct` (phase is `NORMAL`), `controlsMovement`
@@ -129,7 +129,7 @@ status means adding a variant and touching the one rule that cares — not rewri
 A press is validated in a fixed order, and the first failing check is the reported reason:
 
 ```
-  DEAD -> NO_SUCH_SLOT -> BUSY -> ON_COOLDOWN -> NOT_ENOUGH_ENERGY
+  DEAD -> NO_SUCH_SLOT -> BUSY -> ON_COOLDOWN -> NOT_ENOUGH_CHAKRA
 ```
 
 A rejection emits an `abilityRejected` event rather than failing silently. On success the cast
@@ -141,12 +141,12 @@ timeline begins:
     v               v                                   v
     [--- startupMs ---][---------- recoveryMs ----------]
     ^                  ^
-    energy spent,      activation effects fire once
+    chakra spent,      activation effects fire once
     cooldown started,  (projectile / dash / melee)
     phase = CASTING                                     phase = NORMAL
 ```
 
-Energy is deducted and the cooldown starts at the press, not at the activation, so an interrupted
+Chakra is deducted and the cooldown starts at the press, not at the activation, so an interrupted
 cast still costs. A zero-startup ability activates inside the tick of the press. A `dash` effect
 replaces the `CASTING` phase with `DASHING`, which is why dash abilities declare `recoveryMs: 0`.
 
@@ -208,7 +208,7 @@ through the `MatchResultRepository` port.
 
 Ending a round clears the projectiles still in flight so a shot fired before the last kill cannot
 score during the delay. Starting the next round respawns everyone at a spawn point for their team
-with full health and energy, all cooldowns reset and no statuses, then freezes gameplay for the
+with full health and chakra, all cooldowns reset and no statuses, then freezes gameplay for the
 countdown.
 
 The presets live in `packages/content/src/match-modes.json`: `duel`, `ffa-3`, `ffa-4`, `2v2`,

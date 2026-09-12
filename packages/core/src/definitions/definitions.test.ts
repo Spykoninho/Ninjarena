@@ -9,7 +9,7 @@ describe('AbilityDefinitionSchema', () => {
       id: 'shuriken',
       name: 'Shuriken',
       cooldownMs: 900,
-      energyCost: 10,
+      chakraCost: 10,
       startupMs: 100,
       recoveryMs: 150,
       effects: [
@@ -31,7 +31,7 @@ describe('AbilityDefinitionSchema', () => {
       id: 'x',
       name: 'x',
       cooldownMs: 0,
-      energyCost: 0,
+      chakraCost: 0,
       startupMs: 0,
       recoveryMs: 0,
       effects: [{ type: 'teleport' }],

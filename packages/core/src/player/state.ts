@@ -7,9 +7,9 @@ import type { StatusEffect } from './status';
 
 export interface PlayerStats {
   maxHealth: number;
-  maxEnergy: number;
+  maxChakra: number;
   moveSpeed: number;
-  energyRegenPerSecond: number;
+  chakraRegenPerSecond: number;
   colliderRadius: number;
 }
 
@@ -26,7 +26,7 @@ export interface PlayerState {
   velocity: Vec2;
   aim: Vec2;
   health: number;
-  energy: number;
+  chakra: number;
   stats: PlayerStats;
   phase: CombatPhaseState;
   statuses: StatusEffect[];
@@ -53,7 +53,7 @@ export function createPlayerState(params: CreatePlayerParams): PlayerState {
     velocity: { x: 0, y: 0 },
     aim: { x: 1, y: 0 },
     health: stats.maxHealth,
-    energy: stats.maxEnergy,
+    chakra: stats.maxChakra,
     stats,
     phase: normalPhase(),
     statuses: [],

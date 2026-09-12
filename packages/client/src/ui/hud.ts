@@ -9,8 +9,8 @@ export interface HudAbilityView {
 export interface HudView {
   health: number;
   maxHealth: number;
-  energy: number;
-  maxEnergy: number;
+  chakra: number;
+  maxChakra: number;
   abilities: HudAbilityView[];
   matchPhase: MatchPhase;
   round: number;
@@ -44,7 +44,7 @@ export class Hud {
   private readonly phase: HTMLElement;
   private readonly status: HTMLElement;
   private readonly health: Bar;
-  private readonly energy: Bar;
+  private readonly chakra: Bar;
   private readonly abilityList: HTMLElement;
   private readonly chips: AbilityChip[] = [];
   private phaseText = '';
@@ -57,7 +57,7 @@ export class Hud {
     this.status = element('div', 'hud-status', top);
     const panel = element('div', 'hud-panel', root);
     this.health = createBar(panel, 'hud-bar-health');
-    this.energy = createBar(panel, 'hud-bar-energy');
+    this.chakra = createBar(panel, 'hud-bar-chakra');
     this.abilityList = element('div', 'hud-abilities', panel);
   }
 
@@ -74,7 +74,7 @@ export class Hud {
       this.status.textContent = status;
     }
     updateBar(this.health, view.health, view.maxHealth);
-    updateBar(this.energy, view.energy, view.maxEnergy);
+    updateBar(this.chakra, view.chakra, view.maxChakra);
     this.updateAbilities(view.abilities);
   }
 

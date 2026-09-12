@@ -3,7 +3,7 @@ import { upsertStatus } from '../../player/status';
 import { createTestSimulation } from '../../testing/fixtures';
 
 describe('playerStateSystem', () => {
-  it('regenerates energy up to the maximum', () => {
+  it('regenerates chakra up to the maximum', () => {
     const sim = createTestSimulation();
     const p = sim.addPlayer({
       id: 'p1',
@@ -11,9 +11,9 @@ describe('playerStateSystem', () => {
       characterId: 'ninja',
       position: { x: 200, y: 200 },
     });
-    p.energy = 99.9;
+    p.chakra = 99.9;
     for (let i = 0; i < 60; i++) sim.step({});
-    expect(p.energy).toBe(100);
+    expect(p.chakra).toBe(100);
   });
 
   it('removes statuses when they expire', () => {

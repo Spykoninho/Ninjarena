@@ -11,7 +11,7 @@ export function playerStateSystem(ctx: SimulationContext): void {
     if (!isAlive(player)) continue;
     expireTimedPhase(ctx, player);
     removeExpiredStatuses(player, ctx.now);
-    regenerateEnergy(player, ctx.dt);
+    regenerateChakra(player, ctx.dt);
   }
 }
 
@@ -29,7 +29,7 @@ function expireTimedPhase(ctx: SimulationContext, player: PlayerState): void {
   }
 }
 
-function regenerateEnergy(player: PlayerState, dt: number): void {
-  const regenerated = player.energy + player.stats.energyRegenPerSecond * dt;
-  player.energy = Math.min(player.stats.maxEnergy, regenerated);
+function regenerateChakra(player: PlayerState, dt: number): void {
+  const regenerated = player.chakra + player.stats.chakraRegenPerSecond * dt;
+  player.chakra = Math.min(player.stats.maxChakra, regenerated);
 }

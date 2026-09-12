@@ -29,7 +29,7 @@ describe('buildHudView', () => {
   it('maps the local player, the match state and the round trip time', () => {
     const player = makePlayer();
     player.health = 60;
-    player.energy = 30;
+    player.chakra = 30;
     const view = buildHudView({
       localPlayer: player,
       abilities: content.abilities,
@@ -42,8 +42,8 @@ describe('buildHudView', () => {
     expect(view).toMatchObject({
       health: 60,
       maxHealth: 100,
-      energy: 30,
-      maxEnergy: 100,
+      chakra: 30,
+      maxChakra: 100,
       matchPhase: 'IN_ROUND',
       round: 2,
       scores: { 'team-0': 1, 'team-1': 0 },

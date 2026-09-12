@@ -13,7 +13,7 @@ export function startCast(
 ): void {
   const slot = player.abilities[slotIndex];
   if (slot === undefined) return;
-  player.energy -= ability.energyCost;
+  player.chakra -= ability.chakraCost;
   slot.readyAt = ctx.now + ctx.ticks(ability.cooldownMs);
   const activatesAt = ctx.now + ctx.ticks(ability.startupMs);
   setPhase(ctx, player, {

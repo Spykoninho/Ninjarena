@@ -211,7 +211,7 @@ effects:
   "id": "shuriken",
   "name": "Shuriken",
   "cooldownMs": 900,
-  "energyCost": 10,
+  "chakraCost": 10,
   "startupMs": 100,
   "recoveryMs": 150,
   "tags": ["ranged", "projectile"],

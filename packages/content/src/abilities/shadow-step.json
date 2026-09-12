@@ -2,7 +2,7 @@
   "id": "shadow-step",
   "name": "Shadow Step",
   "cooldownMs": 4000,
-  "energyCost": 25,
+  "chakraCost": 25,
   "startupMs": 0,
   "recoveryMs": 0,
   "tags": ["mobility"],

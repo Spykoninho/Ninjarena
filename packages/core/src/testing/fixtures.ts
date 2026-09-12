@@ -83,7 +83,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     id: 'shuriken',
     name: 'Shuriken',
     cooldownMs: 900,
-    energyCost: 10,
+    chakraCost: 10,
     startupMs: 100,
     recoveryMs: 150,
     effects: [
@@ -100,7 +100,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     id: 'slash',
     name: 'Slash',
     cooldownMs: 500,
-    energyCost: 5,
+    chakraCost: 5,
     startupMs: 100,
     recoveryMs: 100,
     effects: [
@@ -119,7 +119,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     id: 'dash',
     name: 'Dash',
     cooldownMs: 3000,
-    energyCost: 20,
+    chakraCost: 20,
     startupMs: 0,
     recoveryMs: 0,
     effects: [{ type: 'dash', distance: 64, durationMs: 100 }],
@@ -128,7 +128,7 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     id: 'seal',
     name: 'Seal',
     cooldownMs: 1000,
-    energyCost: 10,
+    chakraCost: 10,
     startupMs: 0,
     recoveryMs: 0,
     effects: [
@@ -151,9 +151,9 @@ export const NINJA: CharacterDefinition = CharacterDefinitionSchema.parse({
   name: 'Ninja',
   stats: {
     maxHealth: 100,
-    maxEnergy: 100,
+    maxChakra: 100,
     moveSpeed: 140,
-    energyRegenPerSecond: 8,
+    chakraRegenPerSecond: 8,
     colliderRadius: 5,
   },
   abilities: ['shuriken', 'slash', 'dash', 'seal'],
