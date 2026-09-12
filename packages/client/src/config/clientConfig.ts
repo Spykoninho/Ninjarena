@@ -1,8 +1,13 @@
+import { ATTRIBUTE_IDS } from '@ninjarena/core';
+import type { Build } from '@ninjarena/core';
+
 export interface ClientConfig {
   serverUrl: string;
   playerName: string;
   interpolationDelayTicks: number;
   zoom: number;
+  build: Partial<Build>;
+  techniqueIds: string[];
 }
 
 const DEFAULT_SERVER_URL = 'ws://localhost:8080';
@@ -20,7 +25,30 @@ export function loadClientConfig(search: string): ClientConfig {
     interpolationDelayTicks: number(params.get('delay'), DEFAULT_INTERPOLATION_DELAY_TICKS, 0),
     // Un zoom fractionnaire casse l'alignement au pixel des tuiles.
     zoom: Math.floor(number(params.get('zoom'), DEFAULT_ZOOM, MIN_ZOOM)),
+    build: parseBuild(params.get('build')),
+    techniqueIds: parseList(params.get('techniques')),
   };
+}
+
+function parseBuild(value: string | null): Partial<Build> {
+  const raw = text(value);
+  if (raw === null) return {};
+  const parts = raw.split(',');
+  const build: Partial<Build> = {};
+  ATTRIBUTE_IDS.forEach((id, index) => {
+    const parsed = Number.parseInt(parts[index] ?? '', 10);
+    if (Number.isInteger(parsed)) build[id] = parsed;
+  });
+  return build;
+}
+
+function parseList(value: string | null): string[] {
+  const raw = text(value);
+  if (raw === null) return [];
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
 }
 
 function text(value: string | null): string | null {

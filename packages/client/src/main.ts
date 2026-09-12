@@ -9,25 +9,37 @@ import { NetworkClient } from './network/networkClient';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import './styles.css';
 import { Hud } from './ui/hud';
+import { techniqueOptions } from './ui/setupModel';
+import { SetupPanel } from './ui/setupPanel';
 
 const stage = document.querySelector<HTMLElement>('#app');
 const hudRoot = document.querySelector<HTMLElement>('#hud');
-if (stage === null || hudRoot === null) throw new Error('missing #app or #hud element');
+const setupRoot = document.querySelector<HTMLElement>('#setup');
+if (stage === null || hudRoot === null || setupRoot === null) {
+  throw new Error('missing #app, #hud or #setup element');
+}
 
 const config = loadClientConfig(window.location.search);
+const content = loadContent();
 const inputState = createInputState();
 const input = new DomInputAdapter(stage, inputState);
 input.attach();
 
 const game = new ClientGame({
   config,
-  content: loadContent(),
+  content,
   network: new NetworkClient(),
   renderer: new PixiRenderer({ zoom: config.zoom }),
   hud: new Hud(hudRoot),
   audio: new NullAudio(),
   inputState,
   bindings: DEFAULT_BINDINGS,
+  setupPanel: new SetupPanel(
+    setupRoot,
+    content.statRules,
+    techniqueOptions(content.abilities),
+    content.statRules.defaultPointBudget,
+  ),
 });
 
 window.addEventListener('beforeunload', () => {

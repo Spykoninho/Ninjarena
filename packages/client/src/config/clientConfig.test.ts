@@ -28,4 +28,32 @@ describe('loadClientConfig', () => {
     expect(loadClientConfig('?zoom=0.5').zoom).toBe(3);
     expect(loadClientConfig('?zoom=4').zoom).toBe(4);
   });
+
+  it('defaults to an empty build and an empty technique list', () => {
+    const config = loadClientConfig('');
+    expect(config.build).toEqual({});
+    expect(config.techniqueIds).toEqual([]);
+  });
+
+  it('parses the build query as a partial build in attribute order', () => {
+    const config = loadClientConfig('?build=9,1,2,3,4,5,6');
+    expect(config.build).toEqual({
+      vitality: 9,
+      strength: 1,
+      power: 2,
+      speed: 3,
+      maxChakra: 4,
+      chakraRegen: 5,
+      defense: 6,
+    });
+  });
+
+  it('ignores unreadable build entries', () => {
+    expect(loadClientConfig('?build=1,x,2').build).toEqual({ vitality: 1, power: 2 });
+  });
+
+  it('parses the techniques query as a list of ability ids', () => {
+    const config = loadClientConfig('?techniques=blink,fireball,earth-wall');
+    expect(config.techniqueIds).toEqual(['blink', 'fireball', 'earth-wall']);
+  });
 });

@@ -1,13 +1,7 @@
 import type { GameContent } from '@ninjarena/content';
 import { loadMap } from '@ninjarena/content';
 import type { PlayerId, PlayerState, Vec2, WorldState } from '@ninjarena/core';
-import {
-  FixedStepAccumulator,
-  GameSimulation,
-  emptyBuild,
-  lerp,
-  tickDurationMs,
-} from '@ninjarena/core';
+import { FixedStepAccumulator, GameSimulation, lerp, tickDurationMs } from '@ninjarena/core';
 import type { ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
@@ -24,6 +18,9 @@ import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import type { Hud } from '../ui/hud';
+import { createSetupState, techniqueOptions } from '../ui/setupModel';
+import type { SetupState } from '../ui/setupModel';
+import type { SetupPanel } from '../ui/setupPanel';
 import { buildHudView } from './hudView';
 import { buildRenderFrame } from './renderFrame';
 
@@ -36,6 +33,7 @@ export interface ClientGameDeps {
   audio: AudioPort;
   inputState: InputState;
   bindings: InputBindings;
+  setupPanel: SetupPanel;
 }
 
 type WelcomeMessage = Extract<ServerMessage, { type: 'welcome' }>;
@@ -72,7 +70,7 @@ export class ClientGame {
   }
 
   async start(container: HTMLElement): Promise<void> {
-    const { config, network, renderer } = this.deps;
+    const { config, content, network, renderer, setupPanel } = this.deps;
     await renderer.init(container);
     network.onMessage((message) => {
       this.handleMessage(message);
@@ -80,21 +78,35 @@ export class ClientGame {
     network.onClose(() => {
       this.markDisconnected(DISCONNECTED);
     });
-    this.setStatus(`connecting to ${config.serverUrl}`);
-    try {
-      await network.connect(config.serverUrl);
-    } catch (error) {
-      this.markDisconnected(`${DISCONNECTED}: ${reasonOf(error)}`);
-      throw error;
+    setupPanel.onPlay((state) => {
+      void this.play(state);
+    });
+    const initial = createSetupState(
+      config,
+      content.statRules,
+      techniqueOptions(content.abilities),
+    );
+    setupPanel.show(initial);
+  }
+
+  private async play(state: SetupState): Promise<void> {
+    const { config, network, setupPanel } = this.deps;
+    if (!this.connected) {
+      this.setStatus(`connecting to ${config.serverUrl}`);
+      try {
+        await network.connect(config.serverUrl);
+      } catch (error) {
+        setupPanel.showError(`failed to connect: ${reasonOf(error)}`);
+        return;
+      }
+      this.connected = true;
     }
-    this.connected = true;
-    // Loadout par défaut en attendant le panneau de préparation.
     network.send({
       type: 'join',
       protocolVersion: PROTOCOL_VERSION,
-      name: config.playerName,
-      build: emptyBuild(),
-      techniqueIds: ['blink', 'chakra-shield', 'lightning-dash'],
+      name: state.name,
+      build: state.build,
+      techniqueIds: state.techniqueIds.filter((id): id is string => id !== null),
     });
     this.setStatus('joining');
   }
@@ -124,7 +136,12 @@ export class ClientGame {
         this.handleSnapshot(message);
         return;
       case 'error':
-        this.setStatus(`error: ${message.message}`);
+        // Avant le `welcome` l'erreur concerne le loadout: elle s'affiche dans le panneau, pas dans le HUD.
+        if (this.simulation === null) {
+          this.deps.setupPanel.showError(message.message);
+        } else {
+          this.setStatus(`error: ${message.message}`);
+        }
         return;
       case 'pong':
         this.rttMs = performance.now() - message.sentAt;
@@ -133,7 +150,8 @@ export class ClientGame {
   }
 
   private handleWelcome(message: WelcomeMessage): void {
-    const { content, network, renderer } = this.deps;
+    const { content, network, renderer, setupPanel } = this.deps;
+    setupPanel.hide();
     const map = loadMap(content, message.mapId);
     this.simulation = new GameSimulation({
       map,
