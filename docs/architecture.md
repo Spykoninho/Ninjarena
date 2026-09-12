@@ -11,13 +11,13 @@ what the package boundaries enforce.
 
 ## Packages
 
-| Package               | Responsibility                                                                | May import                    |
-| --------------------- | ----------------------------------------------------------------------------- | ----------------------------- |
-| `@ninjarena/core`     | The whole simulation: rules, state, systems, definitions and their schemas.   | nothing in the workspace      |
-| `@ninjarena/protocol` | Wire messages, their zod schemas, and a `MessageCodec` (JSON today).          | `core`                        |
-| `@ninjarena/content`  | Gameplay data as JSON, parsed and validated into typed catalogs at load.      | `core`                        |
-| `@ninjarena/server`   | Authoritative host: transport, sessions, room, tick loop, snapshot broadcast. | `core`, `protocol`, `content` |
-| `@ninjarena/client`   | Browser app: input, netcode, renderer, HUD, audio port, frame loop.           | `core`, `protocol`, `content` |
+| Package               | Responsibility                                                              | May import                    |
+| --------------------- | --------------------------------------------------------------------------- | ----------------------------- |
+| `@ninjarena/core`     | The whole simulation: rules, state, systems, definitions and their schemas. | nothing in the workspace      |
+| `@ninjarena/protocol` | Wire messages, their zod schemas, and a `MessageCodec` (JSON today).        | `core`                        |
+| `@ninjarena/content`  | Gameplay data as JSON, parsed and validated into typed catalogs at load.    | `core`                        |
+| `@ninjarena/server`   | Authoritative host: transport, sessions, rooms, map storage, tick loop.     | `core`, `protocol`, `content` |
+| `@ninjarena/client`   | Browser app: input, netcode, renderer, HUD, audio port, frame loop.         | `core`, `protocol`, `content` |
 
 ```
   layer 3     @ninjarena/server               @ninjarena/client
@@ -48,17 +48,22 @@ packages/core/src/
   math/          Vec2 helpers: add, scale, normalize, clampLength, angleBetween, lerp, EPSILON
   time/          SimulationConfig (tickRate), msToTicks, tickDurationMs, FixedStepAccumulator
   definitions/   zod schemas and inferred types for abilities (effects, telegraphs), characters,
-                 stat rules, tilesets, maps, match configs and status types
+                 stat rules, tilesets, the map document (mapDocument.ts, versioned, migration),
+                 match configs and status types
   collision/     Shape = Rect | Circle | ConvexPolygon, closest-point resolution, SpatialGrid,
                  mergeSolidTiles
-  map/           LoadedMap: ASCII layers + legend -> terrain, merged colliders, spawns, broadphase
+  map/           LoadedMap.fromDocument: a MapDocument's two tile layers -> terrain, merged
+                 colliders, spawns in world units, broadphase; validateMap.ts (structural, spawn
+                 and reachability checks, plus the room-format spawn-count check)
   stats/         Build, computeStats, computeDamage, validateBuild — see "Stats and builds"
   player/        PlayerState, CombatPhaseState, StatusEffect, setPhase, rules.ts
   combat/        applyDamage, killPlayer, applyStun, applyKnockback, applyStatusEffect, canAffect
-  abilities/     casting timeline, loadout validation, effectRef (dotted paths), effects/
-                 (the executor and one handler file per brick under effects/handlers/)
+  abilities/     casting timeline, loadout validation (loadout.ts), effectRef (dotted paths),
+                 effects/ (the executor and one handler file per brick under effects/handlers/)
   projectile/    ProjectileState, spawnProjectile
   match/         MatchState, phases, teams, spawns, round reset
+  lobby/         RoomSettings (mode, teams, map, build points, best-of), applySettingsPatch,
+                 toMatchConfig — pure, reused by both the server and the client's lobby form
   simulation/    WorldState (players, projectiles, pending, obstacles), PlayerInput, WorldEvent,
                  SimulationContext, GameSimulation, systems/, entities/ (pending effects, obstacles)
   testing/       fixtures shared by the tests
@@ -312,24 +317,64 @@ Free-for-all is modelled as "every player is their own team" — the team id is 
 single rule serves every format: the round ends when at most one team still has a living player
 (and an opponent was actually eliminated), or when the round timer expires, which is a draw. The
 winning team scores a point; the first to `roundsToWin` wins the match, and `matchEnded` is stored
-through the `MatchResultRepository` port. `GameSimulation.startMatch()` accepts `MATCH_END` as a
-starting phase, same as `WAITING`, and the server uses it to restart: `matchEnded` schedules
-`Room.tryStart()` after `NINJARENA_MATCH_RESTART_MS` (8 seconds by default), which starts a new
-match at round one with fresh scores as long as at least two players are still in the room. A room
-that emptied below that stays in `MATCH_END` until it fills again: a finished match starts over on
-the same condition as a waiting one, so the next `join` or `ready` that brings two ready players
-together — or fills the room when `NINJARENA_AUTO_START` is on — restarts it.
+through the `MatchResultRepository` port. A room's simulation is created fresh at `startMatch` and
+discarded once its post-match delay elapses — see [rooms.md](rooms.md) for the room-level lifecycle
+(WAITING/STARTING/IN_GAME/FINISHED) this sits inside; `GameSimulation` itself just runs one match
+from `WAITING` (its own phase, unrelated to the room's) to `MATCH_END` and is not reused.
 
 Ending a round clears the projectiles still in flight, every pending zone and every spawned wall,
 so a shot, a delayed area or an obstacle from before the last kill cannot linger into the next
 round. Starting the next round respawns everyone at a spawn point for their team with full health
 and chakra, all cooldowns reset and no statuses, then freezes gameplay for the countdown.
 
-The presets live in `packages/content/src/match-modes.json`: `duel`, `ffa-3`, `ffa-4` and `2v2` are
-first to 2 rounds, `3v3` is first to 3; all five run 240-second rounds with a 10-point build
-budget, a 3-second countdown and round-end delay, and friendly fire off.
+There is no fixed set of presets any more: a room's `RoomSettings` (mode, team count, players per
+team, build points, map, best-of, round length, friendly fire) is turned into a `MatchConfig` by
+`toMatchConfig` (`packages/core/src/lobby/roomSettings.ts`) when the host starts the match —
+`roundsToWin = Math.floor(bestOf / 2) + 1`, `countdownMs`/`roundEndDelayMs` come from a fixed
+`MatchTiming` (3 seconds each), everything else is copied across. See [rooms.md](rooms.md) for how
+a room gets from a settings patch to a running match.
+
+## Rooms, maps and the client shell
+
+Everything above this line runs the same whether one room or a hundred are open — `core` still
+knows nothing about rooms, sessions or the network. The layer that turns a `MatchConfig` and a
+`MapDocument` into an actual match, and turns a browser tab into a lobby, lives in the server and
+the client:
+
+```
+packages/server/src/
+  lobby/     room.ts (WAITING/STARTING/IN_GAME/FINISHED, join/leave/settings/loadout/ready/team),
+             roomMatch.ts (spins up the GameSimulation and MatchHost at start, builds the
+             MatchResult at the end), roomMap.ts (the room's cached MapDocument + issues),
+             roomManager.ts (codes, create/join/leave, ticks every room with a match),
+             startBlockers.ts, roomCode.ts, password.ts, roomPlayer.ts
+  maps/      MapLibrary — merges @ninjarena/content's built-in maps with the MapRepository,
+             assigns ids, validates on save
+  persistence/  MapRepository (file-backed and in-memory), MatchResultRepository (in-memory)
+
+packages/client/src/
+  app/       clientApp.ts + appModel.ts — owns the NetworkClient, the current RoomView and map
+             list, and which screen (home/lobby/editor/game) is mounted
+  lobby/     lobbyModel.ts — pure: team grouping, blocker text, settings form state
+  editor/    editorModel.ts (pure), mapCanvas.ts, mapFile.ts — the map editor's own state and
+             canvas drawing, independent of the lobby
+  ui/        homeScreen.ts, lobbyScreen.ts + lobbySections.ts, loadoutModel.ts + loadoutPanel.ts,
+             editorScreen.ts + editorToolbar.ts — the DOM for every non-game screen
+```
+
+`Room` does not hold a `GameSimulation` before the match starts, and drops it once the post-match
+delay elapses — a room is lobby state first, and a match is something it creates and discards, not
+something it always has. See [rooms.md](rooms.md) for the full lifecycle, every client message and
+its preconditions, and [map-format.md](map-format.md) for the document `MapLibrary` and the editor
+both speak.
 
 ## The flow of a player action, end to end
+
+Before any of this, a room already exists and a match is running inside it: a player pressed
+**Create a room** or joined one by code, the host started the match once `startBlockers()` was
+empty, and the client is now mounted on the `game` screen rather than the `lobby` one (see
+[rooms.md](rooms.md)). What follows is unchanged by rooms — one room's tick loop feeds one
+`GameSimulation`, exactly as a single default room did before rooms existed.
 
 ```
   1  keydown / mousemove            DomInputAdapter writes physical codes into InputState
@@ -360,12 +405,14 @@ steps.
 
 ## Seams left open on purpose
 
-| Seam                    | Today                                                     | Meant for                                  |
-| ----------------------- | --------------------------------------------------------- | ------------------------------------------ |
-| `ServerTransport`       | `WebSocketTransport` (`ws`)                               | WebRTC data channels                       |
-| `MessageCodec`          | JSON + zod                                                | a binary, delta-compressed codec           |
-| `Renderer`              | `PixiRenderer` (PixiJS 8)                                 | another renderer, or a headless one        |
-| `AudioPort`             | `WebAudioSynth` (procedural tones); `NullAudio` for tests | recorded sound assets                      |
-| `MatchResultRepository` | in-memory                                                 | a database                                 |
-| `RoomManager`           | one default room                                          | many rooms, matchmaking                    |
-| `TickLoop` clock        | injectable `now` and `schedule`                           | deterministic tests, already used that way |
+| Seam                      | Today                                                                    | Meant for                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `ServerTransport`         | `WebSocketTransport` (`ws`)                                              | WebRTC data channels                                                                                                |
+| `MessageCodec`            | JSON + zod                                                               | a binary, delta-compressed codec                                                                                    |
+| `Renderer`                | `PixiRenderer` (PixiJS 8)                                                | another renderer, or a headless one                                                                                 |
+| `AudioPort`               | `WebAudioSynth` (procedural tones); `NullAudio` for tests                | recorded sound assets                                                                                               |
+| `MatchResultRepository`   | in-memory                                                                | a database; `MatchResult` already carries per-player teams, which a rating repository sitting next to it would need |
+| `MapRepository`           | file-backed (`FileMapRepository`) and in-memory                          | a database, the same way                                                                                            |
+| `MatchHost.sendSnapshots` | broadcasts the same unfiltered `WorldState` to every session in the room | fog of war: a per-session visibility filter slots in here without changing the `snapshot` shape                     |
+| `RoomManager`             | many independent rooms, joined by code                                   | matchmaking as a second producer of rooms next to `createRoom`                                                      |
+| `TickLoop` clock          | injectable `now` and `schedule`                                          | deterministic tests, already used that way                                                                          |

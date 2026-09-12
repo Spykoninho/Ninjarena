@@ -31,9 +31,10 @@ pnpm build
 These are exactly the steps CI runs, in that order.
 `pnpm format` fixes formatting, and `pnpm test:watch` is the comfortable loop while you work.
 
-When the change is visible in game, also run `pnpm dev` and check it with two tabs
-(`http://localhost:5173/?name=a` and `?name=b`): the two players must see each other, and the
-behaviour must look the same in both tabs.
+When the change is visible in game, also run `pnpm dev` and check it with two tabs: create a room
+in one (`http://localhost:5173/?name=a`), copy its link or code, and join from the other
+(`?name=b&room=<code>`), ready up both sides and start — the two players must see each other, and
+the behaviour must look the same in both tabs.
 
 ## Where tests go
 
@@ -78,8 +79,8 @@ Two consequences worth stating on their own:
 ## Adding a technique
 
 Techniques are data. In the common case you write no TypeScript at all: any ability of
-`kind: "technique"` is automatically offered to every player on the setup panel, so there is no
-character file to touch.
+`kind: "technique"` is automatically offered to every player in the lobby's loadout panel, so
+there is no character file to touch.
 
 1. Create `packages/content/src/abilities/<kebab-case-id>.json` with `"kind": "technique"`.
    Durations are in milliseconds, speeds and distances in world units (a tile is 16 units).
@@ -140,31 +141,68 @@ the tests that pin the formulas.
   change for a balance pass; only the coefficients should.
 - **A character's baseline** — base health, chakra, chakra regen, move speed and collider radius —
   lives in `packages/content/src/characters/<id>.json`.
-- **A match preset's pace** — `roundDurationMs`, `buildPoints`, `roundsToWin`, `countdownMs`,
-  `roundEndDelayMs`, `friendlyFire` — lives in `packages/content/src/match-modes.json`.
+- **A match's pace** — `roundDurationMs`, `buildPoints` and `friendlyFire` are room settings a
+  host picks in the lobby (bounds in `packages/core/src/lobby/roomSettings.ts`); `roundsToWin`
+  is derived from the room's `bestOf`. `countdownMs` and `roundEndDelayMs` are not tunable per
+  match — they are the fixed `DEFAULT_MATCH_TIMING` (3 seconds each) in the same file.
 
 Every one of these files is parsed by its zod schema at load, so an out-of-range or missing value
 fails immediately with the file name and the field, rather than shipping a silently broken number.
 After a balance edit, `packages/core/src/stats/stats.test.ts` and the relevant ability test are
 what confirm the change did what you intended.
 
-## Adding a map
+## Adding a bundled map
 
-1. Create `packages/content/src/maps/<id>.json` and register it in `loadContent.ts`.
-2. Declare `width`, `height`, the `tileset` id, and a `legend` mapping single characters to tile
-   ids of that tileset.
-3. Draw two ASCII layers of exactly `height` rows of exactly `width` characters: `ground` must be
-   fully tiled, `objects` may use a space for "nothing".
-4. Add `spawns`. A spawn with a `team` index belongs to that team in team modes; spawns without a
-   `team` are the free-for-all slots. Give a format at least as many spawns as it has players per
-   team, or the same points will be reused.
-5. Optionally add explicit `colliders` (`rect`, `circle`, `polygon`) for shapes the tile grid
-   cannot express, such as a diagonal wall.
+The easiest way to make a map is the in-browser editor (`?editor` — paint, Validate, Save), which
+produces a document a host can already select from the lobby without touching a line of code. To
+add one as a **bundled**, read-only map instead:
+
+1. Create `packages/content/src/maps/<id>.json` as a v1 map document — see
+   [docs/map-format.md](docs/map-format.md) for every field, the validation rules and a full 8×8
+   example.
+2. Import it and add it to the `maps` catalog in `loadContent.ts`, next to `arena.json`.
+3. Give it enough spawns for the room formats you expect it to be played in — `spawnIssues` (used
+   by both the server and the editor) is what a room checks before it will start with this map.
 
 Solid tiles become colliders automatically: they are merged into the largest possible rectangles,
 so a straight wall is one shape rather than one per tile. Terrain effects come from the tileset —
 each tile declares `solid`, `speedMultiplier` and `tags`, and the movement system samples the tile
 under the player's centre.
+
+## Adding a map tile
+
+A tile is one entry in a tileset's `tiles` record (`packages/content/src/tilesets/default.json`),
+keyed by its numeric id as a string:
+
+1. Add `"<id>": { "name", "color", "layer" }` to the tileset, plus `solid: true` if it should block
+   movement and projectiles, `speedMultiplier` if it should not be `1`, and `tags` for anything an
+   ability's `TerrainRule` might key off (a fire technique hitting harder on grass, say). `layer` is
+   `"ground"` (the default) or `"objects"`: `"ground"` tiles fill every cell of the layer they are
+   painted on, `"objects"` tiles can be `null` (nothing) instead.
+2. That is the whole schema change — `TileTypeSchema` in `packages/core/src/definitions/tileset.ts`
+   validates any tile id the same way, so nothing in `core` needs to know the new id exists.
+3. The editor's palette (`paletteOf` in `packages/client/src/editor/editorModel.ts`) reads the
+   tileset directly, so the new tile appears there automatically, on the layer it declared, the
+   next time a map using this tileset is opened.
+
+## Adding a room rule
+
+A room setting is one field of `RoomSettings` (`packages/core/src/lobby/roomSettings.ts`):
+
+1. Add the field to the `RoomSettings` interface and to the zod object `roomSettingsSchema`
+   returns, with whatever bounds make sense (see the existing `min`/`max` constants at the top of
+   the file for the pattern).
+2. Give it a default in `defaultRoomSettings`, so a freshly created room always has a valid value.
+3. If it affects the simulation, add one line to `toMatchConfig` mapping it onto the matching
+   `MatchConfig` field (adding a new one to `MatchConfigSchema` first if it does not exist yet).
+   A setting that only affects lobby behaviour, like `mapId`, needs no `toMatchConfig` line at all.
+4. Add a row for it in `settingsRows` (`packages/client/src/lobby/lobbyModel.ts`) so the host's
+   lobby form shows and edits it, and a case in `settingsPatch` in the same file so a change to
+   that row turns into the right `RoomSettingsPatch`.
+
+`applySettingsPatch` merges a patch onto the current settings and re-parses the whole object with
+the schema, so a bad value for the new field is rejected (`INVALID_SETTINGS`) without touching
+anything else in the room — there is nothing else to wire up for validation.
 
 ## Code style
 

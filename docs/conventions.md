@@ -26,7 +26,7 @@ version for a first pull request; this note is the reference.
 A duration ends in `Ms` when it is milliseconds (`cooldownMs`, `roundDurationMs`) and in `Ticks`
 when it is ticks (`interpolationDelayTicks`). A tick value that is an absolute point in time is
 `...At` (`readyAt`, `expiresAt`, `phaseEndsAt`). Booleans read as questions answered yes:
-`friendlyFire`, `autoStartWhenFull`, `canMoveWhileCasting`.
+`friendlyFire`, `hasPassword`, `canMoveWhileCasting`.
 
 ## File layout per module
 

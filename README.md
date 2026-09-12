@@ -1,13 +1,15 @@
 # Ninjarena
 
-A top-down pixel-art PvP ninja arena with an authoritative server. Two to six ninjas pick a stat
-build and three techniques on a pre-join setup screen, then fight in short rounds on a small tiled
-map: free movement with circle collisions, a five-slot loadout (basic attack, dash, three
-techniques) fuelled by chakra, telegraphed casts built from a data-driven effect tree, and an
-authoritative simulation that the browser predicts locally so the game feels immediate on a real
-connection.
+A top-down pixel-art PvP ninja arena with an authoritative server. Players create or join private
+rooms by a short code, configure the match in a host-editable lobby (mode, teams, map, best-of,
+round length, friendly fire), prepare a stat build and loadout validated live by the server, then
+fight in short rounds on a tile map: free movement with circle collisions, a five-slot loadout
+(basic attack, dash, three techniques) fuelled by chakra, telegraphed casts built from a
+data-driven effect tree, and an authoritative simulation that the browser predicts locally so the
+game feels immediate on a real connection.
 
-Formats are described by data, not by code: `duel` (1v1), `ffa-3`, `ffa-4`, `2v2` and `3v3` all run
+Match formats are room settings, not fixed presets: free-for-all or teams (2 to 8 teams, 1 to 4
+players per team), any of the built-in or player-made maps, and best of 1/3/5/7 rounds all run
 through the same round rules.
 
 TypeScript everywhere, ESM, strict mode. The exact same simulation runs on the server and in the
@@ -16,27 +18,34 @@ implementation of the game.
 
 ## Status
 
-This repository is the **vertical slice** step. What works today:
+What works today:
 
 - the full simulation: movement, collisions, seven-attribute stat builds, chakra, a recursive
   effect-tree ability system with telegraphs, projectiles, melee, dashes with contact effects,
   teleports, delayed zones, spawned walls, shields, statuses, rounds and match,
-- a pre-join setup panel (name, stat sliders, three technique picks) validated by the server at
-  `join`,
-- an authoritative WebSocket server with a 60 Hz tick loop and 30 snapshots per second,
+- private rooms joined by a 6-character code, with an optional password, a host-editable lobby
+  (mode, teams, map, build points, best-of, round length, friendly fire), team switching, and a
+  loadout panel the server validates on every change, reflected back as a per-player verdict,
+  before "Ready" can even be pressed,
+- a tile-based map editor: paint two layers and spawns, validate (structural, spawn and
+  reachability checks), save to the server, export or import JSON, and jump straight into a test
+  room with the map preselected — see [docs/map-format.md](docs/map-format.md),
+- an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
+  independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
   a feedback layer (particles, screen shake, hit stop, procedural audio) and a DOM HUD,
 - a spectator camera that follows a living teammate (or anyone alive in free-for-all) after death,
-- an automatic restart: a finished match starts over after `NINJARENA_MATCH_RESTART_MS` when the
-  room still holds two players,
-- content validated at load: abilities, a character, stat rules, a tileset, a map and the match
-  modes.
+- a match result kept in the room and shown for a configurable delay before everyone returns to
+  the lobby, not ready, for a new round of settings,
+- content validated at load: abilities, a character, stat rules, a tileset, and maps (built-in and
+  player-made, stored on the server).
 
 What is deliberately missing or simplified:
 
 - real sprites and animations (players are coloured shapes) and actual sound assets (the audio
   is procedural WebAudio tones, not recordings),
-- a lobby UI beyond the setup panel, matchmaking, bots, more than one room per server process,
+- accounts, matchmaking, bots, ranked play, spectating a room already in progress, kicking a
+  player, editor undo/redo, and map thumbnails,
 - snapshot filtering: every session receives the same unfiltered `WorldState`, so an `INVISIBLE`
   status is a rendering hint the client honours, not a secret,
 - the netcode refinements listed in [Roadmap](#roadmap), including lag compensation.
@@ -52,7 +61,7 @@ Five packages in a pnpm workspace. An arrow means "may import":
                    |      |      +-----------------+      |      |
                    |      |                               |      |
   layer 2     @ninjarena/protocol                  @ninjarena/content
-              messages, zod schemas, codec         abilities, maps, match modes
+              messages, zod schemas, codec         abilities, characters, tilesets, maps
                           |                               |
                           +---------------+---------------+
                                           |
@@ -125,23 +134,27 @@ pnpm dev
 ```
 
 This starts the server (`ws://localhost:8080`) and the Vite dev server (`http://localhost:5173`)
-side by side. The default match mode is `duel`, so the match needs exactly two players. Open two
-browser tabs:
+side by side. Open two browser tabs:
 
-- <http://localhost:5173/?name=a>
-- <http://localhost:5173/?name=b>
+- <http://localhost:5173/?name=a>, click **Create a room**. The lobby shows a room code (for
+  example `9VHJ3Z`) and a **Copy link** button that copies `?room=9VHJ3Z` appended to the current
+  page.
+- <http://localhost:5173/?name=b&room=9VHJ3Z> (or paste the copied link, or type the code into
+  **Room code** and press **Join** from the plain home screen) — the code prefills and the second
+  tab joins the same room.
 
-Each tab opens on a setup panel: pick a name, distribute the stat points and choose three
-techniques, then press Play. The client sends the build to the server, which validates it and, on
-success, joins the room and declares itself ready automatically; the match starts as soon as the
-room is full. You should see both ninjas, a countdown, then `IN_ROUND` in the HUD. First team to
-win `roundsToWin` rounds (2 by default, 3 for `3v3`) takes the match.
+Both tabs now show the lobby: teams, a host-only settings form (mode, map, teams, players per
+team, build points, rounds, round duration, friendly fire), and a loadout panel each player edits
+for themselves. Distribute the stat points, pick a basic attack and three techniques, then press
+**Ready** — the server validates the loadout and reflects the verdict back before Ready can be
+pressed with an invalid one. Once both are ready, the host's **Start** button lights up (it is
+greyed out with the reason otherwise — see `startBlockers` in [docs/rooms.md](docs/rooms.md)).
+Press it: you should see both ninjas, a countdown, then `IN_ROUND` in the HUD. First team to win
+`roundsToWin` rounds (best of 3 by default) takes the match, and every player returns to the lobby,
+not ready, a few seconds after the last round ends.
 
-The setup panel can be prefilled from the URL, which is convenient for opening several tabs at
-once: `?name=a&build=1,1,1,1,3,1,2&techniques=fireball,blink,chakra-shield` sets the name, the
-seven attribute points in `vitality,strength,power,speed,maxChakra,chakraRegen,defense` order, and
-the three technique ids. Values outside the rules or over budget are clamped, and missing or
-invalid technique ids are filled in, so the panel always opens ready to tweak or play immediately.
+Add `?editor` to open the map editor instead of the home screen — see
+[docs/map-format.md](docs/map-format.md).
 
 To play over a LAN, both servers have to leave localhost: the game server binds where
 `NINJARENA_HOST` says, and Vite needs `--host` to serve the page to another machine.
@@ -160,29 +173,36 @@ the default binding is `127.0.0.1`: only expose the server on a network you trus
 The server reads its configuration from the environment at startup; every value is validated and
 an invalid one stops the process.
 
-| Variable                     | Default     | Meaning                                                                                           |
-| ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
-| `NINJARENA_HOST`             | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                       |
-| `NINJARENA_PORT`             | `8080`      | WebSocket port (1-65535).                                                                         |
-| `NINJARENA_TICK_RATE`        | `60`        | Simulation ticks per second (1-240).                                                              |
-| `NINJARENA_SNAPSHOT_RATE`    | `30`        | Snapshots per second (1-240).                                                                     |
-| `NINJARENA_MAP`              | `arena`     | Map id from `@ninjarena/content`.                                                                 |
-| `NINJARENA_MATCH_MODE`       | `duel`      | `duel`, `ffa-3`, `ffa-4`, `2v2` or `3v3`.                                                         |
-| `NINJARENA_INPUT_QUEUE`      | `8`         | Inputs buffered per player before the oldest are dropped.                                         |
-| `NINJARENA_MAX_CONNECTIONS`  | `32`        | Sockets accepted at once (1-1024); the next one is closed with `1013`.                            |
-| `NINJARENA_AUTO_START`       | `true`      | Start as soon as the room is full; `false` waits for everyone to be ready (at least two players). |
-| `NINJARENA_MATCH_RESTART_MS` | `8000`      | Delay before a finished match restarts, in milliseconds (0-600000).                               |
+| Variable                    | Default     | Meaning                                                                                                             |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `NINJARENA_HOST`            | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                                         |
+| `NINJARENA_PORT`            | `8080`      | WebSocket port (1-65535).                                                                                           |
+| `NINJARENA_TICK_RATE`       | `60`        | Simulation ticks per second (1-240).                                                                                |
+| `NINJARENA_SNAPSHOT_RATE`   | `30`        | Snapshots per second (1-240).                                                                                       |
+| `NINJARENA_INPUT_QUEUE`     | `8`         | Inputs buffered per player before the oldest are dropped (1-64).                                                    |
+| `NINJARENA_MAX_CONNECTIONS` | `32`        | Sockets accepted at once (1-1024); the next one is closed with `1013`.                                              |
+| `NINJARENA_MAX_ROOMS`       | `64`        | Rooms that can exist at once (1-1024); `createRoom` beyond that gets `TOO_MANY_ROOMS`.                              |
+| `NINJARENA_POST_MATCH_MS`   | `8000`      | How long a finished match's result stays up before the room returns to the lobby, in ms (0-600000).                 |
+| `NINJARENA_MAPS_DIR`        | `data/maps` | Directory holding player-saved maps, one JSON file per map. Created on first save; `data/` is git-ignored.          |
+| `NINJARENA_MAX_STORED_MAPS` | `100`       | Player-saved maps kept at once (0-10000); a new one beyond that gets `MAP_STORE_FULL` (overwriting one never does). |
 
 The client is configured through query parameters:
 
-| Parameter    | Default               | Meaning                                                                                                 |
-| ------------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
-| `server`     | `ws://localhost:8080` | Server URL.                                                                                             |
-| `name`       | random `ninja-xxxx`   | Display name, 1 to 24 characters.                                                                       |
-| `build`      | none                  | Prefills the setup panel's stat sliders: `vitality,strength,power,speed,maxChakra,chakraRegen,defense`. |
-| `techniques` | none                  | Prefills the setup panel's technique picks: a comma-separated list of ability ids.                      |
-| `delay`      | `6`                   | Interpolation delay for remote entities, in ticks (100 ms).                                             |
-| `zoom`       | `3`                   | Render scale; the world is 16-unit tiles at native resolution.                                          |
+| Parameter    | Default               | Meaning                                                                                                   |
+| ------------ | --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `server`     | `ws://localhost:8080` | Server URL.                                                                                               |
+| `name`       | random `ninja-xxxx`   | Display name, 1 to 24 characters.                                                                         |
+| `room`       | none                  | Room code; prefills and focuses the join form on the home screen.                                         |
+| `editor`     | absent                | Opens the map editor instead of the home screen when present, regardless of value (`?editor`).            |
+| `build`      | none                  | Prefills the loadout panel's stat sliders: `vitality,strength,power,speed,maxChakra,chakraRegen,defense`. |
+| `basic`      | character's default   | Prefills the loadout panel's basic attack pick, by ability id.                                            |
+| `techniques` | none                  | Prefills the loadout panel's technique picks: a comma-separated list of ability ids.                      |
+| `delay`      | `6`                   | Interpolation delay for remote entities, in ticks (100 ms).                                               |
+| `zoom`       | `3`                   | Render scale; the world is 16-unit tiles at native resolution.                                            |
+
+The server also writes to `data/` (the `NINJARENA_MAPS_DIR` default): player-saved maps land there
+as one JSON file per map, created on first save. The whole directory is git-ignored — it is local,
+disposable state, not something to commit.
 
 ## Development
 
@@ -207,10 +227,10 @@ packages/
   core/       @ninjarena/core       math, time, definitions, collision, map, player, stats,
                                     abilities (effects/handlers), combat, projectile, match, simulation
   protocol/   @ninjarena/protocol   client and server messages, zod schemas, JSON codec
-  content/    @ninjarena/content    abilities/, characters/, tilesets/, maps/, match-modes.json,
-                                    stat-rules.json
-  server/     @ninjarena/server     config, transport, session, lobby, match host, persistence
-  client/     @ninjarena/client     config, input, network, netcode, rendering, feedback, audio, ui, game
+  content/    @ninjarena/content    abilities/, characters/, tilesets/, maps/, stat-rules.json
+  server/     @ninjarena/server     config, transport, session, lobby, maps, match host, persistence
+  client/     @ninjarena/client     config, input, network, netcode, rendering, feedback, audio,
+                                    app, lobby, editor, ui, game
 ```
 
 Tests live next to the code they cover, as `*.test.ts`. Vitest picks up
@@ -223,19 +243,19 @@ loads, so a typo fails immediately with the file name and the offending field.
 
 ```
 packages/content/src/
-  abilities/kunai-strike.json  shadow-step.json  fireball.json  seismic-slam.json
-            lightning-dash.json  earth-wall.json  blink.json  paralysis-seal.json  chakra-shield.json
+  abilities/kunai-strike.json  shuriken-throw.json  shadow-step.json  fireball.json
+            seismic-slam.json  lightning-dash.json  earth-wall.json  blink.json
+            paralysis-seal.json  chakra-shield.json
   characters/ninja.json
   stat-rules.json
   tilesets/default.json
   maps/arena.json
-  match-modes.json
 ```
 
 A character (`characters/ninja.json`) names its `basicAttackId` and `dashId`; every other ability
-of `kind: "technique"` is available to any player, picked at the setup panel. An ability declares
-its cost, its phase timings in milliseconds, an optional telegraph, and an effect tree that runs
-once at activation:
+of `kind: "basic"` or `kind: "technique"` is available to any player, picked in the lobby's loadout
+panel (a basic attack, plus three techniques). An ability declares its cost, its phase timings in
+milliseconds, an optional telegraph, and an effect tree that runs once at activation:
 
 ```json
 {
@@ -281,10 +301,13 @@ with power) or `none`. Adding a technique is JSON only — see
 variant plus one handler — see
 [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-brick).
 
-**Adding a map.** A map is two ASCII layers (`ground`, fully tiled, and `objects`, where a space
-means "nothing"), a `legend` mapping characters to tile ids of its tileset, optional explicit
-`colliders` for shapes a grid cannot express, and the spawn points. Solid tiles are merged into
-rectangles automatically, so a long wall costs one collider rather than one per tile.
+**Adding a map.** A map is a versioned JSON document: two tile layers (`ground`, fully tiled, and
+`objects`, where `null` means "nothing"), optional explicit `colliders` for shapes a grid cannot
+express, and the spawn points, each optionally tagged with a team. Solid tiles are merged into
+rectangles automatically, so a long wall costs one collider rather than one per tile. A bundled map
+is one file under `packages/content/src/maps/`; a player-made one is drawn in the in-browser map
+editor (`?editor`) and saved to the server. Both go through the same schema and validation — see
+[docs/map-format.md](docs/map-format.md) for the full format and rules.
 
 ## Controls
 
@@ -321,7 +344,8 @@ Planned next, in no particular order:
   corrections are eased today; a large one still snaps),
 - real sprites, animations and recorded audio, replacing the placeholder shapes and procedural
   tones,
-- a lobby UI beyond the setup panel, matchmaking, and more than one room per server,
+- accounts (so a stored map can be owned rather than overwritable by anyone who knows its id),
+  matchmaking and ranked play, spectating a room already in progress,
 - a persistence backend behind `MatchResultRepository`,
 - more techniques, more characters, and bots.
 

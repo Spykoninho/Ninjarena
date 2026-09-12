@@ -5,54 +5,67 @@ The package layout that makes this possible is described in [architecture.md](ar
 
 The transport is WebSocket over TCP, kept deliberately rather than moved to something unordered.
 TCP already orders and retransmits every frame, which removes reordering and loss as concerns for
-`join`, `ready` and `snapshot` messages; the only network defect the client still has to hide is
+`hello`, room and `snapshot` messages; the only network defect the client still has to hide is
 delay, which is what prediction, reconciliation and interpolation below are for.
 
 ## Authority model
 
-The server owns the game state. A client sends **intent**, never outcome.
+The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 3`.
 
-| The client may send                                   | The server alone decides                                     |
-| ----------------------------------------------------- | ------------------------------------------------------------ |
-| `join { protocolVersion, name, build, techniqueIds }` | the player id (it comes from the connection, never the wire) |
-| `ready`                                               | whether the requested build and techniques are valid         |
-| `input { seq, input: { move, aim, abilityHeld } }`    | when a match starts, and the team a joining player gets      |
-| `ping { sentAt }`                                     | whether an ability is allowed, and what it hits              |
-|                                                       | damage, deaths, statuses, knockback, shields                 |
-|                                                       | positions, collisions, projectile and zone resolution        |
-|                                                       | round and match results                                      |
+| The client may send                                                    | The server alone decides                                                                                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`                                      | the session id (it comes from the connection, never the wire)                                                                |
+| `createRoom { password?, settings? }` / `joinRoom { code, password? }` | a room's code, its host, and whether a join is allowed                                                                       |
+| `updateSettings { patch }` / `setLoadout` / `setReady` / `switchTeam`  | whether a settings patch or a loadout is valid                                                                               |
+| `startMatch`                                                           | when a match actually starts, and the team a player gets                                                                     |
+| `listMaps` / `getMap { id }` / `saveMap { document }`                  | a map's final id, and whether it is valid                                                                                    |
+| `input { seq, input: { move, aim, abilityHeld } }`                     | whether an ability is allowed, and what it hits                                                                              |
+| `ping { sentAt }`                                                      | damage, deaths, statuses, knockback, shields; positions, collisions, projectile and zone resolution; round and match results |
 
 Every client frame is validated by a zod schema before it reaches game code
-(`ClientMessageSchema`, strict objects, name limited to 24 characters, `build` an exact seven-key
-integer record, `techniqueIds` a bounded array of strings — the schema only checks shape, since the
-exact number of required techniques and their attribute ranges depend on content loaded at
-runtime). A frame that fails to parse is dropped silently and counted; after 20 bad frames the
-session is closed with code `1008`. The transport accepts text only — a binary frame is ignored —
-and `maxPayload` is 64 KiB, well above the largest legitimate message.
+(`ClientMessageSchema`, strict objects, `hello`'s name limited to 24 characters, a room code
+exactly 6 characters, a map document bounded to 128x128 tiles and 64 spawns — the schema only
+checks shape and size; the exact loadout budget and technique count depend on content and on the
+room's settings, loaded at runtime). A frame that fails to parse is dropped silently and counted;
+after 20 bad frames the session is closed with code `1008`. The transport accepts text only — a
+binary frame is ignored — and `maxPayload` is 64 KiB, well above the largest legitimate message.
 
 Even a well-formed input is not trusted: `sanitizePlayerInput` clamps `move` to length 1,
 normalizes `aim`, masks `abilityHeld` to the five real slots, and replaces the whole input with a
-neutral one if any component is not finite. `join`'s `build` and `techniqueIds` get the same
-treatment against actual content and rules, not just shape: `validateBuild` checks every attribute
-is within its configured range and the total is within `matchConfig.buildPoints`, and
-`validateLoadout` checks `techniqueIds` names exactly `techniqueSlots` distinct abilities of
-`kind: 'technique'` that actually exist in the loaded catalog.
+neutral one if any component is not finite. A `setLoadout` loadout gets the same treatment against
+actual content and rules, not just shape: `validateLoadout` checks the build is within its
+configured ranges and the room's `buildPoints`, `basicAttackId` names an ability of `kind: 'basic'`,
+and `techniqueIds` names `techniqueSlots` distinct abilities of `kind: 'technique'` that actually
+exist in the loaded catalog. A `saveMap` document goes through the same `migrateMapDocument` and
+`validateMapDocument` the server runs at match start — see [map-format.md](map-format.md).
 
 The server sends:
 
-- `welcome { playerId, tickRate, snapshotRate, mapId, matchConfig }` — sent before the room
-  broadcast, so the client knows which player it is,
-- `roomState { players }` — broadcast whenever someone joins, leaves or toggles ready; each player
-  entry now carries its `techniqueIds` too,
-- `snapshot { tick, lastProcessedSeq, world, events }`,
-- `error { code, message }` — `PROTOCOL_VERSION`, `ROOM_FULL`, `INVALID_LOADOUT` (an out-of-range,
-  over-budget or unknown-technique build or loadout), `NOT_JOINED`, and `INVALID_MESSAGE`, which
-  the protocol declares but the server does not currently send: a malformed frame gets no answer at
-  all,
+- `welcome { sessionId }` — the first reply to a valid `hello`, before any room exists.
+- `roomState { room: RoomView }` — broadcast to every player in a room whenever anything about it
+  changes (join, leave, a settings patch, a loadout, ready, team, or a status transition); it is
+  the one message that carries the whole room, so the client never has to reconstruct it from a
+  diff — see [rooms.md](rooms.md) for the shape and every status it can report.
+- `roomLeft` — acknowledges `leaveRoom`.
+- `matchStarted { playerId, tickRate, snapshotRate, matchConfig, map }` — sent once per player when
+  a room's match begins; `map` is the full `MapDocument`, so the client never needs a separate
+  `getMap` round trip to render the room it is about to play in.
+- `snapshot { tick, lastProcessedSeq, world, events }` — sent only to the sessions seated in the
+  room whose `MatchHost` produced it; a session in a different room, or in no room, never sees it.
+- `mapList { maps }`, `mapSaved { id }`, `mapDocument { document }` — replies to `listMaps`,
+  `saveMap` and `getMap`.
+- `error { code, message }` — one of `PROTOCOL_VERSION`, `INVALID_MESSAGE`, `NOT_INTRODUCED`,
+  `NOT_IN_ROOM`, `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `WRONG_PASSWORD`, `ROOM_IN_GAME`,
+  `TOO_MANY_ROOMS`, `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`, `INVALID_LOADOUT`, `TEAM_FULL`,
+  `CANNOT_START`, `INVALID_MAP`, `MAP_NOT_FOUND`, `MAP_STORE_FULL` — see [rooms.md](rooms.md) for
+  which message can produce which. `INVALID_MESSAGE` is declared but not currently sent: a
+  malformed frame gets no answer at all, as noted above.
 - `pong { sentAt, serverTime }`.
 
-`PROTOCOL_VERSION` is a single integer, checked on `join`. A client speaking another version is
-told so and never enters the room.
+`hello` is the handshake: a session that has not sent one yet gets `NOT_INTRODUCED` for anything
+else it sends, and `PROTOCOL_VERSION` if the one it does send names another version — either way it
+never reaches a room. A `hello` sent again later, while not in a room, is accepted as a rename
+rather than a second handshake (`ALREADY_IN_ROOM` if the session is currently seated in one).
 
 ## Rates
 
@@ -74,6 +87,22 @@ how it is tested without waiting. That clock is `performance.now()` and not `Dat
 monotonic, so an NTP step cannot make one tick last a negative or an enormous amount of time. Both
 accumulators cap catch-up: a long freeze (a hidden tab, a paused process) is abandoned rather than
 replayed in a burst.
+
+## Per-room snapshots
+
+One `TickLoop` drives `RoomManager.tick()`, which calls `Room.tick()` on every room that currently
+has a match — a room in `WAITING` costs nothing beyond sitting in a `Map`. Each room's `MatchHost`
+owns its own `GameSimulation` and its own snapshot cadence; `sendSnapshots` iterates only the
+sessions seated in that room (`sessionsInMatch()`), so a snapshot never reaches a session in a
+different room, or one still in the lobby. There is no cross-room broadcast of any kind: the wire
+format is unchanged from a single-room server, it is simply built and sent once per room instead of
+once for the whole process.
+
+A room keeps streaming after its match ends: `Room.finish()` calls `MatchHost.flush()` immediately
+so the terminal `FINISHED` state reaches every client without waiting for the next scheduled tick,
+and `Room.tick()` keeps calling `MatchHost.tick()` — at the normal rate — for `postMatchTicks` more
+ticks while the result is on screen, before the room discards the match and returns to `WAITING`.
+See [rooms.md](rooms.md) for the room lifecycle this sits inside.
 
 ## Sequence numbers and `lastProcessedSeq`
 
@@ -243,6 +272,8 @@ Stating the gaps is more useful than implying they do not exist.
   have this problem: it renders from the predicted simulation, which moves it in one tick.
 - **The snapshot world is not validated in depth.** The client trusts its server: `world` and
   `events` are only checked to be objects. A hostile server is not part of the threat model.
-- **Joining a match in progress is not supported**, and a player who disconnects mid-round leaves
-  the round to run until its timer, because the surviving team never gains the "an opponent was
-  eliminated" condition.
+- **Joining a match in progress is not supported.** A room only accepts `joinRoom` while `WAITING`
+  (`ROOM_IN_GAME` otherwise); there is no spectating from outside and no seat for a player who
+  arrives after `startMatch`. A player who disconnects mid-match, on the other hand, does end the
+  match right away once fewer than two teams remain — see "Leaving mid-match and forfeit" in
+  [rooms.md](rooms.md).
