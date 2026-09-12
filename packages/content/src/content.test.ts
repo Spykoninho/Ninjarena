@@ -22,6 +22,7 @@ describe('content', () => {
   it('ships the whole ability roster with a telegraph on every technique', () => {
     expect(content.abilities.all().map((a) => a.id)).toEqual([
       'kunai-strike',
+      'shuriken-throw',
       'shadow-step',
       'blink',
       'lightning-dash',
@@ -35,6 +36,11 @@ describe('content', () => {
       if (ability.kind !== 'technique') continue;
       expect(ability.telegraph).not.toBeNull();
     }
+  });
+
+  it('offers a choice of basic attacks', () => {
+    const basicAttacks = content.abilities.all().filter((a) => a.kind === 'basic');
+    expect(basicAttacks.length).toBeGreaterThanOrEqual(2);
   });
 
   it('gives every projectile, zone and wall a visual', () => {

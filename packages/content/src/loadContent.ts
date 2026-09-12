@@ -26,6 +26,7 @@ import lightningDash from './abilities/lightning-dash.json';
 import paralysisSeal from './abilities/paralysis-seal.json';
 import seismicSlam from './abilities/seismic-slam.json';
 import shadowStep from './abilities/shadow-step.json';
+import shurikenThrow from './abilities/shuriken-throw.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
 import matchModes from './match-modes.json';
@@ -52,6 +53,7 @@ export function loadContent(): GameContent {
   return {
     abilities: new DefinitionCatalog<AbilityDefinition>([
       parseFile(AbilityDefinitionSchema, 'abilities/kunai-strike.json', kunaiStrike),
+      parseFile(AbilityDefinitionSchema, 'abilities/shuriken-throw.json', shurikenThrow),
       parseFile(AbilityDefinitionSchema, 'abilities/shadow-step.json', shadowStep),
       parseFile(AbilityDefinitionSchema, 'abilities/blink.json', blink),
       parseFile(AbilityDefinitionSchema, 'abilities/lightning-dash.json', lightningDash),
