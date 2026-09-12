@@ -3,15 +3,15 @@ import {
   CharacterDefinitionSchema,
   DefinitionCatalog,
   LoadedMap,
-  MapDefinitionSchema,
   MatchConfigSchema,
+  migrateMapDocument,
   StatRulesDefinitionSchema,
   TilesetDefinitionSchema,
 } from '@ninjarena/core';
 import type {
   AbilityDefinition,
   CharacterDefinition,
-  MapDefinition,
+  MapDocument,
   MatchConfig,
   StatRulesDefinition,
   TilesetDefinition,
@@ -40,7 +40,7 @@ export interface GameContent {
   abilities: DefinitionCatalog<AbilityDefinition>;
   characters: DefinitionCatalog<CharacterDefinition>;
   tilesets: DefinitionCatalog<TilesetDefinition>;
-  maps: DefinitionCatalog<MapDefinition>;
+  maps: DefinitionCatalog<MapDocument>;
   matchModes: DefinitionCatalog<MatchConfig>;
   statRules: StatRulesDefinition;
 }
@@ -69,8 +69,8 @@ export function loadContent(): GameContent {
     tilesets: new DefinitionCatalog<TilesetDefinition>([
       parseFile(TilesetDefinitionSchema, 'tilesets/default.json', defaultTileset),
     ]),
-    maps: new DefinitionCatalog<MapDefinition>([
-      parseFile(MapDefinitionSchema, 'maps/arena.json', arena),
+    maps: new DefinitionCatalog<MapDocument>([
+      parseFile({ parse: migrateMapDocument }, 'maps/arena.json', arena),
     ]),
     matchModes: new DefinitionCatalog<MatchConfig>(
       matchModes.map((mode, index) =>
@@ -83,7 +83,7 @@ export function loadContent(): GameContent {
 
 export function loadMap(content: GameContent, mapId: string): LoadedMap {
   const map = content.maps.get(mapId);
-  return LoadedMap.fromDefinitions(map, content.tilesets.get(map.tileset));
+  return LoadedMap.fromDocument(map, content.tilesets.get(map.tileset));
 }
 
 // La forme TypeScript d'un JSON n'est pas une preuve: chaque fichier passe par son schéma.

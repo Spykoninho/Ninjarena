@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBudget } from '@ninjarena/core';
+import { buildBudget, isSolidTile } from '@ninjarena/core';
 import type { Effect } from '@ninjarena/core';
 import { DEFAULT_MAP_ID, loadContent, loadMap } from './index';
 
@@ -77,6 +77,19 @@ describe('content', () => {
     expect(map.spawns.filter((s) => s.team === 1)).toHaveLength(3);
     expect(map.spawns.filter((s) => s.team === undefined)).toHaveLength(4);
     for (const spawn of map.spawns) expect(map.terrainAt(spawn).solid).toBe(false);
+  });
+
+  it('parses every bundled map document with a known tileset and open spawns', () => {
+    for (const map of content.maps.all()) {
+      expect(content.tilesets.has(map.tileset)).toBe(true);
+      const tileset = content.tilesets.get(map.tileset);
+      for (const spawn of map.spawns) {
+        const ground = map.layers.ground[spawn.y]?.[spawn.x];
+        const object = map.layers.objects[spawn.y]?.[spawn.x] ?? null;
+        expect(ground).toBeDefined();
+        expect(isSolidTile(tileset, ground as number, object)).toBe(false);
+      }
+    }
   });
 });
 
