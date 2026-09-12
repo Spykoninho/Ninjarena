@@ -161,26 +161,4 @@ describe('MapLibrary', () => {
     expect(updated?.createdAt).not.toBe(dates[1]!.toISOString());
     expect(updated?.name).toBe('First renamed');
   });
-
-  it('loads the bundled arena map', async () => {
-    const library = new MapLibrary({
-      content,
-      repository: new InMemoryMapRepository(),
-      maxStoredMaps: 10,
-    });
-
-    const loaded = await library.load('arena');
-    expect(loaded?.widthInTiles).toBe(40);
-    expect(loaded?.heightInTiles).toBe(30);
-  });
-
-  it('returns null when loading an unknown map', async () => {
-    const library = new MapLibrary({
-      content,
-      repository: new InMemoryMapRepository(),
-      maxStoredMaps: 10,
-    });
-
-    await expect(library.load('missing')).resolves.toBeNull();
-  });
 });

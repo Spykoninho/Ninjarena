@@ -38,7 +38,6 @@ export interface RoomDeps {
   postMatchTicks: number;
   characterId: string;
   onMatchEnded?: (result: MatchResult) => void;
-  onEmpty?: (room: Room) => void;
 }
 
 export class Room {
@@ -51,7 +50,6 @@ export class Room {
   private readonly postMatchTicks: number;
   private readonly characterId: string;
   private readonly onMatchEnded: ((result: MatchResult) => void) | null;
-  private readonly onEmpty: ((room: Room) => void) | null;
   private readonly roster: RoomPlayer[] = [];
   private roomSettings: RoomSettings;
   private roomStatus: RoomStatus = 'WAITING';
@@ -70,7 +68,6 @@ export class Room {
     this.postMatchTicks = deps.postMatchTicks;
     this.characterId = deps.characterId;
     this.onMatchEnded = deps.onMatchEnded ?? null;
-    this.onEmpty = deps.onEmpty ?? null;
   }
 
   get status(): RoomStatus {
@@ -154,10 +151,7 @@ export class Room {
       // Une partie sans adversaire ne peut plus se conclure: le camp resté en lice l'emporte.
       if (running && present.length < 2) this.finish(present[0] ?? null);
     }
-    if (this.roster.length === 0) {
-      this.onEmpty?.(this);
-      return;
-    }
+    if (this.roster.length === 0) return;
     this.broadcastState();
   }
 

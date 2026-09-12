@@ -1,5 +1,5 @@
 import type { MapDocument, MapIssue, MapSummary } from '@ninjarena/core';
-import { LoadedMap, migrateMapDocument, summarizeMap, validateMapDocument } from '@ninjarena/core';
+import { migrateMapDocument, summarizeMap, validateMapDocument } from '@ninjarena/core';
 import type { GameContent } from '@ninjarena/content';
 import type { MapRepository } from '../persistence/mapRepository';
 
@@ -43,13 +43,6 @@ export class MapLibrary {
   async get(id: string): Promise<MapDocument | null> {
     if (this.content.maps.has(id)) return this.content.maps.get(id);
     return this.repository.get(id);
-  }
-
-  async load(id: string): Promise<LoadedMap | null> {
-    const document = await this.get(id);
-    if (document === null) return null;
-    const tileset = this.content.tilesets.get(document.tileset);
-    return LoadedMap.fromDocument(document, tileset);
   }
 
   // Seule la bibliothèque sait d'où vient une carte: le résumé se demande ici.

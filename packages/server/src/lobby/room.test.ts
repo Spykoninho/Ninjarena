@@ -23,7 +23,6 @@ interface Fixture {
   room: Room;
   repository: InMemoryMapRepository;
   matchResults: MatchResult[];
-  emptied: Room[];
 }
 
 interface RoomOptions {
@@ -34,7 +33,6 @@ interface RoomOptions {
 function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions = {}): Fixture {
   const repository = new InMemoryMapRepository();
   const matchResults: MatchResult[] = [];
-  const emptied: Room[] = [];
   const room = new Room({
     code: 'AB7K2P',
     passwordHash: options.password === undefined ? null : hashPassword(options.password),
@@ -46,9 +44,8 @@ function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions 
     postMatchTicks: POST_MATCH_TICKS,
     characterId: 'ninja',
     onMatchEnded: (result) => matchResults.push(result),
-    onEmpty: (empty) => emptied.push(empty),
   });
-  return { room, repository, matchResults, emptied };
+  return { room, repository, matchResults };
 }
 
 function createSession(id: string): { connection: FakeConnection; session: ClientSession } {
@@ -575,7 +572,7 @@ describe('Room match lifecycle', () => {
 
 describe('Room membership', () => {
   it('hands the room over to the next player when the host leaves', () => {
-    const { room, emptied } = createRoom();
+    const { room } = createRoom();
     const host = createSession('c1');
     const guest = createSession('c2');
     room.join(host.session, undefined);
@@ -586,18 +583,17 @@ describe('Room membership', () => {
 
     expect(room.hostId).toBe('c2');
     expect(host.session.room).toBeNull();
-    expect(emptied).toEqual([]);
+    expect(room.isEmpty).toBe(false);
   });
 
   it('reports an empty room once the last player leaves', () => {
-    const { room, emptied } = createRoom();
+    const { room } = createRoom();
     const { session } = createSession('c1');
     room.join(session, undefined);
 
     room.leave(session);
 
     expect(room.isEmpty).toBe(true);
-    expect(emptied).toEqual([room]);
   });
 
   it('broadcasts the room to every player', async () => {
