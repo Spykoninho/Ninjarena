@@ -17,6 +17,18 @@ export interface SetupState {
   techniqueIds: (string | null)[];
 }
 
+// L'état que le panneau de Task 9 manipule: le nom vit désormais sur l'écran d'accueil.
+export interface LoadoutState {
+  build: Build;
+  basicAttackId: string | null;
+  techniqueIds: (string | null)[];
+}
+
+export interface BasicOption {
+  id: string;
+  name: string;
+}
+
 export interface TechniqueOption {
   id: string;
   name: string;
@@ -134,6 +146,14 @@ export function techniqueOptions(
       chakraCost: ability.chakraCost,
       cooldownMs: ability.cooldownMs,
     }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function basicOptions(abilities: DefinitionCatalog<AbilityDefinition>): BasicOption[] {
+  return abilities
+    .all()
+    .filter((ability) => ability.kind === 'basic')
+    .map((ability) => ({ id: ability.id, name: ability.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

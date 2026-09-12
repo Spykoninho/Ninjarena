@@ -56,4 +56,20 @@ describe('loadClientConfig', () => {
     const config = loadClientConfig('?techniques=blink,fireball,earth-wall');
     expect(config.techniqueIds).toEqual(['blink', 'fireball', 'earth-wall']);
   });
+
+  it('reads the room code from the query in upper case', () => {
+    expect(loadClientConfig('?room=ab7k2p').roomCode).toBe('AB7K2P');
+    expect(loadClientConfig('').roomCode).toBe('');
+  });
+
+  it('opens the editor when the query carries the flag', () => {
+    expect(loadClientConfig('?editor').editor).toBe(true);
+    expect(loadClientConfig('?editor=1').editor).toBe(true);
+    expect(loadClientConfig('').editor).toBe(false);
+  });
+
+  it('reads the requested basic attack', () => {
+    expect(loadClientConfig('?basic=shuriken-throw').basicAttackId).toBe('shuriken-throw');
+    expect(loadClientConfig('').basicAttackId).toBeNull();
+  });
 });

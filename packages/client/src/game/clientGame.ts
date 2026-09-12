@@ -1,18 +1,16 @@
 import type { GameContent } from '@ninjarena/content';
-import { loadMap } from '@ninjarena/content';
 import type { PlayerId, PlayerState, Vec2, WorldEvent, WorldState } from '@ninjarena/core';
 import {
   FixedStepAccumulator,
   GameSimulation,
+  LoadedMap,
   add,
   lerp,
   sub,
   tickDurationMs,
 } from '@ninjarena/core';
-import type { RoomPlayerInfo, ServerMessage } from '@ninjarena/protocol';
-import { PROTOCOL_VERSION } from '@ninjarena/protocol';
+import type { RoomPlayerView, ServerMessage } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
-import type { ClientConfig } from '../config/clientConfig';
 import { feedbackView } from '../feedback/cues';
 import { FeedbackController } from '../feedback/feedbackController';
 import type { InputBindings } from '../input/bindings';
@@ -27,16 +25,12 @@ import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import type { Hud } from '../ui/hud';
-import { createSetupState, techniqueOptions } from '../ui/setupModel';
-import type { SetupState } from '../ui/setupModel';
-import type { SetupPanel } from '../ui/setupPanel';
 import { routeEvents } from './eventRouter';
 import { buildHudView } from './hudView';
 import { buildRenderFrame } from './renderFrame';
 import { SpectatorController } from './spectatorController';
 
 export interface ClientGameDeps {
-  config: ClientConfig;
   content: GameContent;
   network: NetworkClient;
   renderer: Renderer;
@@ -44,16 +38,16 @@ export interface ClientGameDeps {
   audio: AudioPort;
   inputState: InputState;
   bindings: InputBindings;
-  setupPanel: SetupPanel;
+  interpolationDelayTicks: number;
 }
 
-type WelcomeMessage = Extract<ServerMessage, { type: 'welcome' }>;
-type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
+export type MatchStartedMessage = Extract<ServerMessage, { type: 'matchStarted' }>;
+export type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
+export type PongMessage = Extract<ServerMessage, { type: 'pong' }>;
 
 const MAX_FRAME_MS = 250;
 const MS_PER_SECOND = 1000;
 const PING_INTERVAL_MS = 1000;
-const DISCONNECTED = 'disconnected';
 
 export class ClientGame {
   private readonly deps: ClientGameDeps;
@@ -67,7 +61,7 @@ export class ClientGame {
   private clock: ServerClock | null = null;
   private localPlayerId: PlayerId | null = null;
   private latestSnapshot: WorldState | null = null;
-  private roomPlayers: RoomPlayerInfo[] = [];
+  private roomPlayers: RoomPlayerView[] = [];
   private spectator = new SpectatorController();
   private previousLocalPosition: Vec2 | null = null;
   private cameraPosition: Vec2 = { x: 0, y: 0 };
@@ -79,113 +73,65 @@ export class ClientGame {
   private pingHandle: number | null = null;
   private lastFrameMs: number | null = null;
   private rttMs: number | null = null;
-  private connected = false;
-  private connecting = false;
   private stopped = false;
-  private status = 'connecting';
+  private status = '';
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
     this.feedback = new FeedbackController({ renderer: deps.renderer, audio: deps.audio });
   }
 
-  async start(container: HTMLElement): Promise<void> {
-    const { config, content, network, renderer, setupPanel } = this.deps;
-    await renderer.init(container);
-    network.onMessage((message) => {
-      this.handleMessage(message);
-    });
-    network.onClose(() => {
-      // Avant le `welcome` une fermeture sans message d'erreur (salle pleine, trames invalides) doit rester visible.
-      if (this.simulation === null) {
-        setupPanel.showError(
-          'disconnected: the server closed the connection (full or unreachable)',
-        );
-      }
-      this.markDisconnected(DISCONNECTED);
-    });
-    setupPanel.onPlay((state) => {
-      void this.play(state);
-    });
-    const initial = createSetupState(
-      config,
-      content.statRules,
-      techniqueOptions(content.abilities),
-    );
-    setupPanel.show(initial);
+  async init(container: HTMLElement): Promise<void> {
+    await this.deps.renderer.init(container);
   }
 
-  private async play(state: SetupState): Promise<void> {
-    const { config, network, setupPanel } = this.deps;
-    // Un second clic pendant la poignée de main laisserait la première socket orpheline.
-    if (this.connecting) return;
-    if (!this.connected) {
-      this.connecting = true;
-      this.setStatus(`connecting to ${config.serverUrl}`);
-      try {
-        await network.connect(config.serverUrl);
-      } catch (error) {
-        setupPanel.showError(`failed to connect: ${reasonOf(error)}`);
-        return;
-      } finally {
-        this.connecting = false;
-      }
-      this.connected = true;
-    }
-    network.send({
-      type: 'join',
-      protocolVersion: PROTOCOL_VERSION,
-      name: state.name,
-      build: state.build,
-      techniqueIds: state.techniqueIds.filter((id): id is string => id !== null),
-    });
-    this.setStatus('joining');
+  get active(): boolean {
+    return this.simulation !== null;
   }
 
-  stop(): void {
-    // La fermeture de la socket arrive plus tard: rien ne doit plus toucher au HUD après `stop`.
-    this.stopped = true;
+  setRoomPlayers(players: RoomPlayerView[]): void {
+    this.roomPlayers = players;
+  }
+
+  setStatus(status: string): void {
+    if (this.stopped) return;
+    this.status = status;
+    this.updateHud();
+  }
+
+  endMatch(): void {
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     this.stopPing();
-    this.connected = false;
-    this.connecting = false;
+    // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
+    this.simulation = null;
+    this.accumulator = null;
+    this.clock = null;
+    this.localPlayerId = null;
+    this.latestSnapshot = null;
+    this.previousLocalPosition = null;
+    this.spectator.reset();
+    this.serverEvents = [];
+    this.lastFrameMs = null;
+    this.rttMs = null;
+    this.seq = 0;
+    this.setStatus('');
+  }
+
+  dispose(): void {
+    // La fermeture de la socket arrive plus tard: rien ne doit plus toucher au HUD après `dispose`.
+    this.endMatch();
+    this.stopped = true;
     this.deps.network.close();
     this.deps.renderer.dispose();
   }
 
-  private handleMessage(message: ServerMessage): void {
-    switch (message.type) {
-      case 'welcome':
-        this.handleWelcome(message);
-        return;
-      case 'roomState': {
-        this.roomPlayers = message.players;
-        const ready = message.players.filter((player) => player.ready).length;
-        this.setStatus(`${ready}/${message.players.length} ready`);
-        return;
-      }
-      case 'snapshot':
-        this.handleSnapshot(message);
-        return;
-      case 'error':
-        // Avant le `welcome` l'erreur concerne le loadout: elle s'affiche dans le panneau, pas dans le HUD.
-        if (this.simulation === null) {
-          this.deps.setupPanel.showError(message.message);
-        } else {
-          this.setStatus(`error: ${message.message}`);
-        }
-        return;
-      case 'pong':
-        this.rttMs = performance.now() - message.sentAt;
-        return;
-    }
-  }
-
-  private handleWelcome(message: WelcomeMessage): void {
-    const { content, network, renderer, setupPanel } = this.deps;
-    setupPanel.hide();
-    const map = loadMap(content, message.mapId);
+  beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void {
+    const { content, renderer } = this.deps;
+    const tileset = content.tilesets.get(message.map.tileset);
+    const map = LoadedMap.fromDocument(message.map, tileset);
+    this.endMatch();
+    this.roomPlayers = roomPlayers;
     this.simulation = new GameSimulation({
       map,
       abilities: content.abilities,
@@ -199,27 +145,19 @@ export class ClientGame {
     this.tickMs = tickDurationMs({ tickRate: message.tickRate });
     this.accumulator = new FixedStepAccumulator(this.tickMs);
     this.clock = new ServerClock(this.tickMs);
-    // Un second `welcome` repart d'un état propre: rien de la session précédente ne survit.
+    // Un second match repart d'un état propre: rien de la partie précédente ne survit.
     this.buffer = new PredictionBuffer();
     this.interpolator = new SnapshotInterpolator();
     this.smoother = new CorrectionSmoother();
-    this.latestSnapshot = null;
-    this.previousLocalPosition = null;
-    this.spectator.reset();
-    this.serverEvents = [];
-    this.lastFrameMs = null;
-    this.rttMs = null;
-    this.seq = 0;
     // Avant le premier snapshot le joueur local n'existe pas: la caméra vise le centre de la carte.
     this.cameraPosition = { x: map.widthInUnits / 2, y: map.heightInUnits / 2 };
     this.localRenderPosition = { ...this.cameraPosition };
-    renderer.setMap(map, content.tilesets.get(content.maps.get(message.mapId).tileset));
-    network.send({ type: 'ready' });
+    renderer.setMap(map, tileset);
     this.startPing();
     this.startLoop();
   }
 
-  private handleSnapshot(message: SnapshotMessage): void {
+  handleSnapshot(message: SnapshotMessage): void {
     const simulation = this.simulation;
     const localPlayerId = this.localPlayerId;
     if (simulation === null || localPlayerId === null) return;
@@ -239,6 +177,10 @@ export class ClientGame {
     this.serverEvents.push(...message.events);
   }
 
+  handlePong(message: PongMessage): void {
+    this.rttMs = performance.now() - message.sentAt;
+  }
+
   private startLoop(): void {
     if (this.frameHandle !== null) return;
     const frame = (timestamp: number): void => {
@@ -254,7 +196,7 @@ export class ClientGame {
     // Un onglet réveillé après une longue pause ne rejoue pas tout le temps écoulé.
     const elapsed = Math.min(MAX_FRAME_MS, timestamp - (this.lastFrameMs ?? timestamp));
     this.lastFrameMs = timestamp;
-    const steps = this.connected ? accumulator.advance(elapsed) : 0;
+    const steps = accumulator.advance(elapsed);
     const predicted: WorldEvent[] = [];
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
@@ -342,8 +284,7 @@ export class ClientGame {
   private sampleRemotes(): InterpolatedWorld | null {
     const clock = this.clock;
     if (clock === null || !clock.hasEstimate) return null;
-    const renderTick =
-      clock.estimateTick(performance.now()) - this.deps.config.interpolationDelayTicks;
+    const renderTick = clock.estimateTick(performance.now()) - this.deps.interpolationDelayTicks;
     return this.interpolator.sample(renderTick);
   }
 
@@ -375,23 +316,6 @@ export class ClientGame {
     return this.simulation.world.players[localPlayerId];
   }
 
-  private setStatus(status: string): void {
-    if (this.stopped) return;
-    this.status = status;
-    // La boucle de rendu ne démarre qu'au `welcome`: sans cet appel le joueur ne verrait rien avant.
-    this.updateHud();
-  }
-
-  private markDisconnected(status: string): void {
-    if (this.stopped) return;
-    this.connected = false;
-    this.stopPing();
-    this.rttMs = null;
-    // Une raison précise ne doit pas être écrasée par la fermeture qui la suit.
-    if (this.status.startsWith(DISCONNECTED)) return;
-    this.setStatus(status);
-  }
-
   private startPing(): void {
     this.stopPing();
     this.pingHandle = window.setInterval(() => {
@@ -403,8 +327,4 @@ export class ClientGame {
     if (this.pingHandle !== null) window.clearInterval(this.pingHandle);
     this.pingHandle = null;
   }
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

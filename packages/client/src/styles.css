@@ -184,22 +184,21 @@ body {
   color: var(--hud-cooldown);
 }
 
-#setup {
+#ui {
   position: fixed;
   inset: 0;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+
+#ui:not(:empty) {
   background: rgba(8, 8, 12, 0.86);
-  pointer-events: auto;
 }
 
-#setup[hidden] {
-  display: none;
-}
-
-.setup-panel {
+.screen {
   width: 360px;
   max-height: 90vh;
   overflow-y: auto;
@@ -210,57 +209,38 @@ body {
   background: var(--hud-background);
   border: 1px solid var(--hud-border);
   border-radius: 6px;
+  pointer-events: auto;
 }
 
-.setup-title {
+.home-title,
+.lobby-title,
+.editor-title {
   margin: 0;
   font-size: 15px;
   letter-spacing: 0.08em;
 }
 
-.setup-field {
+.home-field,
+.loadout-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.setup-name {
-  padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--hud-border);
-  border-radius: 3px;
-  color: var(--hud-text);
-  font: inherit;
-}
-
-.setup-points {
-  opacity: 0.8;
-}
-
-.setup-attributes {
+.home-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.setup-attribute {
-  display: grid;
-  grid-template-columns: 90px 1fr 24px;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
 }
 
-.setup-attribute-value {
-  text-align: right;
+.home-actions .home-field {
+  flex: 1;
 }
 
-.setup-techniques {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.setup-technique {
+.home-input,
+.loadout-name,
+.loadout-technique {
+  width: 100%;
   padding: 4px 6px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--hud-border);
@@ -269,18 +249,16 @@ body {
   font: inherit;
 }
 
-.setup-errors {
-  margin: 0;
-  padding: 0 0 0 16px;
-  color: #ff8a8a;
-  font-size: 11px;
+.home-status,
+.lobby-summary,
+.editor-summary {
+  opacity: 0.8;
 }
 
-.setup-errors:empty {
-  display: none;
-}
-
-.setup-play {
+.home-button,
+.lobby-leave,
+.editor-back,
+.loadout-play {
   padding: 8px;
   background: var(--hud-chakra);
   border: none;
@@ -291,8 +269,61 @@ body {
   cursor: pointer;
 }
 
-.setup-play:disabled {
+.home-button:disabled,
+.loadout-play:disabled {
   background: rgba(255, 255, 255, 0.16);
   color: rgba(255, 255, 255, 0.4);
   cursor: not-allowed;
+}
+
+.home-errors {
+  margin: 0;
+  padding: 0 0 0 16px;
+  color: #ff8a8a;
+  font-size: 11px;
+}
+
+.home-errors:empty,
+.loadout-errors:empty {
+  display: none;
+}
+
+.lobby-errors,
+.editor-errors {
+  color: #ff8a8a;
+  font-size: 11px;
+}
+
+.loadout-points {
+  opacity: 0.8;
+}
+
+.loadout-attributes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loadout-attribute {
+  display: grid;
+  grid-template-columns: 90px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+}
+
+.loadout-attribute-value {
+  text-align: right;
+}
+
+.loadout-techniques {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.loadout-errors {
+  margin: 0;
+  padding: 0 0 0 16px;
+  color: #ff8a8a;
+  font-size: 11px;
 }

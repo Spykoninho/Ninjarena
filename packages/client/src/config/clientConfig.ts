@@ -7,7 +7,10 @@ export interface ClientConfig {
   interpolationDelayTicks: number;
   zoom: number;
   build: Partial<Build>;
+  basicAttackId: string | null;
   techniqueIds: string[];
+  roomCode: string;
+  editor: boolean;
 }
 
 const DEFAULT_SERVER_URL = 'ws://localhost:8080';
@@ -26,7 +29,11 @@ export function loadClientConfig(search: string): ClientConfig {
     // Un zoom fractionnaire casse l'alignement au pixel des tuiles.
     zoom: Math.floor(number(params.get('zoom'), DEFAULT_ZOOM, MIN_ZOOM)),
     build: parseBuild(params.get('build')),
+    basicAttackId: text(params.get('basic')),
     techniqueIds: parseList(params.get('techniques')),
+    roomCode: text(params.get('room'))?.toUpperCase() ?? '',
+    // Le drapeau vaut par sa présence: `?editor` seul doit suffire.
+    editor: params.has('editor'),
   };
 }
 

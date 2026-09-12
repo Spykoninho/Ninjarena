@@ -3,6 +3,7 @@ import { DefinitionCatalog } from '@ninjarena/core';
 import { describe, expect, it } from 'vitest';
 import { loadClientConfig } from '../config/clientConfig';
 import {
+  basicOptions,
   createSetupState,
   playAvailability,
   pointsLeft,
@@ -10,8 +11,8 @@ import {
   setTechnique,
   setupErrors,
   techniqueOptions,
-} from './setupModel';
-import type { TechniqueOption } from './setupModel';
+} from './loadoutModel';
+import type { TechniqueOption } from './loadoutModel';
 
 const rules: StatRulesDefinition = {
   defaultPointBudget: 10,
@@ -192,6 +193,21 @@ describe('techniqueOptions', () => {
     expect(techniqueOptions(abilities)).toEqual([
       { id: 'blink', name: 'Blink', chakraCost: 10, cooldownMs: 1000 },
       { id: 'fireball', name: 'Fireball', chakraCost: 10, cooldownMs: 1000 },
+    ]);
+  });
+});
+
+describe('basicOptions', () => {
+  it('keeps only the basic attacks, sorted by name', () => {
+    const abilities = new DefinitionCatalog<AbilityDefinition>([
+      ability('shuriken-throw', 'Shuriken Throw', 'basic'),
+      ability('fireball', 'Fireball', 'technique'),
+      ability('kunai-strike', 'Kunai Strike', 'basic'),
+      ability('shadow-step', 'Shadow Step', 'dash'),
+    ]);
+    expect(basicOptions(abilities)).toEqual([
+      { id: 'kunai-strike', name: 'Kunai Strike' },
+      { id: 'shuriken-throw', name: 'Shuriken Throw' },
     ]);
   });
 });
