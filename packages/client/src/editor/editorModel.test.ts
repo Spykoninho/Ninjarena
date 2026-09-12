@@ -133,6 +133,12 @@ describe('removeAt', () => {
     state = removeAt(state, 3, 2);
     expect(state.document.spawns).toEqual([]);
   });
+
+  it('leaves an empty tile untouched', () => {
+    const state = draft();
+    expect(removeAt(state, 3, 2)).toBe(state);
+    expect(removeAt(state, 99, 0)).toBe(state);
+  });
 });
 
 describe('withIssues', () => {

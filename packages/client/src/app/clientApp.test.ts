@@ -403,6 +403,15 @@ describe('ClientApp editor', () => {
     h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
     expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
   });
+
+  it('forgets a pending test run when the socket drops before the save lands', async () => {
+    h.app.openEditor();
+    h.app.testMap(mapDocument);
+    await flush();
+    h.network.drop();
+    h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
+    expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
+  });
 });
 
 describe('ClientApp disconnection', () => {

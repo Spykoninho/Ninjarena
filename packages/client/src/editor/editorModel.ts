@@ -122,7 +122,8 @@ export function removeAt(state: EditorState, x: number, y: number): EditorState 
   if (!inBounds(state.document, x, y)) return state;
   const object = state.document.layers.objects[y]?.[x] ?? null;
   if (object !== null) return paintObject(state, x, y, null);
-  return withSpawns(state, withoutSpawnAt(state.document.spawns, x, y));
+  const spawns = withoutSpawnAt(state.document.spawns, x, y);
+  return spawns.length === state.document.spawns.length ? state : withSpawns(state, spawns);
 }
 
 function clampSize(value: number): number {

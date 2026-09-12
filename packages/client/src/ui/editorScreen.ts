@@ -243,8 +243,13 @@ export class EditorScreen implements Screen {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `${doc.id}.json`;
+    document.body.appendChild(anchor);
     anchor.click();
-    URL.revokeObjectURL(url);
+    anchor.remove();
+    // Le téléchargement lit l'URL après le clic: la révoquer tout de suite le viderait.
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0);
   }
 
   private onImport(): void {

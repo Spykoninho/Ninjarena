@@ -240,6 +240,8 @@ export class ClientApp {
     this.connected = false;
     this.connecting = false;
     this.mapsRequested = false;
+    // Une coupure annule l'essai en vol: la sauvegarde suivante ne doit pas ouvrir de salle.
+    this.pendingTest = false;
     this.appState = {
       ...this.appState,
       screen: 'home',
