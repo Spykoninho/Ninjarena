@@ -581,6 +581,11 @@ body {
   width: 140px;
 }
 
+.editor-select {
+  min-width: 130px;
+  max-width: 200px;
+}
+
 .editor-size {
   width: 56px;
 }

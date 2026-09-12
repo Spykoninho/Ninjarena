@@ -170,6 +170,8 @@ export class ClientApp {
     }
     this.connected = true;
     this.sendHello();
+    // Un éditeur ouvert avant la connexion n'a pas pu demander sa liste de cartes.
+    if (screenFor(this.appState) === 'editor') this.send({ type: 'listMaps' });
     return true;
   }
 

@@ -341,6 +341,21 @@ function flush(): Promise<void> {
 }
 
 describe('ClientApp editor', () => {
+  it('asks for the map list as soon as it connects with the editor open', async () => {
+    const fresh = harness();
+    const editorApp = new ClientApp({
+      config: loadClientConfig('?name=kage&editor'),
+      content: {} as GameContent,
+      network: fresh.network,
+      game: fresh.game,
+      screens: { home: fresh.home, lobby: fresh.lobby, editor: fresh.editor },
+      stage: element(),
+      uiRoot: element(),
+    });
+    await editorApp.start();
+    expect(fresh.network.sent.at(-1)).toEqual({ type: 'listMaps' });
+  });
+
   it('asks for the map list and stays on a room state it did not request', () => {
     h.app.openEditor();
     expect(h.network.sent.at(-1)).toEqual({ type: 'listMaps' });
