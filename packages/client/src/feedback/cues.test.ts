@@ -167,14 +167,14 @@ describe('cuesForEvent', () => {
 
   it('marks a spawned wall on its owner and stays silent about an unknown one', () => {
     const spawned = cuesForEvent(
-      { type: 'obstacleSpawned', tick: 4, id: 'w1', ownerId: 'other' },
+      { type: 'obstacleSpawned', tick: 4, id: 'w1', ownerId: 'other', position: { x: 60, y: 12 } },
       view,
     );
     expect(spawned.visual).toEqual([
       { kind: 'impact', position: { x: 30, y: 40 }, color: '#ffffff', size: 8 },
     ]);
     const unknown = cuesForEvent(
-      { type: 'obstacleSpawned', tick: 4, id: 'w2', ownerId: 'ghost' },
+      { type: 'obstacleSpawned', tick: 4, id: 'w2', ownerId: 'ghost', position: { x: 1, y: 2 } },
       view,
     );
     expect(unknown.visual).toEqual([]);

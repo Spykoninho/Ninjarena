@@ -183,7 +183,7 @@ projectileSystem → pendingEffectSystem → obstacleSystem → matchPostStep`.
 ### 3.6 Events added
 
 `zoneCreated { id, ownerId, position, radius, fireAt }`, `zoneTriggered { id, position }`,
-`obstacleSpawned { id, ownerId }`, `obstacleRemoved { id }`, `shieldAbsorbed { playerId,
+`obstacleSpawned { id, ownerId, position }`, `obstacleRemoved { id }`, `shieldAbsorbed { playerId,
 amount, remaining }`, `shieldBroken { playerId }`, `teleported { playerId, from, to }`,
 `dashContact { playerId, targetId }`. `damageDealt` gains `scaling` and `position`.
 

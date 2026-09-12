@@ -69,7 +69,13 @@ export function spawnWall(ctx: SimulationContext, params: SpawnWallParams): Obst
     source: { abilityId: params.source.abilityId, path: params.source.path },
   };
   ctx.world.obstacles[id] = obstacle;
-  ctx.events.push({ type: 'obstacleSpawned', tick: ctx.now, id, ownerId: obstacle.ownerId });
+  ctx.events.push({
+    type: 'obstacleSpawned',
+    tick: ctx.now,
+    id,
+    ownerId: obstacle.ownerId,
+    position: { x: center.x, y: center.y },
+  });
   return obstacle;
 }
 

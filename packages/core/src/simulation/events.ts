@@ -59,7 +59,7 @@ export type WorldEvent =
       radius: number;
       visual: Visual | null;
     }
-  | { type: 'obstacleSpawned'; tick: Tick; id: EntityId; ownerId: PlayerId }
+  | { type: 'obstacleSpawned'; tick: Tick; id: EntityId; ownerId: PlayerId; position: Vec2 }
   | { type: 'obstacleRemoved'; tick: Tick; id: EntityId }
   | { type: 'dashContact'; tick: Tick; playerId: PlayerId; targetId: PlayerId }
   | { type: 'playerDied'; tick: Tick; playerId: PlayerId; killerId: PlayerId | null }

@@ -27,7 +27,11 @@ describe('obstacleSystem', () => {
     const spawned = sim.step({ a: { ...press(2), aim: { x: 1, y: 0 } } }); // mur en x 224, y 176..224
     expect(Object.values(sim.world.obstacles)).toHaveLength(1);
     expect(spawned).toContainEqual(
-      expect.objectContaining({ type: 'obstacleSpawned', ownerId: 'a' }),
+      expect.objectContaining({
+        type: 'obstacleSpawned',
+        ownerId: 'a',
+        position: { x: 224, y: 200 },
+      }),
     );
 
     sim.step({ b: { ...press(2), aim: { x: -1, y: 0 } } }); // b tire sur a
