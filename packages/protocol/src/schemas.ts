@@ -2,8 +2,12 @@ import { MatchConfigSchema } from '@ninjarena/core';
 import type { WorldEvent, WorldState } from '@ninjarena/core';
 import { z } from 'zod';
 import type { ClientMessage, ServerMessage } from './messages';
+import { SERVER_ERROR_CODES } from './messages';
 
 const MAX_PLAYER_NAME_LENGTH = 24;
+const MAX_ATTRIBUTE_POINTS = 50;
+const MAX_TECHNIQUE_ID_LENGTH = 64;
+const MAX_TECHNIQUE_IDS = 8;
 
 const Vec2Schema = z.strictObject({ x: z.number(), y: z.number() });
 
@@ -13,11 +17,30 @@ const PlayerInputSchema = z.strictObject({
   abilityHeld: z.number(),
 });
 
+const AttributePointsSchema = z.number().int().min(0).max(MAX_ATTRIBUTE_POINTS);
+
+export const BuildSchema = z.strictObject({
+  vitality: AttributePointsSchema,
+  strength: AttributePointsSchema,
+  power: AttributePointsSchema,
+  speed: AttributePointsSchema,
+  maxChakra: AttributePointsSchema,
+  chakraRegen: AttributePointsSchema,
+  defense: AttributePointsSchema,
+});
+
+// Le nombre exact de techniques dépend des règles: seule la forme est vérifiée ici.
+const TechniqueIdsSchema = z
+  .array(z.string().min(1).max(MAX_TECHNIQUE_ID_LENGTH))
+  .max(MAX_TECHNIQUE_IDS);
+
 export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('join'),
     protocolVersion: z.number().int(),
     name: z.string().min(1).max(MAX_PLAYER_NAME_LENGTH),
+    build: BuildSchema,
+    techniqueIds: TechniqueIdsSchema,
   }),
   z.strictObject({ type: z.literal('ready') }),
   z.strictObject({
@@ -33,6 +56,7 @@ const RoomPlayerInfoSchema = z.strictObject({
   name: z.string().min(1),
   teamId: z.string().min(1),
   ready: z.boolean(),
+  techniqueIds: TechniqueIdsSchema,
 });
 
 // Le client fait confiance au serveur: l'état du monde n'est vérifié qu'en forme.
@@ -59,7 +83,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
   }),
   z.object({
     type: z.literal('error'),
-    code: z.enum(['PROTOCOL_VERSION', 'ROOM_FULL', 'INVALID_MESSAGE', 'NOT_JOINED']),
+    code: z.enum(SERVER_ERROR_CODES),
     message: z.string(),
   }),
   z.object({ type: z.literal('pong'), sentAt: z.number(), serverTime: z.number() }),

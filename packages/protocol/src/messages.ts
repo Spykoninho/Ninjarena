@@ -1,4 +1,5 @@
 import type {
+  Build,
   MatchConfig,
   PlayerId,
   PlayerInput,
@@ -9,7 +10,7 @@ import type {
 } from '@ninjarena/core';
 
 export type ClientMessage =
-  | { type: 'join'; protocolVersion: number; name: string }
+  | { type: 'join'; protocolVersion: number; name: string; build: Build; techniqueIds: string[] }
   | { type: 'ready' }
   | { type: 'input'; seq: number; input: PlayerInput }
   | { type: 'ping'; sentAt: number };
@@ -19,9 +20,18 @@ export interface RoomPlayerInfo {
   name: string;
   teamId: TeamId;
   ready: boolean;
+  techniqueIds: string[];
 }
 
-export type ServerErrorCode = 'PROTOCOL_VERSION' | 'ROOM_FULL' | 'INVALID_MESSAGE' | 'NOT_JOINED';
+export const SERVER_ERROR_CODES = [
+  'PROTOCOL_VERSION',
+  'ROOM_FULL',
+  'INVALID_MESSAGE',
+  'NOT_JOINED',
+  'INVALID_LOADOUT',
+] as const;
+
+export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 
 export type ServerMessage =
   | {
