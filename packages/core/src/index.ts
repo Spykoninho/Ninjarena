@@ -8,6 +8,7 @@ export * from './map';
 export * from './player';
 export * from './abilities';
 export * from './combat';
+export * from './lobby';
 export * from './projectile';
 export * from './match';
 export * from './simulation';
