@@ -1,10 +1,11 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { loadContent } from '@ninjarena/content';
-import { emptyBuild, neutralInput } from '@ninjarena/core';
-import type { Build } from '@ninjarena/core';
-import type { ServerMessage } from '@ninjarena/protocol';
+import type { MapDocument } from '@ninjarena/core';
+import { emptyBuild, migrateMapDocument, neutralInput, tickDurationMs } from '@ninjarena/core';
+import type { ClientMessage, ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec, serverMessageCodec } from '@ninjarena/protocol';
 import { loadServerConfig } from './config/serverConfig';
+import { InMemoryMapRepository } from './persistence/mapRepository';
 import { InMemoryMatchResultRepository } from './persistence/matchResultRepository';
 import { GameServer } from './server';
 import { FakeConnection } from './testing/fakeConnection';
@@ -32,7 +33,7 @@ class StubTransport implements ServerTransport {
   }
 }
 
-// Un minuteur virtuel remplace l'horloge réelle: la boucle et la relance avancent pas à pas.
+// Un minuteur virtuel remplace l'horloge réelle: la boucle avance pas à pas.
 class VirtualTimers {
   private time = 0;
   private nextHandle = 1;
@@ -51,10 +52,6 @@ class VirtualTimers {
     this.pending.delete(handle as number);
   };
 
-  get pendingCount(): number {
-    return this.pending.size;
-  }
-
   advance(ms: number): void {
     const target = this.time + ms;
     for (;;) {
@@ -70,8 +67,6 @@ class VirtualTimers {
   }
 }
 
-const CONTENT = loadContent();
-
 const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
 
 const startServer = async (
@@ -81,188 +76,255 @@ const startServer = async (
   const transport = new StubTransport();
   const logs: string[] = [];
   const server = new GameServer({
-    config: loadServerConfig({ NINJARENA_AUTO_START: 'false', ...env }),
+    config: loadServerConfig(env),
     transport,
-    content: CONTENT,
-    repository: new InMemoryMatchResultRepository(),
+    content: loadContent(),
+    results: new InMemoryMatchResultRepository(),
+    maps: new InMemoryMapRepository(),
     log: (line) => logs.push(line),
     ...(timers === undefined
       ? {}
       : { now: timers.now, schedule: timers.schedule, cancel: timers.cancel }),
   });
   await server.start();
-  // La boucle de tick tourne sur de vrais timers: chaque test la coupe en sortant.
+  // La boucle de tick tourne sur de vrais timers par défaut: chaque test la coupe en sortant.
   onTestFinished(() => server.stop());
   return { server, transport, logs };
 };
 
-const messagesOf = (connection: FakeConnection): ServerMessage[] =>
+const decodeAll = (connection: FakeConnection): ServerMessage[] =>
   connection.sent
     .map((raw) => serverMessageCodec.decode(raw))
     .filter((message): message is ServerMessage => message !== null);
 
-interface JoinOverrides {
-  protocolVersion?: number;
-  build?: Build;
-  techniqueIds?: string[];
-}
+const messagesOf = <T extends ServerMessage['type']>(
+  connection: FakeConnection,
+  type: T,
+): Extract<ServerMessage, { type: T }>[] =>
+  decodeAll(connection).filter(
+    (message): message is Extract<ServerMessage, { type: T }> => message.type === type,
+  );
 
-const join = (connection: FakeConnection, name: string, overrides: JoinOverrides = {}): void => {
+const lastOf = <T extends ServerMessage['type']>(
+  connection: FakeConnection,
+  type: T,
+): Extract<ServerMessage, { type: T }> | undefined => messagesOf(connection, type).at(-1);
+
+// La bibliothèque de cartes répond via de vraies promesses: les micro-tâches doivent s'écouler.
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+const hello = (connection: FakeConnection, name: string): void => {
   connection.receive(
-    clientMessageCodec.encode({
-      type: 'join',
-      protocolVersion: overrides.protocolVersion ?? PROTOCOL_VERSION,
-      name,
-      build: overrides.build ?? emptyBuild(),
-      techniqueIds: overrides.techniqueIds ?? TECHNIQUE_IDS,
-    }),
+    clientMessageCodec.encode({ type: 'hello', protocolVersion: PROTOCOL_VERSION, name }),
   );
 };
 
-// Un tick par seconde: le compte à rebours et le délai de fin de manche tiennent en trois pas.
-const SLOW_MATCH_ENV = {
-  NINJARENA_TICK_RATE: '1',
-  NINJARENA_AUTO_START: 'true',
-  NINJARENA_MATCH_RESTART_MS: '8000',
+const send = (connection: FakeConnection, message: ClientMessage): void => {
+  connection.receive(clientMessageCodec.encode(message));
 };
 
-const advanceUntil = (timers: VirtualTimers, done: () => boolean, maxSteps = 20): void => {
-  for (let step = 0; step < maxSteps && !done(); step++) timers.advance(1000);
+const loadoutMessage = (): ClientMessage => ({
+  type: 'setLoadout',
+  loadout: { build: emptyBuild(), basicAttackId: 'kunai-strike', techniqueIds: TECHNIQUE_IDS },
+});
+
+const readyUp = (connection: FakeConnection): void => {
+  send(connection, loadoutMessage());
+  send(connection, { type: 'setReady', ready: true });
 };
 
-const reachMatchEnd = (server: GameServer, timers: VirtualTimers): void => {
-  const match = server.defaultRoom.simulation.world.match;
-  for (let round = 0; round < 4 && match.phase !== 'MATCH_END'; round++) {
-    advanceUntil(timers, () => match.phase === 'IN_ROUND');
-    const loser = server.defaultRoom.simulation.world.players['c2'];
-    // Le test vise la relance, pas le combat: le perdant est déclaré mort directement.
-    if (loser !== undefined) loser.phase = { kind: 'DEAD', diedAt: 0 };
-    advanceUntil(timers, () => match.phase !== 'IN_ROUND');
-  }
+const codeOf = (connection: FakeConnection): string => {
+  const room = lastOf(connection, 'roomState');
+  if (room === undefined) throw new Error('no roomState was broadcast');
+  return room.room.code;
 };
 
-describe('GameServer', () => {
-  it('refuses a join that speaks another protocol version', async () => {
-    const { server, transport } = await startServer();
-    const connection = transport.accept('c1');
-    join(connection, 'one', { protocolVersion: PROTOCOL_VERSION + 1 });
-    expect(messagesOf(connection)).toEqual([
-      {
-        type: 'error',
-        code: 'PROTOCOL_VERSION',
-        message: `server speaks protocol ${PROTOCOL_VERSION}`,
-      },
-    ]);
-    expect(server.defaultRoom.simulation.world.players).toEqual({});
+function smallMap(
+  overrides: { id?: string; name?: string; objects?: (number | null)[][] } = {},
+): MapDocument {
+  const size = 8;
+  return migrateMapDocument({
+    version: 1,
+    id: overrides.id ?? 'pocket',
+    name: overrides.name ?? 'Pocket',
+    tileset: 'default',
+    width: size,
+    height: size,
+    layers: {
+      ground: Array.from({ length: size }, () => new Array<number>(size).fill(0)),
+      objects:
+        overrides.objects ??
+        Array.from({ length: size }, () => new Array<number | null>(size).fill(null)),
+    },
+    colliders: [],
+    spawns: [
+      { x: 1, y: 1 },
+      { x: 6, y: 6 },
+    ],
   });
+}
 
-  it('answers an input sent before joining with NOT_JOINED', async () => {
+function walledMap(): MapDocument {
+  const size = 8;
+  const objects = Array.from({ length: size }, () => new Array<number | null>(size).fill(null));
+  objects[1]![1] = 3; // 3 = mur dans le tileset "default"
+  return smallMap({ id: 'walled', name: 'Walled', objects });
+}
+
+describe('GameServer dispatch', () => {
+  it('requires hello before anything else and rejects an unsupported protocol version', async () => {
     const { transport } = await startServer();
     const connection = transport.accept('c1');
-    connection.receive(clientMessageCodec.encode({ type: 'input', seq: 1, input: neutralInput() }));
-    expect(messagesOf(connection)).toMatchObject([{ type: 'error', code: 'NOT_JOINED' }]);
+
+    send(connection, { type: 'createRoom' });
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'NOT_INTRODUCED' });
+
+    connection.receive(
+      clientMessageCodec.encode({
+        type: 'hello',
+        protocolVersion: 2,
+        name: 'one',
+      }),
+    );
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'PROTOCOL_VERSION' });
   });
 
-  it('refuses a join that overspends the build budget', async () => {
-    const { server, transport } = await startServer();
-    const connection = transport.accept('c1');
-    join(connection, 'one', { build: { ...emptyBuild(), vitality: 5, strength: 5, power: 1 } });
-    const messages = messagesOf(connection);
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({ type: 'error', code: 'INVALID_LOADOUT' });
-    expect(messages[0]).toHaveProperty('message', expect.stringContaining('budget'));
-    expect(server.defaultRoom.simulation.world.players).toEqual({});
-    expect(server.defaultRoom.sessions).toHaveLength(0);
-  });
+  it('creates and joins a room by code, and refuses a third player once full', async () => {
+    const { transport } = await startServer();
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
 
-  it('refuses a join whose loadout leaves a technique slot empty', async () => {
-    const { server, transport } = await startServer();
-    const connection = transport.accept('c1');
-    join(connection, 'one', { techniqueIds: ['blink', 'chakra-shield'] });
-    expect(messagesOf(connection)).toMatchObject([{ type: 'error', code: 'INVALID_LOADOUT' }]);
-    expect(server.defaultRoom.simulation.world.players).toEqual({});
-  });
+    send(host, { type: 'createRoom' });
+    const code = codeOf(host);
 
-  it('refuses a third player on a duel room', async () => {
-    const { server, transport } = await startServer();
-    join(transport.accept('c1'), 'one');
-    join(transport.accept('c2'), 'two');
+    send(guest, { type: 'joinRoom', code });
+    expect(lastOf(host, 'roomState')?.room.players).toHaveLength(2);
+    expect(lastOf(guest, 'roomState')?.room.players).toHaveLength(2);
+
     const third = transport.accept('c3');
-    join(third, 'three');
-    expect(messagesOf(third)).toMatchObject([{ type: 'error', code: 'ROOM_FULL' }]);
-    expect(Object.keys(server.defaultRoom.simulation.world.players)).toEqual(['c1', 'c2']);
+    hello(third, 'three');
+    send(third, { type: 'joinRoom', code });
+    expect(lastOf(third, 'error')).toMatchObject({ code: 'ROOM_FULL' });
   });
 
-  it('closes a connection that keeps sending unreadable frames, once', async () => {
-    const { transport, logs } = await startServer();
-    const connection = transport.accept('c1');
-    for (let i = 0; i < 19; i++) connection.receive('not a frame');
-    expect(connection.closed).toBe(false);
-    for (let i = 0; i < 6; i++) connection.receive('not a frame');
-    expect(connection.closed).toBe(true);
-    expect(connection.closeCode).toBe(1008);
-    expect(logs.filter((line) => line.includes('invalid messages'))).toHaveLength(1);
+  it('starts a match once both players are ready and streams the first snapshot to them alone', async () => {
+    const timers = new VirtualTimers();
+    const { transport } = await startServer({ NINJARENA_SNAPSHOT_RATE: '60' }, timers);
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    const bystander = transport.accept('c3');
+    hello(host, 'one');
+    hello(guest, 'two');
+    hello(bystander, 'three');
+
+    send(host, { type: 'createRoom' });
+    const code = codeOf(host);
+    await flush(); // laisse la salle charger sa carte avant de démarrer
+    send(guest, { type: 'joinRoom', code });
+    readyUp(host);
+    readyUp(guest);
+
+    send(host, { type: 'startMatch' });
+    expect(lastOf(host, 'matchStarted')).toBeDefined();
+    expect(lastOf(guest, 'matchStarted')).toBeDefined();
+
+    timers.advance(tickDurationMs({ tickRate: 60 }));
+
+    expect(messagesOf(host, 'snapshot')).toHaveLength(1);
+    expect(messagesOf(guest, 'snapshot')).toHaveLength(1);
+    expect(messagesOf(bystander, 'snapshot')).toHaveLength(0);
   });
 
-  it('refuses a socket beyond the connection cap and frees the slot on close', async () => {
-    const { transport } = await startServer({ NINJARENA_MAX_CONNECTIONS: '1' });
-    const first = transport.accept('c1');
-    const refused = transport.accept('c2');
-    expect(first.closed).toBe(false);
-    expect(refused.closed).toBe(true);
-    expect(refused.closeCode).toBe(1013);
-    first.close();
-    expect(transport.accept('c3').closed).toBe(false);
-  });
-
-  it('answers a ping with a pong echoing sentAt', async () => {
+  it('saves, lists and fetches a custom map, and rejects one with a blocked spawn', async () => {
     const { transport } = await startServer();
     const connection = transport.accept('c1');
-    join(connection, 'one');
-    connection.receive(clientMessageCodec.encode({ type: 'ping', sentAt: 1234 }));
-    expect(messagesOf(connection).at(-1)).toMatchObject({ type: 'pong', sentAt: 1234 });
-  });
+    hello(connection, 'kunoichi');
 
-  it('sends welcome before a room state carrying the chosen techniques', async () => {
-    const { server, transport } = await startServer();
-    const connection = transport.accept('c1');
-    join(connection, 'one', { build: { ...emptyBuild(), vitality: 3 } });
-    const messages = messagesOf(connection);
-    expect(messages.map((message) => message.type)).toEqual(['welcome', 'roomState']);
-    expect(messages[1]).toMatchObject({
-      type: 'roomState',
-      players: [{ id: 'c1', name: 'one', techniqueIds: TECHNIQUE_IDS }],
+    send(connection, { type: 'saveMap', document: smallMap() });
+    await flush();
+    const saved = lastOf(connection, 'mapSaved');
+    expect(saved).toBeDefined();
+    const mapList = lastOf(connection, 'mapList');
+    expect(mapList?.maps.map((map) => map.id)).toEqual(
+      expect.arrayContaining([saved?.id, 'arena']),
+    );
+
+    send(connection, { type: 'getMap', id: saved?.id ?? '' });
+    await flush();
+    expect(lastOf(connection, 'mapDocument')).toMatchObject({
+      document: { id: saved?.id, author: 'kunoichi' },
     });
-    expect(server.defaultRoom.simulation.world.players['c1']?.stats.maxHealth).toBe(136);
+
+    send(connection, { type: 'getMap', id: 'nope' });
+    await flush();
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'MAP_NOT_FOUND' });
+
+    send(connection, { type: 'saveMap', document: walledMap() });
+    await flush();
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'INVALID_MAP' });
   });
 
-  it('restarts a finished match once the restart delay elapses', async () => {
-    const timers = new VirtualTimers();
-    const { server, transport } = await startServer(SLOW_MATCH_ENV, timers);
-    join(transport.accept('c1'), 'one');
-    join(transport.accept('c2'), 'two');
-    reachMatchEnd(server, timers);
-    const match = server.defaultRoom.simulation.world.match;
-    expect(match.phase).toBe('MATCH_END');
-    expect(match.winner).toBe('team-0');
-    timers.advance(7000);
-    expect(match.phase).toBe('MATCH_END');
-    timers.advance(1000);
-    expect(match.phase).toBe('COUNTDOWN');
-    expect(match.round).toBe(1);
-    expect(match.winner).toBeNull();
-    expect(match.scores).toEqual({ 'team-0': 0, 'team-1': 0 });
+  it('lets a player leave the room and promotes the remaining player to host', async () => {
+    const { transport } = await startServer();
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
+    send(host, { type: 'createRoom' });
+    const code = codeOf(host);
+    send(guest, { type: 'joinRoom', code });
+
+    send(host, { type: 'leaveRoom' });
+
+    expect(lastOf(host, 'roomLeft')).toBeDefined();
+    expect(lastOf(guest, 'roomState')?.room.hostId).toBe('c2');
   });
 
-  it('cancels the pending restart when the server stops', async () => {
+  it('migrates the host and removes the room as connections close', async () => {
+    const { server, transport } = await startServer();
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
+    send(host, { type: 'createRoom' });
+    const code = codeOf(host);
+    send(guest, { type: 'joinRoom', code });
+
+    host.close();
+    expect(lastOf(guest, 'roomState')?.room.hostId).toBe('c2');
+
+    guest.close();
+    expect(server.rooms.count).toBe(0);
+  });
+
+  it('drops input sent before a match starts and refuses ready once the game is running', async () => {
     const timers = new VirtualTimers();
-    const { server, transport } = await startServer(SLOW_MATCH_ENV, timers);
-    join(transport.accept('c1'), 'one');
-    join(transport.accept('c2'), 'two');
-    reachMatchEnd(server, timers);
-    await server.stop();
-    expect(timers.pendingCount).toBe(0);
-    timers.advance(60000);
-    expect(server.defaultRoom.simulation.world.match.phase).toBe('MATCH_END');
+    const { transport } = await startServer({ NINJARENA_TICK_RATE: '30' }, timers);
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
+    send(host, { type: 'createRoom' });
+    const code = codeOf(host);
+    await flush(); // laisse la salle charger sa carte avant de démarrer
+    send(guest, { type: 'joinRoom', code });
+
+    send(host, { type: 'input', seq: 1, input: neutralInput() });
+    expect(messagesOf(host, 'error')).toHaveLength(0);
+
+    readyUp(host);
+    readyUp(guest);
+    send(host, { type: 'startMatch' });
+
+    const tickMs = tickDurationMs({ tickRate: 30 });
+    for (let i = 0; i < 400 && lastOf(host, 'roomState')?.room.status !== 'IN_GAME'; i++) {
+      timers.advance(tickMs);
+    }
+    expect(lastOf(host, 'roomState')?.room.status).toBe('IN_GAME');
+
+    send(guest, { type: 'setReady', ready: false });
+    expect(lastOf(guest, 'error')).toMatchObject({ code: 'WRONG_STATUS' });
   });
 });

@@ -1,5 +1,6 @@
 import { loadContent } from '@ninjarena/content';
 import { loadServerConfig } from './config/serverConfig';
+import { FileMapRepository } from './persistence/fileMapRepository';
 import { InMemoryMatchResultRepository } from './persistence/matchResultRepository';
 import { GameServer } from './server';
 import { WebSocketTransport } from './transport/webSocketTransport';
@@ -23,7 +24,8 @@ const start = async (): Promise<GameServer> => {
     config,
     transport: new WebSocketTransport({ host: config.host, port: config.port, log: logError }),
     content: loadContent(),
-    repository: new InMemoryMatchResultRepository(),
+    results: new InMemoryMatchResultRepository(),
+    maps: new FileMapRepository({ dir: config.mapsDir, log: logError }),
     log,
   });
   await server.start();

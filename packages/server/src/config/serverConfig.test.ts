@@ -8,30 +8,34 @@ describe('loadServerConfig', () => {
       port: 8080,
       tickRate: 60,
       snapshotRate: 30,
-      mapId: 'arena',
-      matchModeId: 'duel',
       inputQueueCapacity: 8,
       maxConnections: 32,
-      autoStartWhenFull: true,
-      matchRestartMs: 8000,
+      maxRooms: 64,
+      postMatchMs: 8000,
+      mapsDir: 'data/maps',
+      maxStoredMaps: 100,
     });
   });
 
-  it('coerces environment strings and keeps an explicit "false" falsy', () => {
+  it('coerces environment strings', () => {
     expect(
       loadServerConfig({
         NINJARENA_HOST: '0.0.0.0',
         NINJARENA_PORT: '9000',
         NINJARENA_TICK_RATE: '30',
-        NINJARENA_AUTO_START: 'false',
-        NINJARENA_MATCH_RESTART_MS: '0',
+        NINJARENA_MAX_ROOMS: '10',
+        NINJARENA_POST_MATCH_MS: '0',
+        NINJARENA_MAPS_DIR: '/tmp/maps',
+        NINJARENA_MAX_STORED_MAPS: '5',
       }),
     ).toMatchObject({
       host: '0.0.0.0',
       port: 9000,
       tickRate: 30,
-      autoStartWhenFull: false,
-      matchRestartMs: 0,
+      maxRooms: 10,
+      postMatchMs: 0,
+      mapsDir: '/tmp/maps',
+      maxStoredMaps: 5,
     });
   });
 
@@ -42,8 +46,23 @@ describe('loadServerConfig', () => {
     expect(() => loadServerConfig({ NINJARENA_MAX_CONNECTIONS: '0' })).toThrow(
       /^invalid configuration: maxConnections [^\n]+$/,
     );
-    expect(() => loadServerConfig({ NINJARENA_MATCH_RESTART_MS: '-1' })).toThrow(
-      /^invalid configuration: matchRestartMs [^\n]+$/,
+    expect(() => loadServerConfig({ NINJARENA_MAX_ROOMS: '0' })).toThrow(
+      /^invalid configuration: maxRooms [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_MAX_ROOMS: '1025' })).toThrow(
+      /^invalid configuration: maxRooms [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_POST_MATCH_MS: '-1' })).toThrow(
+      /^invalid configuration: postMatchMs [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_POST_MATCH_MS: '600001' })).toThrow(
+      /^invalid configuration: postMatchMs [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_MAX_STORED_MAPS: '-1' })).toThrow(
+      /^invalid configuration: maxStoredMaps [^\n]+$/,
+    );
+    expect(() => loadServerConfig({ NINJARENA_MAX_STORED_MAPS: '10001' })).toThrow(
+      /^invalid configuration: maxStoredMaps [^\n]+$/,
     );
   });
 });

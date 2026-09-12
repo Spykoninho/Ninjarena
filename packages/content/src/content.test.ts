@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBudget, isSolidTile } from '@ninjarena/core';
+import { isSolidTile } from '@ninjarena/core';
 import type { Effect } from '@ninjarena/core';
 import { DEFAULT_MAP_ID, loadContent, loadMap } from './index';
 
@@ -10,13 +10,6 @@ describe('content', () => {
     const ninja = content.characters.get('ninja');
     expect(content.abilities.has(ninja.basicAttackId)).toBe(true);
     expect(content.abilities.has(ninja.dashId)).toBe(true);
-    expect(content.matchModes.all().map((m) => m.id)).toEqual([
-      'duel',
-      'ffa-3',
-      'ffa-4',
-      '2v2',
-      '3v3',
-    ]);
   });
 
   it('ships the whole ability roster with a telegraph on every technique', () => {
@@ -58,13 +51,7 @@ describe('content', () => {
     }
   });
 
-  it('gives every mode a build budget and a four-minute round', () => {
-    for (const mode of content.matchModes.all()) {
-      expect(mode.buildPoints).toBe(10);
-      expect(buildBudget(mode, content.statRules)).toBe(10);
-      expect(mode.roundDurationMs).toBe(240000);
-      expect(mode.roundsToWin).toBe(mode.id === '3v3' ? 3 : 2);
-    }
+  it('sets the default build budget and technique slots', () => {
     expect(content.statRules.defaultPointBudget).toBe(10);
     expect(content.statRules.techniqueSlots).toBe(3);
   });

@@ -1,15 +1,18 @@
+import { randomInt as cryptoRandomInt } from 'node:crypto';
 import type { GameContent } from '@ninjarena/content';
-import { DEFAULT_CHARACTER_ID, loadMap } from '@ninjarena/content';
-import type { WorldEvent } from '@ninjarena/core';
-import { GameSimulation, tickDurationMs } from '@ninjarena/core';
+import { DEFAULT_CHARACTER_ID, DEFAULT_MAP_ID } from '@ninjarena/content';
+import type { RoomSettings } from '@ninjarena/core';
+import { defaultRoomSettings, tickDurationMs } from '@ninjarena/core';
 import type { ClientMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec } from '@ninjarena/protocol';
 import type { ServerConfig } from './config/serverConfig';
+import type { RoomResult } from './lobby/room';
 import { Room } from './lobby/room';
 import { RoomManager } from './lobby/roomManager';
-import { MatchHost } from './match/matchHost';
+import { MapLibrary } from './maps/mapLibrary';
 import { TickLoop } from './match/tickLoop';
-import type { MatchResultRepository } from './persistence/matchResultRepository';
+import type { MapRepository } from './persistence/mapRepository';
+import type { MatchResult, MatchResultRepository } from './persistence/matchResultRepository';
 import { ClientSession } from './session/clientSession';
 import type { Connection, ServerTransport } from './transport/types';
 
@@ -17,72 +20,85 @@ export interface GameServerDeps {
   config: ServerConfig;
   transport: ServerTransport;
   content: GameContent;
-  repository: MatchResultRepository;
+  results: MatchResultRepository;
+  maps: MapRepository;
   log?: (line: string) => void;
   now?: () => number;
   schedule?: (callback: () => void, delayMs: number) => unknown;
   cancel?: (handle: unknown) => void;
+  randomInt?: (max: number) => number;
 }
 
-type JoinMessage = Extract<ClientMessage, { type: 'join' }>;
-type JoinedMessage = Exclude<ClientMessage, { type: 'join' }>;
+type RoomMessage = Extract<
+  ClientMessage,
+  {
+    type:
+      | 'leaveRoom'
+      | 'updateSettings'
+      | 'setLoadout'
+      | 'setReady'
+      | 'switchTeam'
+      | 'startMatch'
+      | 'input';
+  }
+>;
 
-const DEFAULT_ROOM_ID = 'default';
 const MAX_INVALID_MESSAGES = 20;
 
 export class GameServer {
   private readonly config: ServerConfig;
   private readonly transport: ServerTransport;
   private readonly content: GameContent;
-  private readonly repository: MatchResultRepository;
+  private readonly results: MatchResultRepository;
+  private readonly mapLibrary: MapLibrary;
   private readonly log: (line: string) => void;
-  private readonly rooms: RoomManager;
+  private readonly roomManager: RoomManager;
   private readonly now: () => number;
   private readonly schedule: (callback: () => void, delayMs: number) => unknown;
   private readonly cancel: (handle: unknown) => void;
   private loop: TickLoop | null = null;
-  private restartHandle: unknown = null;
   private openConnections = 0;
 
   constructor(deps: GameServerDeps) {
     this.config = deps.config;
     this.transport = deps.transport;
     this.content = deps.content;
-    this.repository = deps.repository;
+    this.results = deps.results;
     this.log = deps.log ?? (() => {});
-    this.rooms = new RoomManager(() => this.createDefaultRoom());
-    // Les minuteurs sont injectables: les tests pilotent la boucle et la relance sans horloge réelle.
+    this.mapLibrary = new MapLibrary({
+      content: deps.content,
+      repository: deps.maps,
+      maxStoredMaps: deps.config.maxStoredMaps,
+    });
+    this.roomManager = new RoomManager({
+      maxRooms: deps.config.maxRooms,
+      randomInt: deps.randomInt ?? ((max) => cryptoRandomInt(max)),
+      createRoom: (code, passwordHash, settings) => this.createRoom(code, passwordHash, settings),
+      log: this.log,
+    });
+    // Les minuteurs sont injectables: les tests pilotent la boucle sans horloge réelle.
     this.now = deps.now ?? (() => performance.now());
     this.schedule = deps.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
     this.cancel =
       deps.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
   }
 
-  get defaultRoom(): Room {
-    return this.rooms.getOrCreateDefault();
+  get rooms(): RoomManager {
+    return this.roomManager;
   }
 
   async start(): Promise<void> {
-    const room = this.rooms.getOrCreateDefault();
-    const host = new MatchHost({
-      simulation: room.simulation,
-      sessions: () => room.sessions,
-      snapshotEveryTicks: this.snapshotEveryTicks(),
-      onEvents: (events) => {
-        this.handleEvents(room, events);
-      },
+    this.transport.onConnection((connection) => {
+      this.handleConnection(connection);
     });
+    await this.transport.listen();
     const loop = new TickLoop(
       tickDurationMs({ tickRate: this.config.tickRate }),
       () => {
-        host.tick();
+        this.roomManager.tick();
       },
       { now: this.now, schedule: this.schedule, cancel: this.cancel },
     );
-    this.transport.onConnection((connection) => {
-      this.handleConnection(room, connection);
-    });
-    await this.transport.listen();
     loop.start();
     this.loop = loop;
   }
@@ -90,29 +106,23 @@ export class GameServer {
   async stop(): Promise<void> {
     this.loop?.stop();
     this.loop = null;
-    this.cancelRestart();
     await this.transport.close();
   }
 
-  private createDefaultRoom(): Room {
-    const matchConfig = this.content.matchModes.get(this.config.matchModeId);
-    const simulation = new GameSimulation({
-      map: loadMap(this.content, this.config.mapId),
-      abilities: this.content.abilities,
-      characters: this.content.characters,
-      matchConfig,
-      rules: this.content.statRules,
-      config: { tickRate: this.config.tickRate },
-    });
+  private createRoom(code: string, passwordHash: Buffer | null, settings: RoomSettings): Room {
     return new Room({
-      id: DEFAULT_ROOM_ID,
-      matchConfig,
-      simulation,
+      code,
+      passwordHash,
+      settings,
+      content: this.content,
+      maps: this.mapLibrary,
+      tickRate: this.config.tickRate,
+      snapshotEveryTicks: this.snapshotEveryTicks(),
+      postMatchTicks: this.postMatchTicks(),
       characterId: DEFAULT_CHARACTER_ID,
-      autoStartWhenFull: this.config.autoStartWhenFull,
-      rules: this.content.statRules,
-      abilities: this.content.abilities,
-      characters: this.content.characters,
+      onMatchEnded: (result) => {
+        this.storeMatchResult(result);
+      },
     });
   }
 
@@ -120,8 +130,19 @@ export class GameServer {
     return Math.max(1, Math.round(this.config.tickRate / this.config.snapshotRate));
   }
 
-  private handleConnection(room: Room, connection: Connection): void {
-    // Un socket de trop est refusé avant toute allocation: la salle ne le voit jamais.
+  private postMatchTicks(): number {
+    const tickMs = tickDurationMs({ tickRate: this.config.tickRate });
+    return Math.round(this.config.postMatchMs / tickMs);
+  }
+
+  private storeMatchResult(result: MatchResult): void {
+    void this.results.save(result).catch((error: unknown) => {
+      this.log(`failed to store match result: ${reasonOf(error)}`);
+    });
+  }
+
+  private handleConnection(connection: Connection): void {
+    // Un socket de trop est refusé avant toute allocation: aucune salle ne le voit jamais.
     if (this.openConnections >= this.config.maxConnections) {
       this.log(`refusing ${connection.id}: ${this.config.maxConnections} connections already open`);
       connection.close(1013, 'server full');
@@ -130,15 +151,15 @@ export class GameServer {
     this.openConnections += 1;
     const session = new ClientSession(connection, this.config.inputQueueCapacity);
     connection.onMessage((raw) => {
-      this.handleMessage(room, session, raw);
+      this.handleMessage(session, raw);
     });
     connection.onClose(() => {
       this.openConnections -= 1;
-      room.leave(session);
+      this.roomManager.leave(session);
     });
   }
 
-  private handleMessage(room: Room, session: ClientSession, raw: string): void {
+  private handleMessage(session: ClientSession, raw: string): void {
     const message = clientMessageCodec.decode(raw);
     if (message === null) {
       // Une trame illisible est jetée sans réponse; un flot d'entre elles ferme la connexion.
@@ -148,59 +169,41 @@ export class GameServer {
       session.close(1008, 'invalid messages');
       return;
     }
-    if (message.type === 'join') {
-      this.handleJoin(room, session, message);
+    if (message.type === 'hello') {
+      this.handleHello(session, message);
       return;
     }
-    if (session.playerId === null) {
-      session.send({ type: 'error', code: 'NOT_JOINED', message: 'join the room first' });
+    if (!session.introduced) {
+      session.send({ type: 'error', code: 'NOT_INTRODUCED', message: 'send hello first' });
       return;
     }
-    this.handleJoinedMessage(room, session, message);
-  }
-
-  private handleJoin(room: Room, session: ClientSession, message: JoinMessage): void {
-    if (message.protocolVersion !== PROTOCOL_VERSION) {
-      session.send({
-        type: 'error',
-        code: 'PROTOCOL_VERSION',
-        message: `server speaks protocol ${PROTOCOL_VERSION}`,
-      });
-      return;
-    }
-    // Un second `join` ne doit pas dupliquer le joueur déjà présent dans la simulation.
-    if (session.playerId !== null) return;
-    const result = room.join(session, {
-      name: message.name,
-      build: message.build,
-      techniqueIds: message.techniqueIds,
-    });
-    if (!result.ok) {
-      session.send({ type: 'error', code: result.error.code, message: result.error.message });
-      return;
-    }
-    // Le client doit connaître son identifiant avant le `roomState` diffusé par la salle.
-    session.send({
-      type: 'welcome',
-      playerId: session.id,
-      tickRate: this.config.tickRate,
-      snapshotRate: this.config.snapshotRate,
-      mapId: this.config.mapId,
-      matchConfig: room.matchConfig,
-    });
-    room.announce();
-  }
-
-  private handleJoinedMessage(room: Room, session: ClientSession, message: JoinedMessage): void {
     switch (message.type) {
-      case 'ready':
-        room.setReady(session, true);
-        return;
-      case 'input':
-        session.inputs.push(message.seq, message.input);
-        return;
       case 'ping':
         session.send({ type: 'pong', sentAt: message.sentAt, serverTime: Date.now() });
+        return;
+      case 'createRoom':
+        this.handleCreateRoom(session, message);
+        return;
+      case 'joinRoom':
+        this.handleJoinRoom(session, message);
+        return;
+      case 'listMaps':
+        this.handleListMaps(session);
+        return;
+      case 'getMap':
+        this.handleGetMap(session, message);
+        return;
+      case 'saveMap':
+        this.handleSaveMap(session, message);
+        return;
+      case 'leaveRoom':
+      case 'updateSettings':
+      case 'setLoadout':
+      case 'setReady':
+      case 'switchTeam':
+      case 'startMatch':
+      case 'input':
+        this.handleRoomMessage(session, message);
         return;
       default: {
         const exhaustive: never = message;
@@ -209,40 +212,148 @@ export class GameServer {
     }
   }
 
-  private handleEvents(room: Room, events: readonly WorldEvent[]): void {
-    this.storeFinishedMatches(room, events);
-    if (events.some((event) => event.type === 'matchEnded')) this.scheduleRestart(room);
+  private handleHello(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'hello' }>,
+  ): void {
+    if (message.protocolVersion !== PROTOCOL_VERSION) {
+      session.send({
+        type: 'error',
+        code: 'PROTOCOL_VERSION',
+        message: `server speaks protocol ${PROTOCOL_VERSION}`,
+      });
+      return;
+    }
+    if (session.room !== null) {
+      session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'already in a room' });
+      return;
+    }
+    // Un `hello` répété hors salle ne fait que renommer la session.
+    session.introduced = true;
+    session.name = message.name;
+    session.send({ type: 'welcome', sessionId: session.id });
   }
 
-  private scheduleRestart(room: Room): void {
-    this.cancelRestart();
-    this.log(`restarting room ${room.id} in ${this.config.matchRestartMs}ms`);
-    this.restartHandle = this.schedule(() => {
-      this.restartHandle = null;
-      room.tryStart();
-    }, this.config.matchRestartMs);
-  }
-
-  private cancelRestart(): void {
-    if (this.restartHandle === null) return;
-    this.cancel(this.restartHandle);
-    this.restartHandle = null;
-  }
-
-  private storeFinishedMatches(room: Room, events: readonly WorldEvent[]): void {
-    for (const event of events) {
-      if (event.type !== 'matchEnded') continue;
-      this.repository
-        .save({
-          roomId: room.id,
-          matchModeId: room.matchConfig.id,
-          winnerTeamId: event.winnerTeamId,
-          scores: { ...room.simulation.world.match.scores },
-          endedAt: Date.now(),
-        })
-        .catch((error: unknown) => {
-          this.log(`failed to store match result: ${String(error)}`);
-        });
+  private handleCreateRoom(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'createRoom' }>,
+  ): void {
+    const defaults = defaultRoomSettings(this.content.statRules, DEFAULT_MAP_ID);
+    const created = this.roomManager.create(
+      session,
+      { password: message.password, settings: message.settings },
+      this.content.statRules,
+      defaults,
+    );
+    if (!created.ok) {
+      session.send({ type: 'error', code: created.error.code, message: created.error.message });
     }
   }
+
+  private handleJoinRoom(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'joinRoom' }>,
+  ): void {
+    const joined = this.roomManager.join(session, message.code, message.password);
+    if (!joined.ok) {
+      session.send({ type: 'error', code: joined.error.code, message: joined.error.message });
+    }
+  }
+
+  private handleListMaps(session: ClientSession): void {
+    void this.mapLibrary
+      .list()
+      .then((maps) => {
+        session.send({ type: 'mapList', maps });
+      })
+      .catch((error: unknown) => {
+        this.log(`listMaps failed for ${session.id}: ${reasonOf(error)}`);
+      });
+  }
+
+  private handleGetMap(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'getMap' }>,
+  ): void {
+    void this.mapLibrary
+      .get(message.id)
+      .then((document) => {
+        if (document === null) {
+          session.send({ type: 'error', code: 'MAP_NOT_FOUND', message: `no map "${message.id}"` });
+          return;
+        }
+        session.send({ type: 'mapDocument', document });
+      })
+      .catch((error: unknown) => {
+        this.log(`getMap failed for ${session.id}: ${reasonOf(error)}`);
+      });
+  }
+
+  private handleSaveMap(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'saveMap' }>,
+  ): void {
+    void this.mapLibrary
+      .save(message.document, session.name)
+      .then((result) => {
+        if (!result.ok) {
+          session.send({ type: 'error', code: result.code, message: result.message });
+          return;
+        }
+        session.send({ type: 'mapSaved', id: result.id });
+        this.handleListMaps(session);
+      })
+      .catch((error: unknown) => {
+        this.log(`saveMap failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({ type: 'error', code: 'INVALID_MAP', message: 'failed to save the map' });
+      });
+  }
+
+  private handleRoomMessage(session: ClientSession, message: RoomMessage): void {
+    const room = session.room;
+    if (room === null) {
+      session.send({ type: 'error', code: 'NOT_IN_ROOM', message: 'join a room first' });
+      return;
+    }
+    switch (message.type) {
+      case 'leaveRoom':
+        this.roomManager.leave(session);
+        session.send({ type: 'roomLeft' });
+        return;
+      case 'updateSettings':
+        this.replyIfError(session, room.updateSettings(session, message.patch));
+        return;
+      case 'setLoadout':
+        this.replyIfError(session, room.setLoadout(session, message.loadout));
+        return;
+      case 'setReady':
+        this.replyIfError(session, room.setReady(session, message.ready));
+        return;
+      case 'switchTeam':
+        this.replyIfError(session, room.switchTeam(session, message.team));
+        return;
+      case 'startMatch':
+        this.replyIfError(session, room.start(session));
+        return;
+      case 'input':
+        // Une entrée hors match n'a pas d'effet et n'a pas besoin d'être signalée.
+        if (session.playerId === null) return;
+        session.inputs.push(message.seq, message.input);
+        return;
+      default: {
+        const exhaustive: never = message;
+        return exhaustive;
+      }
+    }
+  }
+
+  private replyIfError(session: ClientSession, result: RoomResult): void {
+    if (!result.ok) {
+      session.send({ type: 'error', code: result.error.code, message: result.error.message });
+    }
+  }
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

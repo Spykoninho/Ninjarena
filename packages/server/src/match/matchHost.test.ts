@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation, abilityMask, neutralInput } from '@ninjarena/core';
+import {
+  DEFAULT_MATCH_TIMING,
+  GameSimulation,
+  abilityMask,
+  defaultRoomSettings,
+  neutralInput,
+  toMatchConfig,
+} from '@ninjarena/core';
 import { loadContent, loadMap } from '@ninjarena/content';
 import { serverMessageCodec } from '@ninjarena/protocol';
 import { ClientSession } from '../session/clientSession';
@@ -14,7 +21,10 @@ const setup = () => {
     map: loadMap(content, 'arena'),
     abilities: content.abilities,
     characters: content.characters,
-    matchConfig: content.matchModes.get('duel'),
+    matchConfig: toMatchConfig(
+      defaultRoomSettings(content.statRules, 'arena'),
+      DEFAULT_MATCH_TIMING,
+    ),
     rules: content.statRules,
   });
   const connection = new FakeConnection('c1');

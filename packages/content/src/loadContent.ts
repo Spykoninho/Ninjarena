@@ -3,7 +3,6 @@ import {
   CharacterDefinitionSchema,
   DefinitionCatalog,
   LoadedMap,
-  MatchConfigSchema,
   migrateMapDocument,
   StatRulesDefinitionSchema,
   TilesetDefinitionSchema,
@@ -12,7 +11,6 @@ import type {
   AbilityDefinition,
   CharacterDefinition,
   MapDocument,
-  MatchConfig,
   StatRulesDefinition,
   TilesetDefinition,
 } from '@ninjarena/core';
@@ -29,7 +27,6 @@ import shadowStep from './abilities/shadow-step.json';
 import shurikenThrow from './abilities/shuriken-throw.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
-import matchModes from './match-modes.json';
 import statRules from './stat-rules.json';
 import defaultTileset from './tilesets/default.json';
 
@@ -41,7 +38,6 @@ export interface GameContent {
   characters: DefinitionCatalog<CharacterDefinition>;
   tilesets: DefinitionCatalog<TilesetDefinition>;
   maps: DefinitionCatalog<MapDocument>;
-  matchModes: DefinitionCatalog<MatchConfig>;
   statRules: StatRulesDefinition;
 }
 
@@ -72,11 +68,6 @@ export function loadContent(): GameContent {
     maps: new DefinitionCatalog<MapDocument>([
       parseFile({ parse: migrateMapDocument }, 'maps/arena.json', arena),
     ]),
-    matchModes: new DefinitionCatalog<MatchConfig>(
-      matchModes.map((mode, index) =>
-        parseFile(MatchConfigSchema, `match-modes.json[${index}]`, mode),
-      ),
-    ),
     statRules: parseFile(StatRulesDefinitionSchema, 'stat-rules.json', statRules),
   };
 }
