@@ -113,8 +113,10 @@ above:
 
 The server runs `validateMapDocument` on every `saveMap`, and both `validateMapDocument` and
 `spawnIssues` (against the room's current settings) as part of a room's start blockers
-(`MAP_INVALID` — see [rooms.md](rooms.md)). The editor runs the same two functions locally after
-every edit and highlights the reported `x, y`.
+(`MAP_INVALID` — see [rooms.md](rooms.md)). The editor runs `validateMapDocument` locally after
+every edit and highlights the reported `x, y`; `spawnIssues` only runs when Validate is pressed,
+checked against a fixed 2×1 team format (`teamCount: 2, playersPerTeam: 1`) rather than any actual
+room's settings.
 
 ## Storage
 

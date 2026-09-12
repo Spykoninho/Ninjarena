@@ -197,10 +197,13 @@ A room setting is one field of `RoomSettings` (`packages/core/src/lobby/roomSett
    `MatchConfig` field (adding a new one to `MatchConfigSchema` first if it does not exist yet).
    A setting that only affects lobby behaviour, like `mapId`, needs no `toMatchConfig` line at all.
 4. Add the field to both `RoomSettingsSchema` and `RoomSettingsPatchSchema` (`.optional()` there)
-   in `packages/protocol/src/schemas.ts`, with the same bounds as the core schema. Neither zod
-   object is typed against `RoomSettings`/`RoomSettingsPatch`, so a field missing here is not a
-   compile error: the wire codec silently strips it out of anything a client sends or the server
-   broadcasts, `strictObject` and all — this step is easy to forget and nothing else catches it.
+   in `packages/protocol/src/schemas.ts`, with the same bounds as the core schema.
+   `RoomSettingsSchema` is declared `z.ZodType<RoomSettings>`, so forgetting the field there is a
+   compile error; `RoomSettingsPatchSchema` is not typed against `RoomSettingsPatch`, so a field
+   missing there is easy to forget and nothing catches it at build time. Both are `z.strictObject`,
+   which does not strip an unrecognized field — it fails the whole parse — so the symptom of
+   skipping this step is not a silently stripped field but a `roomState` broadcast or an
+   `updateSettings` message that fails to decode and is dropped outright.
 5. Add a row for it in `settingsRows` (`packages/client/src/lobby/lobbyModel.ts`) so the host's
    lobby form shows and edits it, and a case in `settingsPatch` in the same file so a change to
    that row turns into the right `RoomSettingsPatch`.
