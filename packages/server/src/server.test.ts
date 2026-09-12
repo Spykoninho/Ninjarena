@@ -110,7 +110,7 @@ const lastOf = <T extends ServerMessage['type']>(
   type: T,
 ): Extract<ServerMessage, { type: T }> | undefined => messagesOf(connection, type).at(-1);
 
-// La bibliothèque de cartes répond via de vraies promesses: les micro-tâches doivent s'écouler.
+// `RoomManager.create` lance `refreshMap()` sans l'attendre: il faut vidanger une macro-tâche.
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const hello = (connection: FakeConnection, name: string): void => {
@@ -187,6 +187,36 @@ describe('GameServer dispatch', () => {
       }),
     );
     expect(lastOf(connection, 'error')).toMatchObject({ code: 'PROTOCOL_VERSION' });
+  });
+
+  it('closes a connection that keeps sending unreadable frames, once', async () => {
+    const { transport, logs } = await startServer();
+    const connection = transport.accept('c1');
+    for (let i = 0; i < 19; i++) connection.receive('not a frame');
+    expect(connection.closed).toBe(false);
+    for (let i = 0; i < 6; i++) connection.receive('not a frame');
+    expect(connection.closed).toBe(true);
+    expect(connection.closeCode).toBe(1008);
+    expect(logs.filter((line) => line.includes('invalid messages'))).toHaveLength(1);
+  });
+
+  it('refuses a socket beyond the connection cap and frees the slot on close', async () => {
+    const { transport } = await startServer({ NINJARENA_MAX_CONNECTIONS: '1' });
+    const first = transport.accept('c1');
+    const refused = transport.accept('c2');
+    expect(first.closed).toBe(false);
+    expect(refused.closed).toBe(true);
+    expect(refused.closeCode).toBe(1013);
+    first.close();
+    expect(transport.accept('c3').closed).toBe(false);
+  });
+
+  it('answers a ping with a pong echoing sentAt', async () => {
+    const { transport } = await startServer();
+    const connection = transport.accept('c1');
+    hello(connection, 'one');
+    send(connection, { type: 'ping', sentAt: 1234 });
+    expect(lastOf(connection, 'pong')).toMatchObject({ sentAt: 1234 });
   });
 
   it('creates and joins a room by code, and refuses a third player once full', async () => {
