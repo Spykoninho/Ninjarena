@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { MatchConfigSchema, createWorldState, emptyBuild, neutralInput } from '@ninjarena/core';
-import type { Build } from '@ninjarena/core';
+import { MatchConfigSchema, createWorldState, emptyBuild } from '@ninjarena/core';
+import type { Loadout, MapDocument } from '@ninjarena/core';
 import { clientMessageCodec, serverMessageCodec } from './codec';
-import type { ClientMessage, ServerMessage } from './messages';
+import type { ClientMessage, RoomView, ServerMessage } from './messages';
 import { PROTOCOL_VERSION } from './version';
 
 const DUEL = MatchConfigSchema.parse({
@@ -16,37 +16,83 @@ const DUEL = MatchConfigSchema.parse({
   roundEndDelayMs: 3000,
 });
 
-const BUILD: Build = { ...emptyBuild(), vitality: 2, power: 3, speed: 1 };
+const smallMapDocument = (size: number): unknown => ({
+  version: 1,
+  id: 'tiny',
+  name: 'Tiny',
+  tileset: 'default',
+  width: size,
+  height: size,
+  layers: {
+    ground: Array.from({ length: size }, () => Array.from({ length: size }, () => 0)),
+    objects: Array.from({ length: size }, () => Array.from({ length: size }, () => null)),
+  },
+  colliders: [],
+  spawns: [
+    { x: 1, y: 1 },
+    { x: 6, y: 6, team: 1 },
+  ],
+});
 
-const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
+const MAP: MapDocument = smallMapDocument(8) as MapDocument;
+
+const LOADOUT: Loadout = {
+  build: { ...emptyBuild(), vitality: 2, power: 3, speed: 1 },
+  basicAttackId: 'shuriken-throw',
+  techniqueIds: ['blink', 'chakra-shield'],
+};
+
+const ROOM_VIEW: RoomView = {
+  code: 'AB12CD',
+  hasPassword: true,
+  hostId: 'c1',
+  status: 'WAITING',
+  settings: {
+    mode: 'team',
+    teamCount: 2,
+    playersPerTeam: 2,
+    buildPoints: 10,
+    mapId: 'arena',
+    bestOf: 3,
+    roundDurationMs: 240_000,
+    friendlyFire: false,
+  },
+  map: { id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true },
+  players: [
+    { id: 'c1', name: 'host', team: 0, ready: true, loadout: LOADOUT, loadoutValid: true },
+    { id: 'c2', name: 'guest', team: null, ready: false, loadout: null, loadoutValid: false },
+  ],
+  startBlockers: ['PLAYER_NOT_READY'],
+};
 
 const CLIENT_MESSAGES: ClientMessage[] = [
-  {
-    type: 'join',
-    protocolVersion: PROTOCOL_VERSION,
-    name: 'ninja-a1b2',
-    build: BUILD,
-    techniqueIds: TECHNIQUE_IDS,
-  },
-  { type: 'ready' },
-  { type: 'input', seq: 12, input: { ...neutralInput(), move: { x: 1, y: 0 }, abilityHeld: 2 } },
+  { type: 'hello', protocolVersion: PROTOCOL_VERSION, name: 'ninja-a1b2' },
+  { type: 'createRoom', password: 'secret', settings: { teamCount: 4 } },
+  { type: 'joinRoom', code: 'ab12cd', password: 'secret' },
+  { type: 'leaveRoom' },
+  { type: 'updateSettings', patch: { bestOf: 5, mapId: 'arena' } },
+  { type: 'setLoadout', loadout: LOADOUT },
+  { type: 'setReady', ready: true },
+  { type: 'switchTeam', team: 1 },
+  { type: 'startMatch' },
+  { type: 'listMaps' },
+  { type: 'getMap', id: 'arena' },
+  { type: 'saveMap', document: MAP },
+  { type: 'input', seq: 12, input: { move: { x: 1, y: 0 }, aim: { x: 0, y: 1 }, abilityHeld: 2 } },
   { type: 'ping', sentAt: 1_700_000_000_000 },
 ];
 
 const SERVER_MESSAGES: ServerMessage[] = [
+  { type: 'welcome', sessionId: 'session-1' },
+  { type: 'roomState', room: ROOM_VIEW },
+  { type: 'roomLeft' },
   {
-    type: 'welcome',
+    type: 'matchStarted',
     playerId: 'c1',
     tickRate: 60,
     snapshotRate: 30,
-    mapId: 'arena',
     matchConfig: DUEL,
-  },
-  {
-    type: 'roomState',
-    players: [
-      { id: 'c1', name: 'one', teamId: 'team-0', ready: true, techniqueIds: TECHNIQUE_IDS },
-    ],
+    map: MAP,
   },
   {
     type: 'snapshot',
@@ -55,22 +101,16 @@ const SERVER_MESSAGES: ServerMessage[] = [
     world: createWorldState(),
     events: [{ type: 'roundStarted', tick: 0, round: 1 }],
   },
+  {
+    type: 'mapList',
+    maps: [{ id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true }],
+  },
+  { type: 'mapSaved', id: 'arena' },
+  { type: 'mapDocument', document: MAP },
   { type: 'error', code: 'ROOM_FULL', message: 'the room is full' },
   { type: 'error', code: 'INVALID_LOADOUT', message: 'build spends 11 points, budget is 10' },
   { type: 'pong', sentAt: 1_700_000_000_000, serverTime: 1_700_000_000_020 },
 ];
-
-const decodeJoin = (overrides: Record<string, unknown>): ClientMessage | null =>
-  clientMessageCodec.decode(
-    JSON.stringify({
-      type: 'join',
-      protocolVersion: PROTOCOL_VERSION,
-      name: 'ninja-a1b2',
-      build: BUILD,
-      techniqueIds: TECHNIQUE_IDS,
-      ...overrides,
-    }),
-  );
 
 describe('protocol codec', () => {
   it.each(CLIENT_MESSAGES)('round-trips the client $type message', (message) => {
@@ -89,24 +129,29 @@ describe('protocol codec', () => {
     ).toBeNull();
   });
 
-  it('rejects a join whose build is not seven whole point counts', () => {
-    const withoutDefense = {
-      vitality: 2,
-      strength: 0,
-      power: 3,
-      speed: 1,
-      maxChakra: 0,
-      chakraRegen: 0,
-    };
-    expect(decodeJoin({ build: withoutDefense })).toBeNull();
-    expect(decodeJoin({ build: { ...BUILD, vitality: 1.5 } })).toBeNull();
-    expect(decodeJoin({ build: { ...BUILD, luck: 1 } })).toBeNull();
-    expect(decodeJoin({ build: { ...BUILD, vitality: -1 } })).toBeNull();
+  it('rejects a joinRoom whose code is not exactly six alphanumeric characters', () => {
+    expect(
+      clientMessageCodec.decode(JSON.stringify({ type: 'joinRoom', code: 'ab12c' })),
+    ).toBeNull();
   });
 
-  it('rejects a join carrying more techniques than any loadout holds', () => {
-    const nine = Array.from({ length: 9 }, (_, index) => `technique-${index}`);
-    expect(decodeJoin({ techniqueIds: nine })).toBeNull();
-    expect(decodeJoin({ techniqueIds: [''] })).toBeNull();
+  it('rejects a saveMap whose ground layer holds a null tile', () => {
+    const doc = smallMapDocument(9) as { layers: { ground: (number | null)[][] } };
+    doc.layers.ground[0]![0] = null;
+    expect(
+      clientMessageCodec.decode(JSON.stringify({ type: 'saveMap', document: doc })),
+    ).toBeNull();
+  });
+
+  it('rejects a createRoom whose settings patch violates the team count bounds', () => {
+    expect(
+      clientMessageCodec.decode(JSON.stringify({ type: 'createRoom', settings: { teamCount: 1 } })),
+    ).toBeNull();
+  });
+
+  it('rejects a welcome carrying an empty sessionId', () => {
+    expect(
+      serverMessageCodec.decode(JSON.stringify({ type: 'welcome', sessionId: '' })),
+    ).toBeNull();
   });
 });
