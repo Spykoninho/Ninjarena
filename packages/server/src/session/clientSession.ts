@@ -10,6 +10,7 @@ export class ClientSession {
   readonly inputs: InputQueue;
   playerId: PlayerId | null = null;
   name: string;
+  techniqueIds: string[] = [];
   ready = false;
   invalidMessages = 0;
   closed = false;

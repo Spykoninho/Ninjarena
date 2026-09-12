@@ -6,6 +6,8 @@ import { ClientSession } from '../session/clientSession';
 import { MatchHost } from './matchHost';
 import { FakeConnection } from '../testing/fakeConnection';
 
+const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
+
 const setup = () => {
   const content = loadContent();
   const simulation = new GameSimulation({
@@ -18,7 +20,12 @@ const setup = () => {
   const connection = new FakeConnection('c1');
   const session = new ClientSession(connection, 8);
   session.playerId = 'c1';
-  simulation.addPlayer({ id: 'c1', teamId: 'team-0', characterId: 'ninja' });
+  simulation.addPlayer({
+    id: 'c1',
+    teamId: 'team-0',
+    characterId: 'ninja',
+    techniqueIds: TECHNIQUE_IDS,
+  });
   simulation.startMatch();
   const host = new MatchHost({ simulation, sessions: () => [session], snapshotEveryTicks: 2 });
   return { simulation, connection, session, host };
@@ -49,7 +56,12 @@ describe('MatchHost', () => {
 
   it('never trusts damage from clients: an input can only carry intent', () => {
     const { host, session, simulation } = setup();
-    simulation.addPlayer({ id: 'c2', teamId: 'team-1', characterId: 'ninja' });
+    simulation.addPlayer({
+      id: 'c2',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      techniqueIds: TECHNIQUE_IDS,
+    });
     session.inputs.push(1, { ...neutralInput(), abilityHeld: abilityMask([0]) });
     host.tick();
     expect(simulation.world.players['c2']!.health).toBe(100);

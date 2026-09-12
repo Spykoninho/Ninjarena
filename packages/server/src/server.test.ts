@@ -1,6 +1,7 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { loadContent } from '@ninjarena/content';
-import { neutralInput } from '@ninjarena/core';
+import { emptyBuild, neutralInput } from '@ninjarena/core';
+import type { Build } from '@ninjarena/core';
 import type { ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec, serverMessageCodec } from '@ninjarena/protocol';
 import { loadServerConfig } from './config/serverConfig';
@@ -33,6 +34,8 @@ class StubTransport implements ServerTransport {
 
 const CONTENT = loadContent();
 
+const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
+
 const startServer = async (
   env: Record<string, string> = {},
 ): Promise<{ server: GameServer; transport: StubTransport; logs: string[] }> => {
@@ -56,19 +59,29 @@ const messagesOf = (connection: FakeConnection): ServerMessage[] =>
     .map((raw) => serverMessageCodec.decode(raw))
     .filter((message): message is ServerMessage => message !== null);
 
-const join = (
-  connection: FakeConnection,
-  name: string,
-  protocolVersion = PROTOCOL_VERSION,
-): void => {
-  connection.receive(clientMessageCodec.encode({ type: 'join', protocolVersion, name }));
+interface JoinOverrides {
+  protocolVersion?: number;
+  build?: Build;
+  techniqueIds?: string[];
+}
+
+const join = (connection: FakeConnection, name: string, overrides: JoinOverrides = {}): void => {
+  connection.receive(
+    clientMessageCodec.encode({
+      type: 'join',
+      protocolVersion: overrides.protocolVersion ?? PROTOCOL_VERSION,
+      name,
+      build: overrides.build ?? emptyBuild(),
+      techniqueIds: overrides.techniqueIds ?? TECHNIQUE_IDS,
+    }),
+  );
 };
 
 describe('GameServer', () => {
   it('refuses a join that speaks another protocol version', async () => {
     const { server, transport } = await startServer();
     const connection = transport.accept('c1');
-    join(connection, 'one', PROTOCOL_VERSION + 1);
+    join(connection, 'one', { protocolVersion: PROTOCOL_VERSION + 1 });
     expect(messagesOf(connection)).toEqual([
       {
         type: 'error',
@@ -84,6 +97,26 @@ describe('GameServer', () => {
     const connection = transport.accept('c1');
     connection.receive(clientMessageCodec.encode({ type: 'input', seq: 1, input: neutralInput() }));
     expect(messagesOf(connection)).toMatchObject([{ type: 'error', code: 'NOT_JOINED' }]);
+  });
+
+  it('refuses a join that overspends the build budget', async () => {
+    const { server, transport } = await startServer();
+    const connection = transport.accept('c1');
+    join(connection, 'one', { build: { ...emptyBuild(), vitality: 5, strength: 5, power: 1 } });
+    const messages = messagesOf(connection);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ type: 'error', code: 'INVALID_LOADOUT' });
+    expect(messages[0]).toHaveProperty('message', expect.stringContaining('budget'));
+    expect(server.defaultRoom.simulation.world.players).toEqual({});
+    expect(server.defaultRoom.sessions).toHaveLength(0);
+  });
+
+  it('refuses a join whose loadout leaves a technique slot empty', async () => {
+    const { server, transport } = await startServer();
+    const connection = transport.accept('c1');
+    join(connection, 'one', { techniqueIds: ['blink', 'chakra-shield'] });
+    expect(messagesOf(connection)).toMatchObject([{ type: 'error', code: 'INVALID_LOADOUT' }]);
+    expect(server.defaultRoom.simulation.world.players).toEqual({});
   });
 
   it('refuses a third player on a duel room', async () => {
@@ -126,10 +159,16 @@ describe('GameServer', () => {
     expect(messagesOf(connection).at(-1)).toMatchObject({ type: 'pong', sentAt: 1234 });
   });
 
-  it('sends welcome before the room state on a valid join', async () => {
-    const { transport } = await startServer();
+  it('sends welcome before a room state carrying the chosen techniques', async () => {
+    const { server, transport } = await startServer();
     const connection = transport.accept('c1');
-    join(connection, 'one');
-    expect(messagesOf(connection).map((message) => message.type)).toEqual(['welcome', 'roomState']);
+    join(connection, 'one', { build: { ...emptyBuild(), vitality: 3 } });
+    const messages = messagesOf(connection);
+    expect(messages.map((message) => message.type)).toEqual(['welcome', 'roomState']);
+    expect(messages[1]).toMatchObject({
+      type: 'roomState',
+      players: [{ id: 'c1', name: 'one', techniqueIds: TECHNIQUE_IDS }],
+    });
+    expect(server.defaultRoom.simulation.world.players['c1']?.stats.maxHealth).toBe(136);
   });
 });

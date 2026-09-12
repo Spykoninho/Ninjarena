@@ -93,6 +93,8 @@ export class GameServer {
       simulation,
       characterId: DEFAULT_CHARACTER_ID,
       autoStartWhenFull: this.config.autoStartWhenFull,
+      rules: this.content.statRules,
+      abilities: this.content.abilities,
     });
   }
 
@@ -150,8 +152,13 @@ export class GameServer {
     }
     // Un second `join` ne doit pas dupliquer le joueur déjà présent dans la simulation.
     if (session.playerId !== null) return;
-    if (room.isFull) {
-      session.send({ type: 'error', code: 'ROOM_FULL', message: 'the room is full' });
+    const result = room.join(session, {
+      name: message.name,
+      build: message.build,
+      techniqueIds: message.techniqueIds,
+    });
+    if (!result.ok) {
+      session.send({ type: 'error', code: result.error.code, message: result.error.message });
       return;
     }
     // Le client doit connaître son identifiant avant le `roomState` diffusé par la salle.
@@ -163,7 +170,7 @@ export class GameServer {
       mapId: this.config.mapId,
       matchConfig: room.matchConfig,
     });
-    room.join(session, message.name);
+    room.announce();
   }
 
   private handleJoinedMessage(room: Room, session: ClientSession, message: JoinedMessage): void {
