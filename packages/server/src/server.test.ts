@@ -5,6 +5,7 @@ import { emptyBuild, migrateMapDocument, neutralInput, tickDurationMs } from '@n
 import type { ClientMessage, ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec, serverMessageCodec } from '@ninjarena/protocol';
 import { loadServerConfig } from './config/serverConfig';
+import type { MapRepository } from './persistence/mapRepository';
 import { InMemoryMapRepository } from './persistence/mapRepository';
 import { InMemoryMatchResultRepository } from './persistence/matchResultRepository';
 import { GameServer } from './server';
@@ -72,6 +73,7 @@ const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
 const startServer = async (
   env: Record<string, string> = {},
   timers?: VirtualTimers,
+  maps?: MapRepository,
 ): Promise<{ server: GameServer; transport: StubTransport; logs: string[] }> => {
   const transport = new StubTransport();
   const logs: string[] = [];
@@ -80,7 +82,7 @@ const startServer = async (
     transport,
     content: loadContent(),
     results: new InMemoryMatchResultRepository(),
-    maps: new InMemoryMapRepository(),
+    maps: maps ?? new InMemoryMapRepository(),
     log: (line) => logs.push(line),
     ...(timers === undefined
       ? {}
@@ -91,6 +93,13 @@ const startServer = async (
   onTestFinished(() => server.stop());
   return { server, transport, logs };
 };
+
+// Simule une panne du dépôt de cartes: le catch de `listMaps`/`getMap`/`saveMap` doit répondre.
+class FailingMapRepository extends InMemoryMapRepository {
+  override list(): Promise<MapDocument[]> {
+    return Promise.reject(new Error('disk error'));
+  }
+}
 
 const decodeAll = (connection: FakeConnection): ServerMessage[] =>
   connection.sent
@@ -200,6 +209,20 @@ describe('GameServer dispatch', () => {
     expect(logs.filter((line) => line.includes('invalid messages'))).toHaveLength(1);
   });
 
+  it('answers every unreadable frame with INVALID_MESSAGE before it closes the connection', async () => {
+    const { transport } = await startServer();
+    const connection = transport.accept('c1');
+    connection.receive('not a frame');
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'INVALID_MESSAGE' });
+    expect(connection.closed).toBe(false);
+
+    for (let i = 0; i < 19; i++) connection.receive('not a frame');
+    expect(connection.closed).toBe(true);
+    expect(
+      messagesOf(connection, 'error').filter((error) => error.code === 'INVALID_MESSAGE'),
+    ).toHaveLength(20);
+  });
+
   it('refuses a socket beyond the connection cap and frees the slot on close', async () => {
     const { transport } = await startServer({ NINJARENA_MAX_CONNECTIONS: '1' });
     const first = transport.accept('c1');
@@ -294,6 +317,17 @@ describe('GameServer dispatch', () => {
     send(connection, { type: 'saveMap', document: walledMap() });
     await flush();
     expect(lastOf(connection, 'error')).toMatchObject({ code: 'INVALID_MAP' });
+  });
+
+  it('answers SERVER_ERROR when the map repository is unavailable', async () => {
+    const { transport } = await startServer({}, undefined, new FailingMapRepository());
+    const connection = transport.accept('c1');
+    hello(connection, 'kunoichi');
+
+    send(connection, { type: 'listMaps' });
+    await flush();
+
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'SERVER_ERROR' });
   });
 
   it('lets a player leave the room and promotes the remaining player to host', async () => {

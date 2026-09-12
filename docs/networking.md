@@ -26,9 +26,10 @@ Every client frame is validated by a zod schema before it reaches game code
 (`ClientMessageSchema`, strict objects, `hello`'s name limited to 24 characters, a room code
 exactly 6 characters, a map document bounded to 128x128 tiles and 64 spawns — the schema only
 checks shape and size; the exact loadout budget and technique count depend on content and on the
-room's settings, loaded at runtime). A frame that fails to parse is dropped silently and counted;
-after 20 bad frames the session is closed with code `1008`. The transport accepts text only — a
-binary frame is ignored — and `maxPayload` is 64 KiB, well above the largest legitimate message.
+room's settings, loaded at runtime). A frame that fails to parse gets an `INVALID_MESSAGE` error
+back and is counted; after 20 bad frames the session is closed with code `1008`. The transport
+accepts text only — a binary frame is ignored — and `maxPayload` is 64 KiB, well above the largest
+legitimate message.
 
 Even a well-formed input is not trusted: `sanitizePlayerInput` clamps `move` to length 1,
 normalizes `aim`, masks `abilityHeld` to the five real slots, and replaces the whole input with a
@@ -57,9 +58,11 @@ The server sends:
 - `error { code, message }` — one of `PROTOCOL_VERSION`, `INVALID_MESSAGE`, `NOT_INTRODUCED`,
   `NOT_IN_ROOM`, `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `WRONG_PASSWORD`, `ROOM_IN_GAME`,
   `TOO_MANY_ROOMS`, `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`, `INVALID_LOADOUT`, `TEAM_FULL`,
-  `CANNOT_START`, `INVALID_MAP`, `MAP_NOT_FOUND`, `MAP_STORE_FULL` — see [rooms.md](rooms.md) for
-  which message can produce which. `INVALID_MESSAGE` is declared but not currently sent: a
-  malformed frame gets no answer at all, as noted above.
+  `CANNOT_START`, `INVALID_MAP`, `MAP_NOT_FOUND`, `MAP_STORE_FULL`, `SERVER_ERROR` — see
+  [rooms.md](rooms.md) for which message can produce which. `INVALID_MESSAGE` answers a malformed
+  frame (in addition to the frame counting towards the 20-frame close limit above); `SERVER_ERROR`
+  answers `listMaps`, `getMap` or `saveMap` when the map store itself is unavailable (a disk error,
+  say), as opposed to the request being invalid.
 - `pong { sentAt, serverTime }`.
 
 `hello` is the handshake: a session that has not sent one yet gets `NOT_INTRODUCED` for anything

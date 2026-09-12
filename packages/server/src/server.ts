@@ -162,7 +162,8 @@ export class GameServer {
   private handleMessage(session: ClientSession, raw: string): void {
     const message = clientMessageCodec.decode(raw);
     if (message === null) {
-      // Une trame illisible est jetée sans réponse; un flot d'entre elles ferme la connexion.
+      session.send({ type: 'error', code: 'INVALID_MESSAGE', message: 'unreadable message' });
+      // Une trame illisible reçoit une erreur; un flot d'entre elles ferme quand même la connexion.
       session.invalidMessages += 1;
       if (session.invalidMessages < MAX_INVALID_MESSAGES || session.closed) return;
       this.log(`closing ${session.id} after ${MAX_INVALID_MESSAGES} invalid messages`);
@@ -268,6 +269,11 @@ export class GameServer {
       })
       .catch((error: unknown) => {
         this.log(`listMaps failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({
+          type: 'error',
+          code: 'SERVER_ERROR',
+          message: 'the map library is unavailable',
+        });
       });
   }
 
@@ -286,6 +292,11 @@ export class GameServer {
       })
       .catch((error: unknown) => {
         this.log(`getMap failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({
+          type: 'error',
+          code: 'SERVER_ERROR',
+          message: 'the map library is unavailable',
+        });
       });
   }
 
@@ -305,7 +316,11 @@ export class GameServer {
       })
       .catch((error: unknown) => {
         this.log(`saveMap failed for ${session.id}: ${reasonOf(error)}`);
-        session.send({ type: 'error', code: 'INVALID_MAP', message: 'failed to save the map' });
+        session.send({
+          type: 'error',
+          code: 'SERVER_ERROR',
+          message: 'the map library is unavailable',
+        });
       });
   }
 

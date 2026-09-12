@@ -82,6 +82,7 @@ export const SERVER_ERROR_CODES = [
   'INVALID_MAP',
   'MAP_NOT_FOUND',
   'MAP_STORE_FULL',
+  'SERVER_ERROR',
 ] as const;
 
 export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
