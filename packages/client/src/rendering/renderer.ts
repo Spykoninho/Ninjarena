@@ -45,6 +45,7 @@ export interface ProjectileView {
   radius: number;
   color: string;
   trail: boolean;
+  direction: Vec2;
 }
 
 export interface ZoneView {

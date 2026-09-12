@@ -68,6 +68,7 @@ export class ClientGame {
   private latestSnapshot: WorldState | null = null;
   private previousLocalPosition: Vec2 | null = null;
   private cameraPosition: Vec2 = { x: 0, y: 0 };
+  private localRenderPosition: Vec2 = { x: 0, y: 0 };
   private isFfa = false;
   private tickMs = 0;
   private seq = 0;
@@ -199,6 +200,7 @@ export class ClientGame {
     this.seq = 0;
     // Avant le premier snapshot le joueur local n'existe pas: la caméra vise le centre de la carte.
     this.cameraPosition = { x: map.widthInUnits / 2, y: map.heightInUnits / 2 };
+    this.localRenderPosition = { ...this.cameraPosition };
     renderer.setMap(map, content.tilesets.get(content.maps.get(message.mapId).tileset));
     network.send({ type: 'ready' });
     this.startPing();
@@ -270,7 +272,7 @@ export class ClientGame {
     const local = simulation.world.players[localPlayerId];
     this.previousLocalPosition = local === undefined ? null : { ...local.position };
     // La visée part de l'endroit où le joueur est dessiné, pas de sa position simulée.
-    const screenPosition = this.deps.renderer.worldToScreen(this.cameraPosition);
+    const screenPosition = this.deps.renderer.worldToScreen(this.localRenderPosition);
     const input = buildPlayerInput(this.deps.inputState, this.deps.bindings, screenPosition);
     this.seq += 1;
     this.deps.network.send({ type: 'input', seq: this.seq, input });
@@ -284,16 +286,19 @@ export class ClientGame {
     if (simulation === null || localPlayerId === null) return;
     const local = simulation.world.players[localPlayerId];
     if (local !== undefined) {
-      this.cameraPosition = add(
-        lerp(this.previousLocalPosition ?? local.position, local.position, alpha),
-        offset,
+      this.cameraPosition = lerp(
+        this.previousLocalPosition ?? local.position,
+        local.position,
+        alpha,
       );
+      // La correction lissée déplace le corps, pas la caméra: l'image ne recule pas avec lui.
+      this.localRenderPosition = add(this.cameraPosition, offset);
     }
     this.deps.renderer.render(
       buildRenderFrame({
         localPlayerId,
         predicted: simulation.world,
-        localRenderPosition: this.cameraPosition,
+        localRenderPosition: this.localRenderPosition,
         alpha,
         dt: this.tickMs / MS_PER_SECOND,
         remotes: this.sampleRemotes(),

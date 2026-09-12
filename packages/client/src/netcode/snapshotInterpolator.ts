@@ -15,6 +15,7 @@ export interface EntityView {
 }
 
 export interface InterpolatedWorld {
+  tick: number;
   players: Record<PlayerId, PlayerState & { renderPosition: Vec2 }>;
   projectiles: Record<EntityId, ProjectileState & { renderPosition: Vec2 }>;
   pending: Record<EntityId, PendingEffect>;
@@ -48,8 +49,8 @@ export class SnapshotInterpolator {
     const oldest = this.snapshots[0];
     const newest = this.latest;
     if (oldest === undefined || newest === null) return null;
-    if (renderTick <= oldest.tick) return blendWorlds(oldest, oldest, 0);
-    if (renderTick >= newest.tick) return blendWorlds(newest, newest, 0);
+    if (renderTick <= oldest.tick) return blendWorlds(oldest, oldest, 0, oldest.tick);
+    if (renderTick >= newest.tick) return blendWorlds(newest, newest, 0, newest.tick);
     let from = oldest;
     for (const to of this.snapshots) {
       if (to.tick <= renderTick) {
@@ -57,14 +58,16 @@ export class SnapshotInterpolator {
         continue;
       }
       const span = to.tick - from.tick;
-      return blendWorlds(from, to, span <= 0 ? 0 : (renderTick - from.tick) / span);
+      return blendWorlds(from, to, span <= 0 ? 0 : (renderTick - from.tick) / span, renderTick);
     }
-    return blendWorlds(newest, newest, 0);
+    return blendWorlds(newest, newest, 0, newest.tick);
   }
 }
 
-function blendWorlds(from: WorldState, to: WorldState, t: number): InterpolatedWorld {
+function blendWorlds(from: WorldState, to: WorldState, t: number, tick: number): InterpolatedWorld {
   return {
+    // Le tick rendu voyage avec l'échantillon: les vues distantes s'y réfèrent, pas au tick prédit.
+    tick,
     players: blendEntities(from.players, to.players, t),
     projectiles: blendEntities(from.projectiles, to.projectiles, t),
     // Zones et murs ne bougent pas: seul l'état le plus récent compte, sans interpolation.

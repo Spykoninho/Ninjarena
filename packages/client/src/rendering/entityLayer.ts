@@ -13,7 +13,6 @@ const DEAD_ALPHA = 0.25;
 const DASH_ALPHA = 0.7;
 const TRAIL_LENGTH = 7;
 const TRAIL_ALPHA = 0.35;
-const MOVED_EPSILON = 1e-4;
 const FLASH_MS = 60;
 const FLASH_ALPHA = 0.85;
 const FLASH_COLOR = 0xffffff;
@@ -39,7 +38,6 @@ export interface PlayerSample {
 interface ProjectileNode {
   container: Container;
   trail: Graphics | null;
-  previous: Vec2;
 }
 
 interface ObstacleNode {
@@ -101,11 +99,11 @@ export class EntityLayer {
   }
 
   clear(): void {
-    this.players.clear();
-    this.telegraphs.clear();
-    this.projectiles.clear();
-    this.zones.clear();
-    this.obstacles.clear();
+    destroyAll(this.players, (node) => node.container);
+    destroyAll(this.telegraphs, (graphics) => graphics);
+    destroyAll(this.projectiles, (node) => node.container);
+    destroyAll(this.zones, (graphics) => graphics);
+    destroyAll(this.obstacles, (node) => node.graphics);
   }
 
   private syncPlayers(
@@ -204,15 +202,7 @@ export class EntityLayer {
       seen.add(view.id);
       const node = this.projectiles.get(view.id) ?? this.createProjectileNode(view);
       node.container.position.set(view.position.x, view.position.y);
-      if (node.trail !== null) {
-        const dx = view.position.x - node.previous.x;
-        const dy = view.position.y - node.previous.y;
-        // La traînée pointe à l'opposé du déplacement: un tir immobile garde son orientation.
-        if (Math.abs(dx) > MOVED_EPSILON || Math.abs(dy) > MOVED_EPSILON) {
-          node.trail.rotation = Math.atan2(dy, dx);
-        }
-      }
-      node.previous = { x: view.position.x, y: view.position.y };
+      if (node.trail !== null) orientTrail(node.trail, view.direction);
     }
     removeMissing(this.projectiles, seen, (node) => node.container);
   }
@@ -273,19 +263,32 @@ export class EntityLayer {
         .moveTo(-view.radius, 0)
         .lineTo(-view.radius - TRAIL_LENGTH, 0)
         .stroke({ color: view.color, width: view.radius, alpha: TRAIL_ALPHA });
+      // La traînée est orientée dès la naissance du tir: elle ne suit pas une image de retard.
+      orientTrail(trail, view.direction);
       container.addChild(trail);
     }
     container.addChild(body);
     this.entities.addChild(container);
-    const node: ProjectileNode = { container, trail, previous: { ...view.position } };
+    const node: ProjectileNode = { container, trail };
     this.projectiles.set(view.id, node);
     return node;
   }
 }
 
+function orientTrail(trail: Graphics, direction: Vec2): void {
+  // Un tir sans direction garde l'orientation qu'il avait.
+  if (direction.x === 0 && direction.y === 0) return;
+  trail.rotation = Math.atan2(direction.y, direction.x);
+}
+
 function alphaOf(view: PlayerView): number {
   if (view.phase === 'DEAD') return DEAD_ALPHA;
   return view.isDashing ? DASH_ALPHA : 1;
+}
+
+function destroyAll<T>(nodes: Map<string, T>, containerOf: (node: T) => Container): void {
+  for (const node of nodes.values()) containerOf(node).destroy({ children: true });
+  nodes.clear();
 }
 
 function removeMissing<T>(

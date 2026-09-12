@@ -37,20 +37,18 @@ export interface RenderFrameInput {
 
 type CastingPhase = Extract<CombatPhaseState, { kind: 'CASTING' }>;
 
-// La durée de vie d'un mur n'est pas dans l'état: il s'efface sur sa dernière seconde de jeu.
-const OBSTACLE_FADE_TICKS = 60;
-
 export function buildRenderFrame(input: RenderFrameInput): RenderFrame {
   const local = input.predicted.players[input.localPlayerId];
   const players: PlayerView[] = [];
   if (local !== undefined) {
-    players.push(toPlayerView(input, local, input.localRenderPosition, true, true));
+    players.push(toPlayerView(input, local, input.localRenderPosition, input.tick, true, true));
   }
+  const remoteTick = remoteTickOf(input);
   for (const remote of Object.values(input.remotes?.players ?? {})) {
     // Le joueur local vient de la prédiction, jamais de l'interpolation.
     if (remote.id === input.localPlayerId) continue;
     const visible = local === undefined || isVisibleTo(remote, local);
-    players.push(toPlayerView(input, remote, remote.renderPosition, false, visible));
+    players.push(toPlayerView(input, remote, remote.renderPosition, remoteTick, false, visible));
   }
   return {
     camera: input.cameraTarget,
@@ -81,7 +79,7 @@ function zoneViews(input: RenderFrameInput): ZoneView[] {
     push(views, toZoneView(pending, input.tick));
   }
   for (const pending of others(input.remotes?.pending, input.localPlayerId)) {
-    push(views, toZoneView(pending, input.tick));
+    push(views, toZoneView(pending, remoteTickOf(input)));
   }
   return views;
 }
@@ -89,12 +87,17 @@ function zoneViews(input: RenderFrameInput): ZoneView[] {
 function obstacleViews(input: RenderFrameInput): ObstacleView[] {
   const views: ObstacleView[] = [];
   for (const obstacle of own(input.predicted.obstacles, input.localPlayerId)) {
-    views.push(toObstacleView(obstacle, input.tick));
+    views.push(toObstacleView(obstacle, input.tick, input.dt));
   }
   for (const obstacle of others(input.remotes?.obstacles, input.localPlayerId)) {
-    views.push(toObstacleView(obstacle, input.tick));
+    views.push(toObstacleView(obstacle, remoteTickOf(input), input.dt));
   }
   return views;
+}
+
+// Ce qui vient de l'interpolateur décrit un instant passé: sa progression se lit à ce tick-là.
+function remoteTickOf(input: RenderFrameInput): number {
+  return input.remotes?.tick ?? input.tick;
 }
 
 function own<T extends { ownerId: PlayerId }>(
@@ -119,6 +122,7 @@ function toPlayerView(
   input: RenderFrameInput,
   player: PlayerState,
   position: Vec2,
+  tick: number,
   isLocal: boolean,
   visible: boolean,
 ): PlayerView {
@@ -137,9 +141,8 @@ function toPlayerView(
     telegraph:
       casting === null || ability === null
         ? null
-        : toTelegraphView(casting, ability, player.aim, position, input.tick),
-    activeArc:
-      casting === null || ability === null ? null : toArcView(casting, ability, input.tick),
+        : toTelegraphView(casting, ability, player.aim, position, tick),
+    activeArc: casting === null || ability === null ? null : toArcView(casting, ability, tick),
     isDashing: player.phase.kind === 'DASHING',
   };
 }
@@ -153,6 +156,8 @@ function toTelegraphView(
 ): TelegraphView | null {
   const telegraph = ability.telegraph;
   if (telegraph === null) return null;
+  // Le télégraphe annonce le coup: il disparaît dès que la capacité part.
+  if (casting.activated || tick >= casting.activatesAt) return null;
   const direction = normalize(aim);
   const distance = telegraph.anchor === 'aim' ? aimedDistance(ability, telegraph.size) : 0;
   return {
@@ -190,6 +195,7 @@ function toProjectileView(projectile: ProjectileState, position: Vec2): Projecti
     radius: projectile.radius,
     color: projectile.visual.color,
     trail: projectile.visual.trail,
+    direction: normalize(projectile.velocity),
   };
 }
 
@@ -205,12 +211,13 @@ function toZoneView(pending: PendingEffect, tick: number): ZoneView | null {
   };
 }
 
-function toObstacleView(obstacle: ObstacleState, tick: number): ObstacleView {
+function toObstacleView(obstacle: ObstacleState, tick: number, dt: number): ObstacleView {
   return {
     id: obstacle.id,
     points: [...obstacle.shape.points],
     color: obstacle.visual.color,
-    remaining: clamp01((obstacle.expiresAt - tick) / OBSTACLE_FADE_TICKS),
+    // La durée de vie n'est pas dans l'état: le mur s'efface sur sa dernière seconde de jeu.
+    remaining: clamp01((obstacle.expiresAt - tick) * dt),
   };
 }
 

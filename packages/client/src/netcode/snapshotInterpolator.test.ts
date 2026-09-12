@@ -190,6 +190,16 @@ describe('SnapshotInterpolator', () => {
     expect(sampled.obstacles['o2']!.shape.points[0]).toEqual({ x: 30, y: 0 });
   });
 
+  it('carries the sampled tick, clamped to the snapshots it holds', () => {
+    const sim = makeSim();
+    const interpolator = new SnapshotInterpolator();
+    interpolator.push(worldAt(sim, 10, 100));
+    interpolator.push(worldAt(sim, 14, 120));
+    expect(interpolator.sample(12)!.tick).toBe(12);
+    expect(interpolator.sample(3)!.tick).toBe(10);
+    expect(interpolator.sample(90)!.tick).toBe(14);
+  });
+
   it('has nothing to sample before the first snapshot', () => {
     const interpolator = new SnapshotInterpolator();
     expect(interpolator.latest).toBeNull();

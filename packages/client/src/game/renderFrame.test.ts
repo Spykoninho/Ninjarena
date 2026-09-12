@@ -50,7 +50,8 @@ const inputFor = (
   ...overrides,
 });
 
-const emptyRemotes = (): InterpolatedWorld => ({
+const emptyRemotes = (tick = 0): InterpolatedWorld => ({
+  tick,
   players: {},
   projectiles: {},
   pending: {},
@@ -172,7 +173,13 @@ describe('buildRenderFrame', () => {
     const frame = buildRenderFrame(inputFor(sim, { alpha: 0.5 }));
     expect(frame.projectiles).toHaveLength(1);
     const own = frame.projectiles[0]!;
-    expect(own).toMatchObject({ id: 'mine', radius: 4, color: '#ff6a3d', trail: true });
+    expect(own).toMatchObject({
+      id: 'mine',
+      radius: 4,
+      color: '#ff6a3d',
+      trail: true,
+      direction: { x: 1, y: 0 },
+    });
     expect(own.position.x).toBeCloseTo(1);
     expect(own.position.y).toBeCloseTo(0);
   });
@@ -189,14 +196,21 @@ describe('buildRenderFrame', () => {
       ...emptyRemotes(),
       projectiles: {
         theirs: {
-          ...projectileOf('theirs', 'other', { x: 10, y: 10 }, { x: 0, y: 0 }),
+          ...projectileOf('theirs', 'other', { x: 10, y: 10 }, { x: 0, y: 200 }),
           renderPosition: { x: 12, y: 34 },
         },
       },
     };
     const frame = buildRenderFrame(inputFor(sim, { remotes }));
     expect(frame.projectiles).toEqual([
-      { id: 'theirs', position: { x: 12, y: 34 }, radius: 4, color: '#ff6a3d', trail: true },
+      {
+        id: 'theirs',
+        position: { x: 12, y: 34 },
+        radius: 4,
+        color: '#ff6a3d',
+        trail: true,
+        direction: { x: 0, y: 1 },
+      },
     ]);
   });
 
@@ -233,19 +247,37 @@ describe('buildRenderFrame', () => {
       kind: 'CASTING',
       slot: 3,
       abilityId: 'seismic-slam',
-      startedAt: 5,
-      activatesAt: 5,
-      activeUntil: 5,
-      endsAt: 20,
-      activated: true,
+      startedAt: 0,
+      activatesAt: 12,
+      activeUntil: 12,
+      endsAt: 27,
+      activated: false,
     };
-    const frame = buildRenderFrame(inputFor(sim, { tick: 5 }));
+    const frame = buildRenderFrame(inputFor(sim, { tick: 3 }));
     expect(frame.players[0]?.telegraph).toMatchObject({
       kind: 'ground-circle',
       size: 40,
-      progress: 1,
+      progress: 0.25,
       anchor: { x: 150, y: 20 },
     });
+  });
+
+  it('drops the telegraph once the cast has activated', () => {
+    const sim = makeSim();
+    const me = sim.world.players['me']!;
+    me.phase = {
+      kind: 'CASTING',
+      slot: 3,
+      abilityId: 'seismic-slam',
+      startedAt: 0,
+      activatesAt: 12,
+      activeUntil: 12,
+      endsAt: 27,
+      activated: true,
+    };
+    expect(buildRenderFrame(inputFor(sim, { tick: 6 })).players[0]?.telegraph).toBeNull();
+    me.phase = { ...me.phase, activated: false };
+    expect(buildRenderFrame(inputFor(sim, { tick: 12 })).players[0]?.telegraph).toBeNull();
   });
 
   it('exposes the active arc of a melee ability during its active window', () => {
@@ -259,11 +291,17 @@ describe('buildRenderFrame', () => {
       activatesAt: 4,
       activeUntil: 9,
       endsAt: 16,
-      activated: true,
+      activated: false,
     };
+    const winding = buildRenderFrame(inputFor(sim, { tick: 2 }));
+    expect(winding.players[0]?.activeArc).toBeNull();
+    expect(winding.players[0]?.telegraph).toMatchObject({
+      progress: 0.5,
+      anchor: { x: 10, y: 20 },
+    });
     const active = buildRenderFrame(inputFor(sim, { tick: 6 }));
     expect(active.players[0]?.activeArc).toEqual({ range: 22, arcDegrees: 100 });
-    expect(active.players[0]?.telegraph).toMatchObject({ progress: 1, anchor: { x: 10, y: 20 } });
+    expect(active.players[0]?.telegraph).toBeNull();
     const recovering = buildRenderFrame(inputFor(sim, { tick: 9 }));
     expect(recovering.players[0]?.activeArc).toBeNull();
   });
@@ -282,7 +320,7 @@ describe('buildRenderFrame', () => {
   it('takes the zones and obstacles of other players from the interpolated world', () => {
     const sim = makeSim();
     const remotes: InterpolatedWorld = {
-      ...emptyRemotes(),
+      ...emptyRemotes(20),
       pending: { theirs: pendingOf('theirs', 'other', 40) },
       obstacles: { wall: obstacleOf('wall', 'other', 90) },
     };
@@ -309,5 +347,63 @@ describe('buildRenderFrame', () => {
       { x: 0, y: 48 },
     ]);
     expect(soon?.remaining).toBeCloseTo(0.5);
+  });
+  it('reads the progress of remote views from the interpolated tick', () => {
+    const sim = makeSim();
+    const caster = {
+      ...sim.world.players['other']!,
+      aim: { x: 1, y: 0 },
+      phase: {
+        kind: 'CASTING' as const,
+        slot: 2,
+        abilityId: 'fireball',
+        startedAt: 100,
+        activatesAt: 110,
+        activeUntil: 110,
+        endsAt: 119,
+        activated: false,
+      },
+    };
+    const remotes: InterpolatedWorld = {
+      ...emptyRemotes(105),
+      players: { other: { ...caster, renderPosition: { x: 0, y: 0 } } },
+      pending: { theirs: { ...pendingOf('theirs', 'other', 40), createdAt: 100, fireAt: 110 } },
+    };
+    const frame = buildRenderFrame(inputFor(sim, { tick: 112, remotes }));
+    // Le tick local court devant l'échantillon: un télégraphe distant serait déjà plein.
+    expect(frame.players.find((player) => !player.isLocal)?.telegraph?.progress).toBe(0.5);
+    expect(frame.zones[0]?.progress).toBe(0.5);
+  });
+
+  it('keeps a remote melee arc dark until the interpolated tick reaches it', () => {
+    const sim = makeSim();
+    const caster = {
+      ...sim.world.players['other']!,
+      phase: {
+        kind: 'CASTING' as const,
+        slot: 0,
+        abilityId: 'kunai-strike',
+        startedAt: 100,
+        activatesAt: 110,
+        activeUntil: 115,
+        endsAt: 122,
+        activated: false,
+      },
+    };
+    const remotes: InterpolatedWorld = {
+      ...emptyRemotes(105),
+      players: { other: { ...caster, renderPosition: { x: 0, y: 0 } } },
+    };
+    const frame = buildRenderFrame(inputFor(sim, { tick: 112, remotes }));
+    expect(frame.players.find((player) => !player.isLocal)?.activeArc).toBeNull();
+  });
+
+  it('fades an obstacle over the last second whatever the tick rate', () => {
+    const sim = makeSim();
+    sim.world.obstacles['soon'] = obstacleOf('soon', 'me', 90);
+    const fast = buildRenderFrame(inputFor(sim, { tick: 60, dt: 1 / 60 }));
+    const slow = buildRenderFrame(inputFor(sim, { tick: 75, dt: 1 / 30 }));
+    expect(fast.obstacles[0]?.remaining).toBeCloseTo(0.5);
+    expect(slow.obstacles[0]?.remaining).toBeCloseTo(0.5);
   });
 });
