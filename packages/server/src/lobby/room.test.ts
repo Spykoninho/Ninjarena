@@ -26,18 +26,23 @@ interface Fixture {
   emptied: Room[];
 }
 
-function createRoom(overrides: Partial<RoomSettings> = {}, password?: string): Fixture {
+interface RoomOptions {
+  password?: string;
+  snapshotEveryTicks?: number;
+}
+
+function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions = {}): Fixture {
   const repository = new InMemoryMapRepository();
   const matchResults: MatchResult[] = [];
   const emptied: Room[] = [];
   const room = new Room({
     code: 'AB7K2P',
-    passwordHash: password === undefined ? null : hashPassword(password),
+    passwordHash: options.password === undefined ? null : hashPassword(options.password),
     settings: { ...defaultRoomSettings(RULES, 'arena'), ...overrides },
     content,
     maps: new MapLibrary({ content, repository, maxStoredMaps: 10 }),
     tickRate: TICK_RATE,
-    snapshotEveryTicks: 1,
+    snapshotEveryTicks: options.snapshotEveryTicks ?? 1,
     postMatchTicks: POST_MATCH_TICKS,
     characterId: 'ninja',
     onMatchEnded: (result) => matchResults.push(result),
@@ -76,6 +81,19 @@ function messagesOfType<T extends ServerMessage['type']>(
     if (message.type === type) found.push(message as Extract<ServerMessage, { type: T }>);
   }
   return found;
+}
+
+function lastSnapshot(connection: FakeConnection): Extract<ServerMessage, { type: 'snapshot' }> {
+  const snapshots = messagesOfType(connection, 'snapshot');
+  const last = snapshots.at(-1);
+  if (last === undefined) throw new Error('no snapshot was sent');
+  return last;
+}
+
+function eventTypes(connection: FakeConnection): string[] {
+  return messagesOfType(connection, 'snapshot').flatMap((snapshot) =>
+    snapshot.events.map((event) => event.type),
+  );
 }
 
 function build(points: number): Build {
@@ -167,7 +185,7 @@ describe('Room joining', () => {
   });
 
   it('checks the password of a protected room', () => {
-    const { room } = createRoom({}, 'shuriken');
+    const { room } = createRoom({}, { password: 'shuriken' });
 
     expect(room.join(createSession('c1').session, 'nope')).toEqual({
       ok: false,
@@ -479,6 +497,67 @@ describe('Room match lifecycle', () => {
 
     expect(room.status).toBe('FINISHED');
     expect(room.match?.simulation.world.players['c2']).toBeUndefined();
+  });
+
+  // Une fin de partie tombe une fois sur deux hors tick d'instantané: les deux cadences comptent.
+  it.each([2, 3])('streams the end of the match with one snapshot every %i ticks', async (rate) => {
+    const { room } = createRoom({}, { snapshotEveryTicks: rate });
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    for (let round = 1; round <= 2; round++) {
+      tickUntil(room, () => room.match?.simulation.world.match.phase === 'IN_ROUND');
+      killPlayer(room, two.session.id);
+      tickUntil(room, () => room.match?.simulation.world.match.phase !== 'IN_ROUND');
+    }
+    expect(room.status).toBe('FINISHED');
+
+    for (const seat of [one, two]) {
+      expect(eventTypes(seat.connection)).toContain('matchEnded');
+      expect(lastSnapshot(seat.connection).world.match.phase).toBe('MATCH_END');
+    }
+
+    // La salle continue de diffuser pendant l'écran de fin.
+    const before = messagesOfType(one.connection, 'snapshot').length;
+    room.tick();
+    room.tick();
+    expect(messagesOfType(one.connection, 'snapshot').length).toBeGreaterThan(before);
+  });
+
+  it('records both players and the remaining team when the host forfeits', async () => {
+    const { room, matchResults } = createRoom({}, { snapshotEveryTicks: 2 });
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    room.leave(one.session);
+
+    expect(matchResults).toHaveLength(1);
+    expect(matchResults[0]).toMatchObject({
+      winnerTeamId: 'team-1',
+      players: [
+        { id: 'c1', teamId: 'team-0' },
+        { id: 'c2', teamId: 'team-1' },
+      ],
+    });
+    expect(lastSnapshot(two.connection).world.players['c1']).toBeUndefined();
+  });
+
+  it('records nothing more once the last player leaves the match', async () => {
+    const { room, matchResults } = createRoom();
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    room.leave(one.session);
+    room.leave(two.session);
+
+    expect(matchResults).toHaveLength(1);
+    expect(room.isEmpty).toBe(true);
   });
 
   it('refuses a settings change while the match runs', async () => {

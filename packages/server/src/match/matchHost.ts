@@ -43,6 +43,12 @@ export class MatchHost {
     this.sendSnapshots(sessions);
   }
 
+  // Une fin de partie ne tombe pas forcément sur un tick d'instantané: la salle force l'envoi.
+  flush(): void {
+    this.ticksSinceSnapshot = 0;
+    this.sendSnapshots(this.sessions());
+  }
+
   private sendSnapshots(sessions: readonly ClientSession[]): void {
     // Point d'accroche du futur filtre de visibilité: le monde deviendra propre à chaque session.
     const world = this.simulation.snapshot();

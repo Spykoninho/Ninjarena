@@ -150,10 +150,9 @@ export class Room {
     if (match !== null) {
       match.simulation.removePlayer(session.id);
       const running = this.roomStatus === 'STARTING' || this.roomStatus === 'IN_GAME';
-      // Une partie sans adversaire ne peut plus se conclure: elle s'arrête au départ.
-      if (running && teamsPresent(match.simulation.world).length < 2) {
-        this.finish(match.simulation.world.match.winner);
-      }
+      const present = teamsPresent(match.simulation.world);
+      // Une partie sans adversaire ne peut plus se conclure: le camp resté en lice l'emporte.
+      if (running && present.length < 2) this.finish(present[0] ?? null);
     }
     if (this.roster.length === 0) {
       this.onEmpty?.(this);
@@ -266,12 +265,12 @@ export class Room {
   }
 
   tick(): void {
-    if (this.roomStatus === 'FINISHED') {
-      this.ticksSinceEnd += 1;
-      if (this.ticksSinceEnd >= this.postMatchTicks) this.resetToLobby();
-      return;
-    }
+    // La simulation tourne à vide après la fin: les clients gardent l'état final sous les yeux.
+    const counting = this.roomStatus === 'FINISHED';
     this.activeMatch?.host.tick();
+    if (!counting) return;
+    this.ticksSinceEnd += 1;
+    if (this.ticksSinceEnd >= this.postMatchTicks) this.resetToLobby();
   }
 
   // La salle se rediffuse une fois la carte lue: sa vue ne dépend pas de l'ordre des appels.
@@ -319,18 +318,24 @@ export class Room {
 
   private finish(winnerTeamId: TeamId | null): void {
     if (this.roomStatus !== 'STARTING' && this.roomStatus !== 'IN_GAME') return;
+    const match = this.activeMatch;
     this.roomStatus = 'FINISHED';
     this.ticksSinceEnd = 0;
-    this.onMatchEnded?.(
-      matchResultOf({
-        roomCode: this.code,
-        settings: this.roomSettings,
-        players: this.roster,
-        winnerTeamId,
-        scores: this.activeMatch?.simulation.world.match.scores ?? {},
-        endedAt: Date.now(),
-      }),
-    );
+    // Une fin hors tick d'instantané resterait invisible: l'état terminal part tout de suite.
+    match?.host.flush();
+    // Une salle vidée n'a plus de résultat à consigner.
+    if (match !== null && this.roster.length > 0) {
+      this.onMatchEnded?.(
+        matchResultOf({
+          roomCode: this.code,
+          settings: this.roomSettings,
+          players: match.participants,
+          winnerTeamId,
+          scores: match.simulation.world.match.scores,
+          endedAt: Date.now(),
+        }),
+      );
+    }
     this.broadcastState();
   }
 

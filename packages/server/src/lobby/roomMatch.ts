@@ -8,13 +8,15 @@ import {
   toMatchConfig,
 } from '@ninjarena/core';
 import { MatchHost } from '../match/matchHost';
-import type { MatchResult } from '../persistence/matchResultRepository';
+import type { MatchResult, MatchResultPlayer } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
 import type { RoomPlayer } from './roomPlayer';
 
 export interface RoomMatch {
   simulation: GameSimulation;
   host: MatchHost;
+  // La liste des participants est figée au coup d'envoi: un départ ne la réécrit pas.
+  participants: MatchResultPlayer[];
 }
 
 export interface StartMatchOptions {
@@ -32,7 +34,7 @@ export interface StartMatchOptions {
 export interface MatchResultOptions {
   roomCode: string;
   settings: RoomSettings;
-  players: readonly RoomPlayer[];
+  players: readonly MatchResultPlayer[];
   winnerTeamId: TeamId | null;
   scores: Record<TeamId, number>;
   endedAt: number;
@@ -57,6 +59,7 @@ export function startRoomMatch(options: StartMatchOptions): RoomMatch {
   });
 
   // L'ordre d'arrivée fixe l'ordre des spawns: la salle et la simulation restent alignées.
+  const seated: RoomPlayer[] = [];
   for (const player of inJoinOrder(options.players)) {
     const loadout = player.loadout;
     if (loadout === null) continue;
@@ -69,6 +72,7 @@ export function startRoomMatch(options: StartMatchOptions): RoomMatch {
       techniqueIds: loadout.techniqueIds,
     });
     player.session.playerId = player.session.id;
+    seated.push(player);
   }
 
   const host = new MatchHost({
@@ -78,19 +82,26 @@ export function startRoomMatch(options: StartMatchOptions): RoomMatch {
     onEvents: options.onEvents,
   });
   simulation.startMatch();
-  announce(options, matchConfig);
-  return { simulation, host };
+  announce(seated, options, matchConfig);
+  return { simulation, host, participants: participantsOf(settings, seated) };
+}
+
+export function participantsOf(
+  settings: RoomSettings,
+  players: readonly RoomPlayer[],
+): MatchResultPlayer[] {
+  return players.map((player) => ({
+    id: player.session.id,
+    name: player.session.name,
+    teamId: teamIdOf(settings, player),
+  }));
 }
 
 export function matchResultOf(options: MatchResultOptions): MatchResult {
   return {
     roomCode: options.roomCode,
     settings: { ...options.settings },
-    players: options.players.map((player) => ({
-      id: player.session.id,
-      name: player.session.name,
-      teamId: teamIdOf(options.settings, player),
-    })),
+    players: options.players.map((player) => ({ ...player })),
     winnerTeamId: options.winnerTeamId,
     scores: { ...options.scores },
     endedAt: options.endedAt,
@@ -101,8 +112,12 @@ export function inJoinOrder(players: readonly RoomPlayer[]): RoomPlayer[] {
   return [...players].sort((a, b) => a.joinedAt - b.joinedAt);
 }
 
-function announce(options: StartMatchOptions, matchConfig: MatchConfig): void {
-  for (const player of options.players) {
+function announce(
+  seated: readonly RoomPlayer[],
+  options: StartMatchOptions,
+  matchConfig: MatchConfig,
+): void {
+  for (const player of seated) {
     player.session.send({
       type: 'matchStarted',
       playerId: player.session.id,
