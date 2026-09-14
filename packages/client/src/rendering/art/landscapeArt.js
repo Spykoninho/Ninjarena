@@ -18,7 +18,7 @@ export function materialRelief(c, kind, worldX, worldY) {
     }
   const seed = hash(worldX, worldY);
   if (grass) {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       const x = 3 + (hash(seed, i) % 26),
         y = 4 + (hash(i, seed) % 24);
       // Compact leaf masses with a shaded underside, not uniform needle noise.
@@ -27,6 +27,15 @@ export function materialRelief(c, kind, worldX, worldY) {
       rect(c, x, y - 3, 2, 4, lawn[4]);
       rect(c, x + 2, y - 1, 2, 2, lawn[3]);
       if (i % 4 === 0) line(c, x - 1, y + 1, x - 3, y - 3, lawn[0]);
+    }
+    // Une fleur rare par massif: deux pixels clairs sur une tige sombre, jamais en semis.
+    if (seed % 5 === 0) {
+      const fx = 6 + (seed % 19),
+        fy = 8 + ((seed >> 3) % 15);
+      rect(c, fx, fy, 1, 3, lawn[0]);
+      rect(c, fx - 1, fy - 1, 3, 1, seed % 10 === 0 ? P.danger : P.ivory);
+      rect(c, fx, fy - 2, 1, 1, seed % 10 === 0 ? P.danger : P.ivory);
+      rect(c, fx, fy - 1, 1, 1, P.gold);
     }
     if (seed % 3 === 0) {
       line(c, 5, 25, 13, 27, P.wood[0]);

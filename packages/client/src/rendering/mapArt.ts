@@ -2,7 +2,7 @@ import { shallowHollow, shrubCanvas, windCanvas } from './art/landscapeArt';
 import type { LoadedMap, TilesetDefinition } from '@ninjarena/core';
 import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { ART_SCALE } from './art/presentation';
-import { P, hash, line, pen, rect, surface } from './art/nativeArt';
+import { P, hash, pen, rect, surface } from './art/nativeArt';
 import { buildingCanvas, buildingGeometry, buildingRectangle } from './art/buildingArt';
 import { neighborMask, terrainCanvas } from './art/terrainArt';
 import type { SpriteArt } from './art/spriteArt';
@@ -163,34 +163,16 @@ export class MapArt {
           holder.addChild(sprite);
         } else if (tile.name === 'wall') {
           castShadow(x * size, y * size, size, size, 7);
-          const south = map.objectTileIdAt(x, y + 1) === map.objectTileIdAt(x, y);
-          const texture = make(`wall:${south}`, () => {
-            const cv = surface(32, 48),
-              c = pen(cv);
-            rect(c, 0, 0, 32, 48, P.stone[0]);
-            rect(c, 0, 0, 32, south ? 48 : 32, P.stone[0]);
-            rect(c, 0, 0, 1, 48, P.edge);
-            rect(c, 31, 0, 1, 48, P.edge);
-            for (let row = 9; row < (south ? 48 : 30); row += 8) {
-              rect(c, 2, row, 28, 1, P.edge);
-              rect(c, row % 3 ? 10 : 21, row + 1, 1, 7, P.edge);
-              rect(c, 3, row + 2, 6, 1, P.stone[1]);
-            }
-            // Cap, vertical face and shaded right edge: all stay inside the solid footprint.
-            rect(c, 1, 0, 30, 9, P.stone[1]);
-            rect(c, 1, 9, 30, 2, P.edge);
-            rect(c, 28, 11, 3, 37, P.edge);
-            rect(c, 0, 0, 32, 2, P.stone[2]);
-            rect(c, 1, 6, 30, 1, P.landscape.sand);
-            if (!south)
-              for (let row = 33; row < 46; row += 6) {
-                line(c, 0, row, 31, row, P.edge);
-                rect(c, row % 2 ? 9 : 22, row, 1, 5, P.edge);
-                rect(c, 2, row + 2, 6, 1, P.stone[1]);
-              }
-            rect(c, 0, 47, 32, 1, P.ink);
-            return cv;
-          });
+          const id = map.objectTileIdAt(x, y);
+          const joins = [
+            [0, -1],
+            [0, 1],
+            [-1, 0],
+            [1, 0],
+          ].map(([dx = 0, dy = 0]) => map.objectTileIdAt(x + dx, y + dy) === id);
+          const texture = make(`wall:${joins.join('')}`, () =>
+            wallCanvas(joins[0] ?? false, joins[1] ?? false, joins[2] ?? false, joins[3] ?? false),
+          );
           const sprite = new Sprite(texture);
           sprite.position.y = -size / 2;
           sprite.scale.set(size / 32);
@@ -324,4 +306,45 @@ export class MapArt {
     this.objects.destroy({ children: true });
     for (const texture of this.textures) texture.destroy(true);
   }
+}
+
+// Mur bas vu de trois quarts: dessus éclairé sur toute l'emprise, face sud de 16 px en dessous.
+function wallCanvas(north: boolean, south: boolean, west: boolean, east: boolean) {
+  const cv = surface(32, 48),
+    c = pen(cv);
+  const topRows = south ? 48 : 32;
+  rect(c, 0, 0, 32, topRows, P.stone[1]);
+  // Grandes dalles du chaperon, joints fins, quelques éclats groupés.
+  for (let row = 0; row < topRows; row += 16) {
+    rect(c, 0, row + 15, 32, 1, P.stone[0]);
+    rect(c, row % 32 ? 21 : 10, row, 1, 15, P.stone[0]);
+    rect(c, 2, row + 2, 7, 1, P.stone[2]);
+    rect(c, (row % 32 ? 4 : 15) + 8, row + 9, 4, 1, P.stone[2]);
+    rect(c, row % 32 ? 14 : 25, row + 5, 3, 1, P.stone[0]);
+  }
+  if (!north) {
+    rect(c, 0, 0, 32, 1, P.ink);
+    rect(c, 0, 1, 32, 1, P.stone[2]);
+  }
+  if (!west) {
+    rect(c, 0, 0, 1, 48, P.ink);
+    rect(c, 1, 1, 1, topRows - 1, P.stone[2]);
+  }
+  if (!east) {
+    rect(c, 31, 0, 1, 48, P.ink);
+    rect(c, 30, 1, 1, topRows - 1, P.stone[0]);
+  }
+  if (!south) {
+    rect(c, 0, 32, 32, 1, P.edge);
+    rect(c, 0, 33, 32, 14, P.stone[0]);
+    for (let row = 33; row < 47; row += 5) {
+      rect(c, 0, row + 4, 32, 1, P.edge);
+      for (let x = row % 2 ? 5 : 11; x < 32; x += 12) rect(c, x, row, 1, 4, P.edge);
+      rect(c, row % 2 ? 7 : 13, row + 1, 4, 1, P.stone[1]);
+    }
+    rect(c, 0, 47, 32, 1, P.ink);
+    rect(c, 3, 45, 4, 2, P.green[0]);
+    rect(c, 22, 46, 3, 1, P.green[1]);
+  }
+  return cv;
 }
