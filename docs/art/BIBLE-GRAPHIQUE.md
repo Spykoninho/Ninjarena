@@ -169,6 +169,13 @@ La planche présente le même fond sans puis avec les combattants, et un agrandi
 | Building | Modules de 32 px : façade, toit, angle, rive, porte          | Premier bâtiment assemblé en 3 × 3 tiles d’emprise ; toit peut dépasser visuellement                                 |
 | Rock     | 3 petits blocs 32 × 32 et 2 grands 64 × 64                   | Faces pleines + contour de base ; gravier plat dans une autre catégorie                                              |
 | Bridge   | Centre, deux extrémités et deux rives par orientation        | 2 variantes internes de planches ; rampes d’accès dédiées                                                            |
+| Lantern  | 1 lanterne de pierre de 32 × 44                              | Fenêtre chaude dans la matière, socle, fût et toit à quatre pans ; aucun halo permanent                              |
+| Fence    | 4 connexions cardinales + poteaux d’extrémité et d’angle     | Lisses horizontales continues, lisse en profondeur pour les runs verticaux ; poteau à chaque rupture                 |
+| Well     | 1 puits de 32 × 48                                           | Margelle, montants, petit toit et seau suspendu ; l’ouverture reste sombre, sans effet de terrain                    |
+| Crate    | 2 empilements de caisses                                     | Dessus éclairé, face avant à planches et cerclage de corde ; une ou deux caisses                                     |
+| Torii    | Portique de 2 tiles + pilier isolé                           | Dessiné depuis la tile de gauche ; le linteau déborde de 40 px et s’efface comme une canopée                         |
+| Path     | Terre battue, raccords cardinaux                             | Rampe terre assombrie d’un cran, ornières suivant l’axe du tracé, lèvre usée sur les bords libres                    |
+| Flowers  | Herbe fleurie, 3 à 5 corolles                                | Rampe pelouse, accents ivoire et corail de 1–2 px, touffe sombre sous chaque fleur ; tag `grass`                     |
 
 Les 47 configurations sont des assemblages topologiques, pas 47 images nécessairement dessinées à la main : les produire depuis des sous-tiles de 16 × 16 et contrôler les jointures. Il faut ensuite valider toutes les configurations, pas seulement les quatre coins d’une île. Pas de rotation automatique d’une face éclairée.
 
