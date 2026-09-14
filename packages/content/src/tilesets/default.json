@@ -52,6 +52,51 @@
       "solid": true,
       "tags": ["bush"],
       "layer": "objects"
+    },
+    "9": {
+      "name": "path",
+      "color": "#8F8A6C"
+    },
+    "10": {
+      "name": "flowers",
+      "color": "#5C7D60",
+      "tags": ["grass"]
+    },
+    "11": {
+      "name": "lantern",
+      "color": "#A7AA8B",
+      "solid": true,
+      "layer": "objects"
+    },
+    "12": {
+      "name": "rock",
+      "color": "#777B70",
+      "solid": true,
+      "layer": "objects"
+    },
+    "13": {
+      "name": "fence",
+      "color": "#A16C50",
+      "solid": true,
+      "layer": "objects"
+    },
+    "14": {
+      "name": "well",
+      "color": "#777B70",
+      "solid": true,
+      "layer": "objects"
+    },
+    "15": {
+      "name": "crate",
+      "color": "#CF9565",
+      "solid": true,
+      "layer": "objects"
+    },
+    "16": {
+      "name": "torii",
+      "color": "#B4442E",
+      "solid": true,
+      "layer": "objects"
     }
   }
 }

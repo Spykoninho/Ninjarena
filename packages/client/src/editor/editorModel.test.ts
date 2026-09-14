@@ -67,6 +67,14 @@ describe('paletteOf', () => {
       { id: 6, name: 'paving', color: '#A7AA8B', layer: 'ground' },
       { id: 7, name: 'bridge', color: '#A16C50', layer: 'ground' },
       { id: 8, name: 'bush', color: '#47705B', layer: 'objects' },
+      { id: 9, name: 'path', color: '#8F8A6C', layer: 'ground' },
+      { id: 10, name: 'flowers', color: '#5C7D60', layer: 'ground' },
+      { id: 11, name: 'lantern', color: '#A7AA8B', layer: 'objects' },
+      { id: 12, name: 'rock', color: '#777B70', layer: 'objects' },
+      { id: 13, name: 'fence', color: '#A16C50', layer: 'objects' },
+      { id: 14, name: 'well', color: '#777B70', layer: 'objects' },
+      { id: 15, name: 'crate', color: '#CF9565', layer: 'objects' },
+      { id: 16, name: 'torii', color: '#B4442E', layer: 'objects' },
     ]);
   });
 });
