@@ -49,18 +49,18 @@
       [3, null, null, null, null, null, null, null, null, null, 3, 3, 3, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3, 3, 3, 3, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
-      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, 12, null, null, 11, null, null, null, null, null, null, 11, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, 3, null, null, null, null, null, null, null, null, 11, null, null, null, null, null, null, 11, null, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, 3],
-      [3, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, 12, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 12, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
-      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
-      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
-      [3, null, null, null, null, null, null, null, null, 3, 3, 3, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, 3, 3, 3, 3, null, null, null, null, 12, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3, 3, 3, 3, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
       [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
@@ -75,23 +75,71 @@
     {
       "type": "polygon",
       "points": [
-        { "x": 416, "y": 64 },
-        { "x": 480, "y": 128 },
-        { "x": 472, "y": 136 },
-        { "x": 408, "y": 72 }
+        {
+          "x": 416,
+          "y": 64
+        },
+        {
+          "x": 480,
+          "y": 128
+        },
+        {
+          "x": 472,
+          "y": 136
+        },
+        {
+          "x": 408,
+          "y": 72
+        }
       ]
     }
   ],
   "spawns": [
-    { "x": 2, "y": 10, "team": 0 },
-    { "x": 2, "y": 15, "team": 0 },
-    { "x": 2, "y": 20, "team": 0 },
-    { "x": 37, "y": 10, "team": 1 },
-    { "x": 37, "y": 15, "team": 1 },
-    { "x": 37, "y": 20, "team": 1 },
-    { "x": 2, "y": 2 },
-    { "x": 37, "y": 27 },
-    { "x": 37, "y": 2 },
-    { "x": 2, "y": 27 }
+    {
+      "x": 2,
+      "y": 10,
+      "team": 0
+    },
+    {
+      "x": 2,
+      "y": 15,
+      "team": 0
+    },
+    {
+      "x": 2,
+      "y": 20,
+      "team": 0
+    },
+    {
+      "x": 37,
+      "y": 10,
+      "team": 1
+    },
+    {
+      "x": 37,
+      "y": 15,
+      "team": 1
+    },
+    {
+      "x": 37,
+      "y": 20,
+      "team": 1
+    },
+    {
+      "x": 2,
+      "y": 2
+    },
+    {
+      "x": 37,
+      "y": 27
+    },
+    {
+      "x": 37,
+      "y": 2
+    },
+    {
+      "x": 2,
+      "y": 27
+    }
   ]
 }
