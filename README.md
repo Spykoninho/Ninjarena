@@ -33,7 +33,9 @@ What works today:
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
-  a feedback layer (particles, screen shake, hit stop, procedural audio) and a DOM HUD,
+  a native 640x360 pixel-art renderer (procedural tiles, a layered ninja rig with drawn attack,
+  cast, hit, dash and death poses, slash and impact effects), a feedback layer (particles, screen
+  shake, hit stop, procedural audio) and a DOM HUD — see [docs/art](docs/art/README.md),
 - a spectator camera that follows a living teammate (or anyone alive in free-for-all) after death,
 - a match result kept in the room and shown for a configurable delay before everyone returns to
   the lobby, not ready, for a new round of settings,
@@ -42,8 +44,8 @@ What works today:
 
 What is deliberately missing or simplified:
 
-- real sprites and animations (players are coloured shapes) and actual sound assets (the audio
-  is procedural WebAudio tones, not recordings),
+- hand-painted sprite sheets (every texture is generated at load from pixel recipes) and actual
+  sound assets (the audio is procedural WebAudio tones, not recordings),
 - accounts, matchmaking, bots, ranked play, spectating a room already in progress, kicking a
   player, editor undo/redo, and map thumbnails,
 - snapshot filtering: every session receives the same unfiltered `WorldState`, so an `INVISIBLE`
@@ -342,7 +344,7 @@ Planned next, in no particular order:
 - delta-compressed and binary snapshots behind the existing `MessageCodec` seam,
 - input redundancy for lossy transports, and smoothing for large mispredictions (only small
   corrections are eased today; a large one still snaps),
-- real sprites, animations and recorded audio, replacing the placeholder shapes and procedural
+- painted sprite sheets and recorded audio, replacing the generated pixel recipes and procedural
   tones,
 - accounts (so a stored map can be owned rather than overwritable by anyone who knows its id),
   matchmaking and ranked play, spectating a room already in progress,
