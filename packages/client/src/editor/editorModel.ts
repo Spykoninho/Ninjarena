@@ -28,12 +28,21 @@ export interface EditorState {
   issues: MapIssue[];
 }
 
+// Les catégories rangent la palette pour l'oeil: le format, lui, ne connaît que les deux couches.
+export type PaletteCategory = 'ground' | 'walls' | 'decor';
+
 export interface PaletteEntry {
   id: number;
   name: string;
   color: string;
   layer: TileLayer;
+  category: PaletteCategory;
 }
+
+export const PALETTE_CATEGORIES: readonly PaletteCategory[] = ['ground', 'walls', 'decor'];
+
+// Les objets structurels forment les murs: tout autre objet solide est un élément de décor.
+const WALL_NAMES: readonly string[] = ['wall', 'building', 'fence'];
 
 export const DEFAULT_TOOL: EditorTool = { kind: 'tile', id: 0, layer: 'ground' };
 
@@ -51,8 +60,14 @@ export function paletteOf(tileset: TilesetDefinition): PaletteEntry[] {
       name: tile.name,
       color: tile.color,
       layer: tile.layer,
+      category: categoryOf(tile.name, tile.layer),
     }))
     .sort((a, b) => a.id - b.id);
+}
+
+export function categoryOf(name: string, layer: TileLayer): PaletteCategory {
+  if (layer === 'ground') return 'ground';
+  return WALL_NAMES.includes(name) ? 'walls' : 'decor';
 }
 
 export function newMapDocument(

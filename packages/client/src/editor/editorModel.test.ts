@@ -56,25 +56,25 @@ describe('fillTileId', () => {
 });
 
 describe('paletteOf', () => {
-  it('lists every tile sorted by id with its layer', () => {
+  it('lists every tile sorted by id with its layer and category', () => {
     expect(paletteOf(tileset)).toEqual([
-      { id: 0, name: 'ground', color: '#A7AA8B', layer: 'ground' },
-      { id: 1, name: 'grass', color: '#5C7D60', layer: 'ground' },
-      { id: 2, name: 'water', color: '#386C78', layer: 'ground' },
-      { id: 3, name: 'wall', color: '#777B70', layer: 'objects' },
-      { id: 4, name: 'tree', color: '#47705B', layer: 'objects' },
-      { id: 5, name: 'building', color: '#264956', layer: 'objects' },
-      { id: 6, name: 'paving', color: '#A7AA8B', layer: 'ground' },
-      { id: 7, name: 'bridge', color: '#A16C50', layer: 'ground' },
-      { id: 8, name: 'bush', color: '#47705B', layer: 'objects' },
-      { id: 9, name: 'path', color: '#8F8A6C', layer: 'ground' },
-      { id: 10, name: 'flowers', color: '#5C7D60', layer: 'ground' },
-      { id: 11, name: 'lantern', color: '#A7AA8B', layer: 'objects' },
-      { id: 12, name: 'rock', color: '#777B70', layer: 'objects' },
-      { id: 13, name: 'fence', color: '#A16C50', layer: 'objects' },
-      { id: 14, name: 'well', color: '#777B70', layer: 'objects' },
-      { id: 15, name: 'crate', color: '#CF9565', layer: 'objects' },
-      { id: 16, name: 'torii', color: '#B4442E', layer: 'objects' },
+      { id: 0, name: 'ground', color: '#A7AA8B', layer: 'ground', category: 'ground' },
+      { id: 1, name: 'grass', color: '#5C7D60', layer: 'ground', category: 'ground' },
+      { id: 2, name: 'water', color: '#386C78', layer: 'ground', category: 'ground' },
+      { id: 3, name: 'wall', color: '#777B70', layer: 'objects', category: 'walls' },
+      { id: 4, name: 'tree', color: '#47705B', layer: 'objects', category: 'decor' },
+      { id: 5, name: 'building', color: '#264956', layer: 'objects', category: 'walls' },
+      { id: 6, name: 'paving', color: '#A7AA8B', layer: 'ground', category: 'ground' },
+      { id: 7, name: 'bridge', color: '#A16C50', layer: 'ground', category: 'ground' },
+      { id: 8, name: 'bush', color: '#47705B', layer: 'objects', category: 'decor' },
+      { id: 9, name: 'path', color: '#8F8A6C', layer: 'ground', category: 'ground' },
+      { id: 10, name: 'flowers', color: '#5C7D60', layer: 'ground', category: 'ground' },
+      { id: 11, name: 'lantern', color: '#A7AA8B', layer: 'objects', category: 'decor' },
+      { id: 12, name: 'rock', color: '#777B70', layer: 'objects', category: 'decor' },
+      { id: 13, name: 'fence', color: '#A16C50', layer: 'objects', category: 'walls' },
+      { id: 14, name: 'well', color: '#777B70', layer: 'objects', category: 'decor' },
+      { id: 15, name: 'crate', color: '#CF9565', layer: 'objects', category: 'decor' },
+      { id: 16, name: 'torii', color: '#B4442E', layer: 'objects', category: 'decor' },
     ]);
   });
 });

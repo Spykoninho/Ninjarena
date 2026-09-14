@@ -82,6 +82,13 @@ export class MapCanvas {
     this.context.clearRect(0, 0, width, height);
   }
 
+  // Une vignette est la tuile dessinée seule, entourée de ses semblables: la palette la montre telle qu'en jeu.
+  thumbnail(id: number): HTMLCanvasElement {
+    const info = this.tileset.tiles[String(id)];
+    if (info?.layer === 'objects') return this.objectImage(id, info.name, 0, 0);
+    return this.groundImage(id, info?.name ?? 'ground', 0, 255, 0, 0);
+  }
+
   private drawTiles(document: MapDocument): void {
     const size = this.pixelsPerTile;
     for (let y = 0; y < document.height; y++) {
@@ -89,40 +96,63 @@ export class MapCanvas {
       const objects = document.layers.objects[y] ?? [];
       for (let x = 0; x < document.width; x++) {
         const groundId = ground[x] ?? null;
-        const info = this.tileset.tiles[String(groundId)];
         const variant = hash(x, y) % 12;
         const mask = neighborMask(x, y, (xx, yy) => document.layers.ground[yy]?.[xx] === groundId);
-        const key = `${groundId}:${x}:${y}:${mask}`;
-        let image = this.textures.get(key);
-        if (!image) {
-          const name = info?.name ?? 'ground';
-          image = isDecorFloor(name)
-            ? decorFloorCanvas(name, variant, mask, x * 32, y * 32)
-            : terrainCanvas(name, variant, mask, 0, this.colorOf(groundId), x * 32, y * 32);
-          this.textures.set(key, image);
-        }
-        this.context.drawImage(image, x * size, y * size, size, size);
+        const name = this.tileset.tiles[String(groundId)]?.name ?? 'ground';
+        this.context.drawImage(
+          this.groundImage(groundId, name, variant, mask, x, y),
+          x * size,
+          y * size,
+          size,
+          size,
+        );
         const object = objects[x] ?? null;
-        if (object !== null) {
-          const objectInfo = this.tileset.tiles[String(object)],
-            objectName = objectInfo?.name ?? 'wall',
-            objectMask = cardinalMask(
-              (xx, yy) => document.layers.objects[yy]?.[xx] === object,
-              x,
-              y,
-            ),
-            objectKey = `object:${object}:${objectMask}`;
-          let objectImage = this.textures.get(objectKey);
-          if (!objectImage) {
-            objectImage =
-              decorObjectCanvas(objectName, variant, objectMask) ??
-              (objectName === 'bush' ? shrubCanvas() : tile(objectName));
-            this.textures.set(objectKey, objectImage);
-          }
-          this.context.drawImage(objectImage, x * size, y * size, size, size);
-        }
+        if (object === null) continue;
+        const objectName = this.tileset.tiles[String(object)]?.name ?? 'wall';
+        const objectMask = cardinalMask(
+          (xx, yy) => document.layers.objects[yy]?.[xx] === object,
+          x,
+          y,
+        );
+        this.context.drawImage(
+          this.objectImage(object, objectName, variant, objectMask),
+          x * size,
+          y * size,
+          size,
+          size,
+        );
       }
     }
+  }
+
+  private groundImage(
+    id: number | null,
+    name: string,
+    variant: number,
+    mask: number,
+    x: number,
+    y: number,
+  ): HTMLCanvasElement {
+    const key = `${String(id)}:${String(x)}:${String(y)}:${String(mask)}`;
+    let image = this.textures.get(key);
+    if (!image) {
+      image = isDecorFloor(name)
+        ? decorFloorCanvas(name, variant, mask, x * 32, y * 32)
+        : terrainCanvas(name, variant, mask, 0, this.colorOf(id), x * 32, y * 32);
+      this.textures.set(key, image);
+    }
+    return image;
+  }
+
+  private objectImage(id: number, name: string, variant: number, mask: number): HTMLCanvasElement {
+    const key = `object:${String(id)}:${String(mask)}`;
+    let image = this.textures.get(key);
+    if (!image) {
+      image =
+        decorObjectCanvas(name, variant, mask) ?? (name === 'bush' ? shrubCanvas() : tile(name));
+      this.textures.set(key, image);
+    }
+    return image;
   }
 
   private drawGrid(): void {
