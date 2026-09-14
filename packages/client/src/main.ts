@@ -141,8 +141,9 @@ window.addEventListener('beforeunload', () => {
   app().stop();
 });
 
-try {
-  await app().start();
-} catch (error) {
-  console.error('failed to start the client', error);
-}
+// Pas de `await` au niveau module: en build, les chunks Pixi importent celui-ci et un top-level await bloquerait leur chargement.
+app()
+  .start()
+  .catch((error: unknown) => {
+    console.error('failed to start the client', error);
+  });
