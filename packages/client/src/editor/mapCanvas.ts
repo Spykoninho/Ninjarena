@@ -1,6 +1,12 @@
 import { shrubCanvas } from '../rendering/art/landscapeArt';
 import type { MapDocument, MapSpawn, TilesetDefinition } from '@ninjarena/core';
 import { hash, tile } from '../rendering/art/nativeArt';
+import {
+  cardinalMask,
+  decorFloorCanvas,
+  decorObjectCanvas,
+  isDecorFloor,
+} from '../rendering/decorArt';
 import { terrainCanvas, neighborMask } from '../rendering/art/terrainArt';
 import type { EditorState } from './editorModel';
 
@@ -89,26 +95,28 @@ export class MapCanvas {
         const key = `${groundId}:${x}:${y}:${mask}`;
         let image = this.textures.get(key);
         if (!image) {
-          image = terrainCanvas(
-            info?.name ?? 'ground',
-            variant,
-            mask,
-            0,
-            this.colorOf(groundId),
-            x * 32,
-            y * 32,
-          );
+          const name = info?.name ?? 'ground';
+          image = isDecorFloor(name)
+            ? decorFloorCanvas(name, variant, mask, x * 32, y * 32)
+            : terrainCanvas(name, variant, mask, 0, this.colorOf(groundId), x * 32, y * 32);
           this.textures.set(key, image);
         }
         this.context.drawImage(image, x * size, y * size, size, size);
         const object = objects[x] ?? null;
         if (object !== null) {
           const objectInfo = this.tileset.tiles[String(object)],
-            objectKey = `object:${object}`;
+            objectName = objectInfo?.name ?? 'wall',
+            objectMask = cardinalMask(
+              (xx, yy) => document.layers.objects[yy]?.[xx] === object,
+              x,
+              y,
+            ),
+            objectKey = `object:${object}:${objectMask}`;
           let objectImage = this.textures.get(objectKey);
           if (!objectImage) {
             objectImage =
-              objectInfo?.name === 'bush' ? shrubCanvas() : tile(objectInfo?.name ?? 'wall');
+              decorObjectCanvas(objectName, variant, objectMask) ??
+              (objectName === 'bush' ? shrubCanvas() : tile(objectName));
             this.textures.set(objectKey, objectImage);
           }
           this.context.drawImage(objectImage, x * size, y * size, size, size);
