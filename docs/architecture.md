@@ -356,10 +356,11 @@ packages/client/src/
   app/       clientApp.ts + appModel.ts — owns the NetworkClient, the current RoomView and map
              list, and which screen (home/lobby/editor/game) is mounted
   lobby/     lobbyModel.ts — pure: team grouping, blocker text, settings form state
-  editor/    editorModel.ts (pure), mapCanvas.ts, mapFile.ts — the map editor's own state and
-             canvas drawing, independent of the lobby
+  editor/    editorModel.ts + editorViewport.ts (pure), mapCanvas.ts, mapFile.ts — the map
+             editor's own state, pan/zoom math and canvas drawing, independent of the lobby
   ui/        homeScreen.ts, lobbyScreen.ts + lobbySections.ts, loadoutModel.ts + loadoutPanel.ts,
-             editorScreen.ts + editorToolbar.ts — the DOM for every non-game screen
+             editorScreen.ts + editorPalette.ts, editorFilePanel.ts, editorIssues.ts,
+             editorToolbar.ts — the DOM for every non-game screen
 ```
 
 `Room` does not hold a `GameSimulation` before the match starts, and drops it once the post-match

@@ -27,9 +27,11 @@ What works today:
   (mode, teams, map, build points, best-of, round length, friendly fire), team switching, and a
   loadout panel the server validates on every change, reflected back as a per-player verdict,
   before "Ready" can even be pressed,
-- a tile-based map editor: paint two layers and spawns, validate (structural, spawn and
-  reachability checks), save to the server, export or import JSON, and jump straight into a test
-  room with the map preselected — see [docs/map-format.md](docs/map-format.md),
+- a full-screen tile map editor: the map fills the window with wheel zoom and drag panning, a
+  build drawer sorted by ground, walls, decor and spawns with in-game thumbnails, live validation
+  (structural, spawn and reachability checks) with click-to-locate issues, save to the server,
+  export or import JSON, and jump straight into a test room with the map preselected — see
+  [docs/map-format.md](docs/map-format.md),
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,

@@ -1,0 +1,129 @@
+import { MAP_MAX_SIZE, MAP_MIN_SIZE } from '@ninjarena/core';
+import type { MapSummary } from '@ninjarena/core';
+import { Popover, button, element, field } from './editorToolbar';
+
+export interface FilePanelActions {
+  createMap(width: number, height: number): void;
+  openMap(id: string): void;
+  importFile(file: File): void;
+  exportFile(): void;
+}
+
+// Le panneau regroupe tout ce qui remplace la carte en cours: créer, ouvrir, importer, exporter.
+export class EditorFilePanel {
+  private readonly popover: Popover;
+  private readonly widthInput: HTMLInputElement;
+  private readonly heightInput: HTMLInputElement;
+  private readonly mapSelect: HTMLSelectElement;
+  private readonly openButton: HTMLButtonElement;
+  private readonly importInput: HTMLInputElement;
+
+  constructor(
+    parent: HTMLElement,
+    anchor: HTMLElement,
+    actions: FilePanelActions,
+    size: { width: number; height: number },
+  ) {
+    this.popover = new Popover(parent, anchor, 'editor-file');
+    const root = this.popover.root;
+
+    const create = section(root, 'New map');
+    const sizeRow = element('div', 'editor-row', create);
+    this.widthInput = sizeField(sizeRow, 'Width', size.width);
+    this.heightInput = sizeField(sizeRow, 'Height', size.height);
+    button('Create', 'editor-button', sizeRow, () => {
+      actions.createMap(this.size(this.widthInput), this.size(this.heightInput));
+      this.popover.setOpen(false);
+    });
+
+    const open = section(root, 'Saved maps');
+    const openRow = element('div', 'editor-row', open);
+    this.mapSelect = document.createElement('select');
+    this.mapSelect.className = 'editor-select';
+    openRow.appendChild(this.mapSelect);
+    this.openButton = button('Open', 'editor-button', openRow, () => {
+      actions.openMap(this.mapSelect.value);
+      this.popover.setOpen(false);
+    });
+    this.setMaps([]);
+
+    const files = section(root, 'JSON file');
+    const fileRow = element('div', 'editor-row', files);
+    this.importInput = document.createElement('input');
+    this.importInput.type = 'file';
+    this.importInput.accept = 'application/json,.json';
+    this.importInput.hidden = true;
+    fileRow.appendChild(this.importInput);
+    this.importInput.addEventListener('change', () => {
+      const file = this.importInput.files?.[0];
+      this.importInput.value = '';
+      if (file === undefined) return;
+      actions.importFile(file);
+      this.popover.setOpen(false);
+    });
+    button('Import…', 'editor-button', fileRow, () => {
+      this.importInput.click();
+    });
+    button('Export', 'editor-button', fileRow, () => {
+      actions.exportFile();
+      this.popover.setOpen(false);
+    });
+  }
+
+  get open(): boolean {
+    return this.popover.open;
+  }
+
+  setOpen(open: boolean): void {
+    this.popover.setOpen(open);
+  }
+
+  toggle(): void {
+    this.popover.toggle();
+  }
+
+  setSize(width: number, height: number): void {
+    this.widthInput.value = String(width);
+    this.heightInput.value = String(height);
+  }
+
+  setMaps(maps: MapSummary[]): void {
+    const selected = this.mapSelect.value;
+    this.mapSelect.replaceChildren();
+    for (const map of maps) {
+      const option = document.createElement('option');
+      option.value = map.id;
+      option.textContent = `${map.name} (${String(map.width)}×${String(map.height)})`;
+      this.mapSelect.appendChild(option);
+    }
+    if (maps.some((map) => map.id === selected)) this.mapSelect.value = selected;
+    const empty = maps.length === 0;
+    if (empty) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'No saved map yet';
+      this.mapSelect.appendChild(option);
+    }
+    this.mapSelect.disabled = empty;
+    this.openButton.disabled = empty;
+  }
+
+  private size(input: HTMLInputElement): number {
+    const parsed = Number.parseInt(input.value, 10);
+    return Number.isInteger(parsed) ? parsed : MAP_MIN_SIZE;
+  }
+}
+
+function section(parent: HTMLElement, title: string): HTMLElement {
+  const node = element('section', 'editor-section', parent);
+  element('h2', 'editor-section-title', node).textContent = title;
+  return node;
+}
+
+function sizeField(parent: HTMLElement, label: string, value: number): HTMLInputElement {
+  const input = field(parent, label, 'number', 'editor-input editor-size');
+  input.min = String(MAP_MIN_SIZE);
+  input.max = String(MAP_MAX_SIZE);
+  input.value = String(value);
+  return input;
+}

@@ -355,12 +355,21 @@ screen mounts its own element.
   `withIssues(state, tileset, requirement)`. Painting a tile writes it on the layer the tool
   carries; erasing clears the object layer and any spawn on that tile — the ground layer is always
   filled, so there is nothing to erase there.
-- `editor/mapCanvas.ts`: 2D canvas drawing (tile colours from the tileset, spawn markers with the
-  team index, issue highlights), screen → tile hit testing.
-- `ui/editorScreen.ts`: palette from the tileset plus spawn tools, New / Load (from `mapList`) /
-  Save (`saveMap`) / Export JSON / Import JSON / Validate / Test / Back. Continuous painting on
-  mouse drag, right-click erases. Test = save, then `createRoom` with `mapId` preselected and go to
-  the lobby. Export uses a Blob download; Import reads a file through `migrateMapDocument`.
+- `editor/mapCanvas.ts`: 2D canvas drawing (the same tile recipes as the game renderer, spawn
+  markers with the team index, issue highlights), screen → tile hit testing, and per-tile
+  thumbnails for the palette.
+- `editor/editorViewport.ts` (pure): the view transform of the full-screen map — fit inside the
+  band left free by the overlaid bars, zoom around the pointer, pan, center on a tile.
+- `ui/editorScreen.ts`: the full-screen layout. The map fills the window (wheel zooms, middle
+  drag or Space+drag pans, `F` fits); a top bar holds Menu / name / a live check badge / File /
+  Save / Test; a bottom strip switches Paint / Erase / Move; a build drawer (`editorPalette.ts`,
+  toggled by the bottom-right button) lists the tileset by category — Ground, Walls,
+  Decor (from `categoryOf`) and Spawns — with in-game thumbnails. `editorFilePanel.ts` gathers
+  New (size) / Open (from `mapList`) / Import JSON / Export JSON behind the File button, and
+  `editorIssues.ts` lists the checks behind the badge, each located issue clickable to highlight
+  and center its tile. Continuous painting on drag, right-click removes the object or spawn under
+  the pointer. Test = save, then `createRoom` with `mapId` preselected and go to the lobby. Export
+  uses a Blob download; Import reads a file through `migrateMapDocument`.
 
 ## 7. Content
 
