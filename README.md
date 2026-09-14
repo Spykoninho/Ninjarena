@@ -149,7 +149,8 @@ for themselves. Distribute the stat points, pick a basic attack and three techni
 **Ready** — the server validates the loadout and reflects the verdict back before Ready can be
 pressed with an invalid one. Once both are ready, the host's **Start** button lights up (it is
 greyed out with the reason otherwise — see `startBlockers` in [docs/rooms.md](docs/rooms.md)).
-Press it: you should see both ninjas, a countdown, then `IN_ROUND` in the HUD. First team to win
+Press it: you should see both ninjas, a countdown, then the round banner and the running round
+timer in the HUD. First team to win
 `roundsToWin` rounds (best of 3 by default) takes the match, and every player returns to the lobby,
 not ready, a few seconds after the last round ends.
 
