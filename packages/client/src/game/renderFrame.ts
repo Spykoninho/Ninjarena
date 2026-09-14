@@ -12,6 +12,7 @@ import type {
   LoadedMap,
   Shape,
 } from '@ninjarena/core';
+import { abilityFamily } from '../rendering/art/abilityVisual';
 import { dashPreviewDistance } from '../rendering/art/telegraphGeometry';
 import { add, getStatus, isVisibleTo, normalize, scale } from '@ninjarena/core';
 import type { InterpolatedWorld } from '../netcode/snapshotInterpolator';
@@ -178,6 +179,9 @@ function toPlayerView(
     isDashing: player.phase.kind === 'DASHING',
     velocity: player.velocity,
     basicCast: ability?.kind === 'basic',
+    castFamily: ability === null ? undefined : abilityFamily(ability),
+    // Le relâchement suit le tick d'activation: la pose de frappe ne devance jamais le coup.
+    castReleased: casting !== null && (casting.activated || tick >= casting.activatesAt),
     rooted: getStatus(player, 'ROOTED') !== undefined,
     slowed: getStatus(player, 'SLOWED') !== undefined,
     invulnerable: getStatus(player, 'INVULNERABLE') !== undefined,
@@ -278,10 +282,13 @@ function toProjectileView(
   position: Vec2,
   abilities: DefinitionCatalog<AbilityDefinition>,
 ): ProjectileView {
+  const ability = abilities.get(projectile.source.abilityId);
   return {
-    ...(abilities.get(projectile.source.abilityId).tags.includes('control')
+    ...(ability.tags.includes('control')
       ? { family: 'control' }
-      : {}),
+      : ability.kind === 'basic'
+        ? { family: 'shuriken' }
+        : {}),
     id: projectile.id,
     position,
     radius: projectile.radius,

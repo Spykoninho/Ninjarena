@@ -42,6 +42,8 @@ export interface PlayerView {
   isDashing: boolean;
   velocity?: Vec2;
   basicCast?: boolean;
+  castFamily?: string;
+  castReleased?: boolean;
   rooted?: boolean;
   slowed?: boolean;
   invulnerable?: boolean;

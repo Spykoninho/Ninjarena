@@ -4,8 +4,8 @@ import { P, pen, surface, symbol, teams } from './art/nativeArt';
 import type { Direction } from './art/nativeArt';
 import { animationOf, facing, poseFrame, teamCodes } from './art/presentation';
 import type { Animation } from './art/presentation';
-import type { SpriteArt } from './art/spriteArt';
-import type { PlayerView, ProjectileView, RenderFrame } from './renderer';
+import type { Prop, SpriteArt } from './art/spriteArt';
+import type { MeleeArcView, PlayerView, ProjectileView, RenderFrame } from './renderer';
 import { drawMeleeArc, drawTelegraph, drawWall, drawZone, drawProjectile } from './telegraphArt';
 
 interface PlayerNode {
@@ -27,6 +27,8 @@ interface PlayerNode {
   age: number;
   distance: number;
   moving: boolean;
+  releasedAt: number | null;
+  prop: Prop;
   poseKey: string;
   teamKey: string;
 }
@@ -52,6 +54,9 @@ export class EntityLayer {
   private readonly projectiles = new Map<EntityId, ProjectileNode>();
   private readonly markerTextures = new Map<string, Texture>();
   private time = 0;
+  // Le croissant de coupe part de la couche des effets, au moment où l'éventail devient actif.
+  onMelee: ((position: Vec2, angle: number, arc: MeleeArcView, color: number) => void) | null =
+    null;
 
   constructor(private readonly art: SpriteArt) {
     this.depth.sortableChildren = true;
@@ -74,10 +79,27 @@ export class EntityLayer {
       if (distance < 20) node.distance += distance;
       node.direction = facing(view.aim, node.direction);
       const next = animationOf(view.phase, node.moving, view.basicCast ?? false, node.flashMs > 0);
-      if (node.animation !== next) {
+      // Un nouveau cast enchaîné garde la même animation: son relâchement retombé la relance.
+      const restarted = view.castReleased === false && node.view.castReleased === true;
+      if (node.animation !== next || restarted) {
         node.animation = next;
         node.age = 0;
+        node.releasedAt = null;
       }
+      if (view.castReleased && node.releasedAt === null) node.releasedAt = node.age;
+      node.prop =
+        view.castFamily === 'projectile'
+          ? 'shuriken'
+          : view.castFamily === 'melee'
+            ? 'kunai'
+            : 'none';
+      if (view.activeArc && !node.view.activeArc && view.visible)
+        this.onMelee?.(
+          { x: node.container.x, y: node.container.y },
+          Math.atan2(view.aim.y, view.aim.x),
+          view.activeArc,
+          node.color,
+        );
       node.view = view;
       node.container.position.set(
         Math.round(view.position.x * 2) / 2,
@@ -150,14 +172,20 @@ export class EntityLayer {
     for (const node of this.players.values()) {
       node.age += dt;
       node.flashMs = Math.max(0, node.flashMs - dt);
-      const frame = poseFrame(node.animation, node.age, node.distance);
-      const key = `${node.direction}:${node.animation}:${frame}`;
+      const frame = poseFrame(
+        node.animation,
+        node.age,
+        node.distance,
+        node.releasedAt === null ? null : node.age - node.releasedAt,
+      );
+      const key = `${node.direction}:${node.animation}:${frame}:${node.prop}`;
       if (node.poseKey !== key) {
         node.body.texture = this.art.pose(
           node.direction,
           node.animation,
           frame,
           skinIndex(node.view.id),
+          node.prop,
         );
         node.poseKey = key;
       }
@@ -277,6 +305,8 @@ export class EntityLayer {
       age: 0,
       distance: 0,
       moving: false,
+      releasedAt: null,
+      prop: 'none',
       poseKey: '',
       teamKey: '',
     };

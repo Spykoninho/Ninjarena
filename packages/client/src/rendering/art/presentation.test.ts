@@ -29,6 +29,12 @@ describe('pixel presentation contract', () => {
     expect(animationOf('DASHING', true, false, true)).toBe('dash');
     expect(animationOf('CASTING', true, true, true)).toBe('attack');
     expect(poseFrame('death', 5000, 0)).toBe(5);
+    expect(poseFrame('attack', 500, 0)).toBe(0);
+    expect(poseFrame('attack', 500, 0, 0)).toBe(1);
+    expect(poseFrame('attack', 500, 0, 60)).toBe(2);
+    expect(poseFrame('attack', 500, 0, 200)).toBe(3);
+    expect(poseFrame('cast', 300, 0)).toBe(3);
+    expect(poseFrame('cast', 300, 0, 10)).toBe(4);
     expect(poseFrame('walk', 100, 9)).toBe(poseFrame('walk', 900, 9));
   });
   it('uses unique, deterministic team codes without modulo collisions', () => {

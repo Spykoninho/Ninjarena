@@ -22,6 +22,8 @@ const NUMBER_LIFE_MS = 700;
 const NUMBER_RISE = 14;
 const NUMBER_OFFSET = -10;
 
+const SLASH_LIFE_MS = 150;
+
 interface Particle {
   node: Graphics;
   velocity: Vec2;
@@ -47,6 +49,14 @@ interface DamageNumber {
   ageMs: number;
 }
 
+interface Slash {
+  node: Graphics;
+  range: number;
+  half: number;
+  color: string;
+  ageMs: number;
+}
+
 // La couche des effets vit au-dessus des entités et ne connaît que des positions monde.
 export class EffectsLayer {
   readonly container = new Container();
@@ -60,6 +70,17 @@ export class EffectsLayer {
   private readonly numberPool: Text[] = [];
   private seed = 0;
   private readonly portals: { node: Graphics; age: number; arriving: boolean }[] = [];
+  private readonly slashes: Slash[] = [];
+
+  // Croissant de coupe orienté sur la visée; l'éventail translucide reste la zone touchée.
+  slash(position: Vec2, angle: number, range: number, arcDegrees: number, color: string): void {
+    if (this.slashes.length >= 16) return;
+    const node = new Graphics();
+    node.position.set(position.x, position.y - 4);
+    node.rotation = angle;
+    this.container.addChild(node);
+    this.slashes.push({ node, range, half: (arcDegrees * Math.PI) / 360, color, ageMs: 0 });
+  }
 
   portal(position: Vec2, arriving: boolean): void {
     if (this.portals.length >= 16) return;
@@ -152,6 +173,7 @@ export class EffectsLayer {
           .fill({ color: P.ivory, alpha: 1 - progress });
       }
     }
+    this.advanceSlashes(dtMs);
     this.advanceParticles(dtMs, seconds);
     this.advanceRings(dtMs);
     this.advanceAfterimages(dtMs);
@@ -161,11 +183,57 @@ export class EffectsLayer {
   clear(): void {
     for (const p of this.portals) p.node.destroy();
     this.portals.length = 0;
+    for (const s of this.slashes) s.node.destroy();
+    this.slashes.length = 0;
     this.container.removeChildren();
     destroyAll(this.particles, (particle) => particle.node, this.particlePool);
     destroyAll(this.rings, (ring) => ring.node, this.ringPool);
     destroyAll(this.afterimages, (image) => image.node, this.afterimagePool);
     destroyAll(this.numbers, (number) => number.node, this.numberPool);
+  }
+
+  private advanceSlashes(dtMs: number): void {
+    for (let i = this.slashes.length - 1; i >= 0; i--) {
+      const s = this.slashes[i];
+      if (!s) continue;
+      s.ageMs += dtMs;
+      const p = s.ageMs / SLASH_LIFE_MS;
+      if (p >= 1) {
+        s.node.destroy();
+        this.slashes.splice(i, 1);
+        continue;
+      }
+      // Le bord avant balaie l'arc en premier, le bord arrière le rattrape et efface le croissant.
+      const lead = -s.half + 2 * s.half * Math.min(1, p * 1.7),
+        trail = -s.half + 2 * s.half * Math.max(0, (p - 0.4) * 1.7);
+      const outer = s.range - 1,
+        inner = Math.max(2, s.range - 4);
+      s.node.clear();
+      if (lead - trail > 0.05) {
+        // Polygone explicite: deux arcs échantillonnés, arrondis au demi-pixel d'art.
+        const points: Vec2[] = [];
+        const steps = Math.max(3, Math.ceil(((lead - trail) * outer) / 1.5));
+        for (let k = 0; k <= steps; k++) {
+          const a = trail + ((lead - trail) * k) / steps;
+          points.push({ x: half(Math.cos(a) * outer), y: half(Math.sin(a) * outer) });
+        }
+        for (let k = steps; k >= 0; k--) {
+          const a = trail + ((lead - trail) * k) / steps;
+          points.push({ x: half(Math.cos(a) * inner), y: half(Math.sin(a) * inner) });
+        }
+        s.node
+          .poly(points)
+          .fill({ color: P.ivory, alpha: 0.85 })
+          .stroke({ color: s.color, width: 0.5, alpha: 0.9 });
+      }
+      for (let k = 0; k < 3; k++) {
+        const a = lead - k * 0.12,
+          r = outer + 1 + k;
+        s.node
+          .rect(Math.round(Math.cos(a) * r * 2) / 2, Math.round(Math.sin(a) * r * 2) / 2, 0.5, 0.5)
+          .fill({ color: k ? s.color : P.ivory, alpha: 1 - p });
+      }
+    }
   }
 
   private advanceParticles(dtMs: number, seconds: number): void {
@@ -292,4 +360,8 @@ function newDamageText(): Text {
   });
   node.anchor.set(0.5, 1);
   return node;
+}
+
+function half(value: number): number {
+  return Math.round(value * 2) / 2;
 }

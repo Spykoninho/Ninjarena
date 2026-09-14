@@ -50,6 +50,8 @@ export class PixiRenderer implements Renderer {
     container.appendChild(app.canvas);
     this.host = container.parentElement;
     this.worldContainer.scale.set(ART_SCALE);
+    this.entityLayer.onMelee = (position, angle, arc, color) =>
+      this.effectsLayer.slash(position, angle, arc.range, arc.arcDegrees, hexOf(color));
     this.worldContainer.addChild(this.entityLayer.container, this.effectsLayer.container);
     this.target = RenderTexture.create({ width: VIEW_WIDTH, height: VIEW_HEIGHT, resolution: 1 });
     this.screen = new Sprite(this.target);
@@ -199,4 +201,8 @@ export class PixiRenderer implements Renderer {
 
 function colorValue(color: string): number {
   return Number.parseInt(color.slice(1), 16);
+}
+
+function hexOf(color: number): string {
+  return '#' + color.toString(16).padStart(6, '0');
 }

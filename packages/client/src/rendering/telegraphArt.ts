@@ -179,19 +179,78 @@ export function drawProjectile(g: Graphics, v: ProjectileView, time: number): vo
       .stroke({ color: P.violet, width: PX });
     return;
   }
-  if (v.trail) {
-    const length = 7 + (Math.floor(time / 70) % 2);
+  if (v.family === 'shuriken') {
+    // Étoile à quatre branches qui tourne à quatre poses; le cercle de collision reste la vérité.
+    const spin = (Math.floor(time / 45) % 4) * (Math.PI / 8);
+    const star = (list: number[][]) =>
+      list.map(([x = 0, y = 0]) => ({
+        x: Math.round((Math.cos(spin) * x - Math.sin(spin) * y) * 2) / 2,
+        y: Math.round((Math.sin(spin) * x + Math.cos(spin) * y) * 2) / 2,
+      }));
+    const tip = r + 1.5,
+      waist = r * 0.35;
     g.poly(
-      points([
-        [-r - length, -1],
-        [-r - 2, -r],
-        [-r * 0.5, -r],
-        [r, 0],
-        [-r * 0.5, r],
-        [-r - 4, r * 0.7],
-        [-r - length + 2, 2],
+      star([
+        [0, -tip],
+        [waist, -waist],
+        [tip, 0],
+        [waist, waist],
+        [0, tip],
+        [-waist, waist],
+        [-tip, 0],
+        [-waist, -waist],
+      ]),
+    )
+      .fill(P.ink)
+      .stroke({ color: P.edge, width: PX });
+    g.poly(
+      star([
+        [0, -tip + 1],
+        [waist * 0.6, -waist * 0.6],
+        [tip - 1, 0],
+        [waist * 0.6, waist * 0.6],
+        [0, tip - 1],
+        [-waist * 0.6, waist * 0.6],
+        [-tip + 1, 0],
+        [-waist * 0.6, -waist * 0.6],
       ]),
     ).fill(v.color);
+    g.rect(-0.5, -0.5, 1, 1).fill(P.ivory);
+    g.moveTo(-r - 1, 0)
+      .lineTo(-r - 5, 0)
+      .stroke({ color: P.ivory, width: PX, alpha: 0.5 });
+    return;
+  }
+  if (v.trail) {
+    // Ruban discontinu: trois segments qui s'éloignent et pâlissent, la tête garde la collision.
+    const flicker = Math.floor(time / 70) % 2;
+    for (let i = 0; i < 3; i++) {
+      const start = r + 1 + i * 3 + flicker,
+        width = r * (0.9 - i * 0.25);
+      g.poly(
+        points([
+          [-start, -width],
+          [-start - 2.5, 0],
+          [-start, width],
+          [-start + 1, 0],
+        ]),
+      ).fill({ color: i === 0 ? v.color : P.gold, alpha: 0.85 - i * 0.25 });
+    }
+    g.poly(
+      points([
+        [-r - 1, -r * 0.9],
+        [-r * 0.2, -r],
+        [r, 0],
+        [-r * 0.2, r],
+        [-r - 1, r * 0.9],
+        [-r + 0.5, 0],
+      ]),
+    )
+      .fill(v.color)
+      .stroke({ color: P.ink, width: PX });
+    g.circle(r * 0.15, 0, Math.max(0.5, r * 0.55)).fill(P.gold);
+    g.rect(r * 0.2, -0.5, 1, 1).fill(P.ivory);
+    return;
   }
   g.circle(0, 0, r).fill(P.ink);
   g.circle(0, 0, Math.max(0.5, r - 0.5)).fill(v.color);

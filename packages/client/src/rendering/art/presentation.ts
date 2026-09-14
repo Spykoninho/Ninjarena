@@ -28,7 +28,12 @@ export function animationOf(
   return moving ? 'walk' : 'idle';
 }
 
-export function poseFrame(animation: Animation, ageMs: number, distance: number): number {
+export function poseFrame(
+  animation: Animation,
+  ageMs: number,
+  distance: number,
+  releasedMs: number | null = null,
+): number {
   switch (animation) {
     case 'walk':
       return Math.floor(distance / 3) % 6;
@@ -37,9 +42,12 @@ export function poseFrame(animation: Animation, ageMs: number, distance: number)
     case 'dash':
       return Math.min(2, Math.floor(ageMs / 50));
     case 'attack':
-      return Math.min(3, Math.floor(ageMs / 60));
+      // La préparation dure jusqu'au tick d'activation; libération, extension puis récupération.
+      if (releasedMs === null) return 0;
+      return releasedMs < 40 ? 1 : releasedMs < 110 ? 2 : 3;
     case 'cast':
-      return ageMs < 160 ? Math.floor(ageMs / 80) : 2 + (Math.floor(ageMs / 130) % 2);
+      if (releasedMs !== null) return 4;
+      return ageMs < 70 ? 0 : ageMs < 140 ? 1 : 2 + (Math.floor((ageMs - 140) / 130) % 2);
     case 'hit':
       return Math.min(1, Math.floor(ageMs / 60));
     case 'death':

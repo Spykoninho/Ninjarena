@@ -2,6 +2,7 @@
 import { DEFAULT_MAP_ID, loadContent, loadMap } from '@ninjarena/content';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import type { PlayerView, RenderFrame } from './rendering/renderer';
+import { drawPoseSheet, showcasePlayers, showcaseProjectiles } from './poseReview';
 
 const stage = document.querySelector<HTMLElement>('#stage');
 if (!stage) throw new Error('Missing review stage');
@@ -13,17 +14,20 @@ const views = {
   dojo: { camera: { x: 208, y: 90 }, player: { x: 195, y: 113 } },
   forest: { camera: { x: 160, y: 185 }, player: { x: 77, y: 172 } },
   river: { camera: { x: 352, y: 120 }, player: { x: 379, y: 152 } },
+  poses: { camera: { x: 256, y: 200 }, player: { x: 150, y: 150 } },
 };
 let view: keyof typeof views = 'dojo';
 for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-view]')) {
   button.addEventListener('click', () => {
     const key = button.dataset.view;
-    if (key !== 'dojo' && key !== 'forest' && key !== 'river') return;
+    if (key !== 'dojo' && key !== 'forest' && key !== 'river' && key !== 'poses') return;
     view = key;
     for (const other of document.querySelectorAll('button[data-view]'))
       other.setAttribute('aria-pressed', String(other === button));
   });
 }
+const sheet = document.querySelector<HTMLCanvasElement>('#sheet');
+if (sheet) drawPoseSheet(sheet);
 let previous = performance.now();
 let frameId = 0;
 function draw(now: number) {
@@ -44,8 +48,8 @@ function draw(now: number) {
   };
   const frame: RenderFrame = {
     camera: selected.camera,
-    players: [player],
-    projectiles: [],
+    players: view === 'poses' ? [player, ...showcasePlayers({ x: 180, y: 160 }, now)] : [player],
+    projectiles: view === 'poses' ? showcaseProjectiles({ x: 190, y: 290 }, now) : [],
     zones: [],
     obstacles: [],
     isFfa: false,
