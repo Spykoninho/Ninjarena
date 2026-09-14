@@ -61,14 +61,26 @@
         display: block;
         image-rendering: pixelated;
       }
+      /* La feuille du jeu est importée pour le HUD: la page de revue garde sa mise en page. */
+      body.review {
+        height: auto;
+        overflow: auto;
+        background: #101014;
+        color: #f5edcd;
+        font: 14px system-ui;
+      }
+      #stage #hud {
+        position: absolute;
+        inset: 0;
+      }
     </style>
   </head>
-  <body>
+  <body class="review">
     <header>
       <h1>Perspective du décor</h1>
       <p>
-        Le décor rendu par le moteur du jeu. Les ninjas donnent l’échelle ; cet aperçu n’est pas une
-        partie.
+        Le décor et le HUD rendus par le moteur du jeu. Les ninjas donnent l’échelle ; le HUD tourne
+        sur des données factices. Cet aperçu n’est pas une partie.
       </p>
       <nav>
         <button data-view="dojo" aria-pressed="true">Dojo</button
@@ -76,7 +88,7 @@
         ><button data-view="river" aria-pressed="false">Berges</button><a href="/">Jouer</a>
       </nav>
     </header>
-    <main id="stage"></main>
+    <main id="stage"><div id="hud"></div></main>
     <script type="module" src="/src/artReview.ts"></script>
   </body>
 </html>

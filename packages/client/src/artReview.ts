@@ -2,6 +2,9 @@
 import { DEFAULT_MAP_ID, loadContent, loadMap } from '@ninjarena/content';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import type { PlayerView, RenderFrame } from './rendering/renderer';
+import './styles.css';
+import { Hud } from './ui/hud';
+import type { HudView } from './ui/hud';
 
 const stage = document.querySelector<HTMLElement>('#stage');
 if (!stage) throw new Error('Missing review stage');
@@ -24,6 +27,9 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-v
       other.setAttribute('aria-pressed', String(other === button));
   });
 }
+const hudRoot = document.querySelector<HTMLElement>('#hud');
+const hud = hudRoot === null ? null : new Hud(hudRoot);
+const started = performance.now();
 let previous = performance.now();
 let frameId = 0;
 function draw(now: number) {
@@ -51,10 +57,84 @@ function draw(now: number) {
     isFfa: false,
   };
   renderer.render(frame, Math.min(100, now - previous));
+  hud?.update(reviewHud(now - started));
   previous = now;
   frameId = requestAnimationFrame(draw);
 }
 frameId = requestAnimationFrame(draw);
+const HEALTH_BEATS = [100, 84, 63, 41, 22];
+const COOLDOWN_CYCLE_MS = 3200;
+const COOLDOWN_MS = 2200;
+const ROUND_SECONDS = 90;
+
+// Le HUD de revue rejoue seul les états que réclame une relecture: dégâts, recharge, manque et verrou.
+function reviewHud(elapsedMs: number): HudView {
+  const chakra = Math.round(50 + 50 * Math.cos(elapsedMs / 2200));
+  const health = HEALTH_BEATS[Math.floor(elapsedMs / 1800) % HEALTH_BEATS.length] ?? 100;
+  const cooling = Math.max(0, COOLDOWN_MS - (elapsedMs % COOLDOWN_CYCLE_MS));
+  const seconds = ROUND_SECONDS - (Math.floor(elapsedMs / 1000) % (ROUND_SECONDS + 1));
+  return {
+    health,
+    maxHealth: 100,
+    chakra,
+    maxChakra: 100,
+    shield: health < 50 ? 18 : 0,
+    abilities: [
+      { name: 'Slash', family: 'melee', binding: 'LMB', chakraCost: 0, ...ready() },
+      {
+        name: 'Shadow step',
+        family: 'dash',
+        binding: 'SPC',
+        chakraCost: 10,
+        reason: null,
+        available: true,
+        remainingMs: cooling,
+        cooldownMs: COOLDOWN_MS,
+      },
+      {
+        name: 'Fireball',
+        family: 'projectile',
+        binding: 'RMB',
+        chakraCost: 25,
+        reason: chakra < 25 ? 'chakra' : null,
+        available: chakra >= 25,
+        remainingMs: 0,
+        cooldownMs: 4000,
+      },
+      {
+        name: 'Earth wall',
+        family: 'wall',
+        binding: 'E',
+        chakraCost: 30,
+        reason: 'control',
+        available: false,
+        remainingMs: 0,
+        cooldownMs: 9000,
+      },
+      { name: 'Ward', family: 'defense', binding: 'R', chakraCost: 20, ...ready() },
+    ],
+    matchPhase: elapsedMs < 600 ? 'COUNTDOWN' : 'IN_ROUND',
+    round: 4,
+    scores: { 'team-0': 2, 'team-1': 1 },
+    roundTimer: `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`,
+    buildSummary: 'VIT 2 · STR 1 · POW 3 · SPD 0 · CHK 1 · REG 0 · DEF 1',
+    status: 'Art review — fake data',
+    rttMs: 24,
+    spectating: null,
+    teamId: 'team-0',
+    teamCode: 0,
+    skin: 1,
+  };
+}
+
+function ready() {
+  return { reason: null, available: true, remainingMs: 0, cooldownMs: 6000 } as const;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
 let disposed = false;
 function dispose() {
   if (disposed) return;
