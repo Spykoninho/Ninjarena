@@ -167,7 +167,10 @@ function pavingTile(
   ];
   const index = seed % 5,
     layout = layouts[index] ?? layouts[0]!;
-  layout.forEach(([x = 0, y = 0, w = 0, h = 0], i) => slab(c, x, y, w, h, variant + i));
+  // Un éclat sur une dalle sur quatre environ: les marques restent rares et groupées.
+  layout.forEach(([x = 0, y = 0, w = 0, h = 0], i) =>
+    slab(c, x, y, w, h, (variant + i * 5) % 4 === 0 ? 0 : 5),
+  );
   // Mousse dans quelques joints, jamais sur la face des dalles.
   const joints = [
     { h: false, v: null },

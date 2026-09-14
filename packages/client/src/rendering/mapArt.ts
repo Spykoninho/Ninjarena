@@ -45,8 +45,16 @@ export class MapArt {
       }
       return texture;
     };
-    const nameAt = (x: number, y: number) =>
-      tileset.tiles[String(map.groundTileIdAt(x, y))]?.name ?? 'ground';
+    // Les berges suivent la famille de matière: l'herbe fleurie ne borde pas la pelouse voisine.
+    const nameAt = (x: number, y: number) => {
+      const tile = tileset.tiles[String(map.groundTileIdAt(x, y))];
+      if (!tile) return 'ground';
+      return tile.tags.includes('water')
+        ? 'water'
+        : tile.tags.includes('grass')
+          ? 'grass'
+          : tile.name;
+    };
     // Floor batching is done once in modest chunks; water only swaps shared frames at 5 Hz.
     for (let cy = 0; cy < map.heightInTiles; cy += 8)
       for (let cx = 0; cx < map.widthInTiles; cx += 8) {
@@ -63,7 +71,7 @@ export class MapArt {
               : tile.tags.includes('grass')
                 ? 'grass'
                 : tile.name;
-            const mask = neighborMask(x, y, (xx, yy) => nameAt(xx, yy) === tile.name),
+            const mask = neighborMask(x, y, (xx, yy) => nameAt(xx, yy) === kind),
               variant = hash(x, y) % 12;
             if (tile.name === 'path' || tile.name === 'flowers') {
               ctx.drawImage(
