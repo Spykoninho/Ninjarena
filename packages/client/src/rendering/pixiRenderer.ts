@@ -80,27 +80,32 @@ export class PixiRenderer implements Renderer {
     const key = `${app.screen.width}:${app.screen.height}:${fit.zoom}`;
     if (key !== this.viewportKey) {
       this.viewportKey = key;
+      // La vue couvre toute la fenêtre: la cible de rendu suit sa taille, à pixels entiers.
+      this.target.resize(fit.width, fit.height);
       const style = this.host?.style;
-      style?.setProperty('--combat-top', `${Math.max(0, fit.y - 84)}px`);
+      style?.setProperty('--combat-top', `${Math.max(0, fit.y)}px`);
       style?.setProperty(
         '--combat-bottom',
-        `${Math.max(0, app.screen.height - fit.y - VIEW_HEIGHT * fit.zoom - 112)}px`,
+        `${Math.max(0, app.screen.height - fit.y - fit.height * fit.zoom)}px`,
       );
-      style?.setProperty('--combat-side', `${Math.max(0, fit.x - 12)}px`);
+      style?.setProperty('--combat-side', `${Math.max(0, fit.x)}px`);
     }
     this.screen.position.set(fit.x, fit.y);
     this.screen.scale.set(fit.zoom);
+    // Demi-vue en unités monde: la caméra s'arrête au bord de la map, ou se centre si elle est plus petite.
+    const halfWidth = fit.width / ART_SCALE / 2,
+      halfHeight = fit.height / ART_SCALE / 2;
     const center = {
       x: Math.max(
-        Math.min(VIEW_WIDTH / 4, this.mapBounds.x / 2),
-        Math.min(this.mapBounds.x - VIEW_WIDTH / 4, frame.camera.x),
+        Math.min(halfWidth, this.mapBounds.x / 2),
+        Math.min(this.mapBounds.x - halfWidth, frame.camera.x),
       ),
       y: Math.max(
-        Math.min(VIEW_HEIGHT / 4, this.mapBounds.y / 2),
-        Math.min(this.mapBounds.y - VIEW_HEIGHT / 4, frame.camera.y),
+        Math.min(halfHeight, this.mapBounds.y / 2),
+        Math.min(this.mapBounds.y - halfHeight, frame.camera.y),
       ),
     };
-    const camera = cameraTranslation(center, ART_SCALE, { x: VIEW_WIDTH, y: VIEW_HEIGHT });
+    const camera = cameraTranslation(center, ART_SCALE, { x: fit.width, y: fit.height });
     this.translation = { x: fit.x + camera.x * fit.zoom, y: fit.y + camera.y * fit.zoom };
     this.worldContainer.position.set(
       camera.x + Math.round(this.shake.x * ART_SCALE),

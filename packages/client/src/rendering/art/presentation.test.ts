@@ -15,9 +15,10 @@ describe('pixel presentation contract', () => {
     expect(abilityFamily(abilities.get('earth-wall'))).toBe('wall');
   });
   it('preserves field of view and integer pixels at different screen sizes', () => {
-    expect(viewport(1920, 1080, 3)).toEqual({ zoom: 3, x: 0, y: 0 });
-    expect(viewport(2560, 1080, 4)).toEqual({ zoom: 3, x: 320, y: 0 });
-    expect(viewport(844, 998, 3)).toEqual({ zoom: 1, x: 102, y: 319 });
+    expect(viewport(1920, 1080, 3)).toEqual({ zoom: 3, width: 640, height: 360, x: 0, y: 0 });
+    expect(viewport(2560, 1080, 4)).toEqual({ zoom: 3, width: 854, height: 360, x: -1, y: 0 });
+    expect(viewport(844, 998, 3)).toEqual({ zoom: 1, width: 844, height: 998, x: 0, y: 0 });
+    expect(viewport(1400, 900, 4)).toEqual({ zoom: 2, width: 700, height: 450, x: 0, y: 0 });
   });
   it('keeps diagonal aim from flickering and supports every cardinal direction', () => {
     expect(facing({ x: 0.71, y: 0.7 }, 'e')).toBe('e');

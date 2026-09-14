@@ -55,15 +55,20 @@ export function poseFrame(
   }
 }
 
+// Zoom entier choisi pour la vue de référence, puis la vue s'élargit pour couvrir tout l'écran.
 export function viewport(width: number, height: number, maxZoom: number) {
   const zoom = Math.max(
     1,
     Math.min(maxZoom, Math.floor(Math.min(width / VIEW_WIDTH, height / VIEW_HEIGHT))),
   );
+  const viewWidth = Math.ceil(width / zoom),
+    viewHeight = Math.ceil(height / zoom);
   return {
     zoom,
-    x: Math.floor((width - VIEW_WIDTH * zoom) / 2),
-    y: Math.floor((height - VIEW_HEIGHT * zoom) / 2),
+    width: viewWidth,
+    height: viewHeight,
+    x: Math.floor((width - viewWidth * zoom) / 2),
+    y: Math.floor((height - viewHeight * zoom) / 2),
   };
 }
 
