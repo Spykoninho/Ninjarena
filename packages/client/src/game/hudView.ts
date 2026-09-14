@@ -8,10 +8,11 @@ import type {
   PlayerState,
 } from '@ninjarena/core';
 import { abilityFamily } from '../rendering/art/abilityVisual';
+import { skinIndex, teamCodes } from '../rendering/art/presentation';
 import { ATTRIBUTE_IDS, getStatus } from '@ninjarena/core';
 import type { InputBindings } from '../input/bindings';
 import { bindingLabel } from '../input/bindings';
-import type { HudAbilityView, HudView } from '../ui/hud';
+import type { HudAbilityBlock, HudAbilityView, HudView } from '../ui/hud';
 
 export interface HudViewInput {
   localPlayer: PlayerState | undefined;
@@ -27,6 +28,7 @@ export interface HudViewInput {
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
+const CONTROLLED_PHASES = ['STUNNED', 'DEAD', 'CASTING', 'DASHING', 'KNOCKBACK'];
 
 const ATTRIBUTE_LABELS: Record<AttributeId, string> = {
   vitality: 'VIT',
@@ -58,25 +60,39 @@ export function buildHudView(input: HudViewInput): HudView {
     status: input.status,
     rttMs: input.rttMs,
     spectating: input.spectating,
+    teamId: local?.teamId ?? null,
+    teamCode: teamCode(local, input.match),
+    skin: local === undefined ? 0 : skinIndex(local.id),
   };
+}
+
+// Le code d'équipe du HUD vient de la liste des équipes du match, comme celui des marqueurs du sol.
+function teamCode(local: PlayerState | undefined, match: MatchState | null): number {
+  if (local === undefined) return 0;
+  const ids = Object.keys(match?.scores ?? {});
+  return teamCodes(ids.length > 0 ? ids : [local.teamId]).get(local.teamId) ?? 0;
 }
 
 function abilityView(input: HudViewInput, slot: AbilitySlot, index: number): HudAbilityView {
   const ability = input.abilities.get(slot.abilityId);
   const binding = input.bindings.abilities[index];
+  const reason = abilityBlock(input, ability.chakraCost);
   return {
     name: ability.name,
     family: abilityFamily(ability),
-    available:
-      (input.localPlayer?.chakra ?? 0) >= ability.chakraCost &&
-      !['STUNNED', 'DEAD', 'CASTING', 'DASHING', 'KNOCKBACK'].includes(
-        input.localPlayer?.phase.kind ?? 'DEAD',
-      ),
+    available: reason === null,
+    reason,
     binding: binding === undefined ? '' : bindingLabel(binding),
     chakraCost: ability.chakraCost,
     remainingMs: Math.max(0, (slot.readyAt - input.tick) * input.tickDurationMs),
     cooldownMs: ability.cooldownMs,
   };
+}
+
+// Un état de contrôle bloque toutes les touches: il prime sur le manque de chakra d'une seule.
+function abilityBlock(input: HudViewInput, chakraCost: number): HudAbilityBlock | null {
+  if (CONTROLLED_PHASES.includes(input.localPlayer?.phase.kind ?? 'DEAD')) return 'control';
+  return (input.localPlayer?.chakra ?? 0) < chakraCost ? 'chakra' : null;
 }
 
 function roundTimer(input: HudViewInput): string | null {
