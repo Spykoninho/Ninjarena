@@ -69,9 +69,10 @@
         color: #f5edcd;
         font: 14px system-ui;
       }
+      /* Même inset que le jeu: le HUD colle à la vue de combat, pas au cadre de la page. */
       #stage #hud {
         position: absolute;
-        inset: 0;
+        inset: var(--combat-top, 0px) var(--combat-side, 0px) var(--combat-bottom, 0px);
       }
     </style>
   </head>

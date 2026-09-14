@@ -593,6 +593,8 @@ body {
 /* Keep status and controls next to the fixed combat view, including portrait windows. */
 #hud {
   inset: var(--combat-top, 0px) var(--combat-side, 0px) var(--combat-bottom, 0px);
+  /* Le HUD se mesure à la vue de combat, pas à la fenêtre: les paliers suivent son inset. */
+  container-type: inline-size;
 }
 
 /* HUD 1.7 — panneaux encre, texte pixel et emplacements biseautés */
@@ -1037,15 +1039,19 @@ body {
   text-shadow: 1px 1px 0 var(--hud-deep);
 }
 
-@media (max-width: 760px) {
+@container (max-width: 760px) {
   .hud-gauge-track {
     width: 96px;
   }
   .hud-gauge-read {
     min-width: 52px;
   }
+  /* En vue 640 px, la barre centrée mordrait sur le panneau de vie: elle se range à droite. */
   .hud-abilities {
     gap: 4px;
+    left: auto;
+    right: 8px;
+    transform: none;
   }
   /* Les icônes redescendent à l'échelle 1: un demi-pixel rendrait le HUD flou. */
   .hud-slot {
@@ -1087,7 +1093,7 @@ body {
   }
 }
 
-@media (max-width: 520px) {
+@container (max-width: 520px) {
   .hud-vitals {
     bottom: 54px;
   }
