@@ -80,8 +80,10 @@ export class PixiRenderer implements Renderer {
     const key = `${app.screen.width}:${app.screen.height}:${fit.zoom}`;
     if (key !== this.viewportKey) {
       this.viewportKey = key;
-      // La vue couvre toute la fenêtre: la cible de rendu suit sa taille, à pixels entiers.
-      this.target.resize(fit.width, fit.height);
+      // La vue couvre toute la fenêtre: une nouvelle cible à sa taille, le sprite écran la reprend.
+      this.target.destroy(true);
+      this.target = RenderTexture.create({ width: fit.width, height: fit.height, resolution: 1 });
+      this.screen.texture = this.target;
       const style = this.host?.style;
       style?.setProperty('--combat-top', `${Math.max(0, fit.y)}px`);
       style?.setProperty(
