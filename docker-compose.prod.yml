@@ -1,0 +1,51 @@
+name: ninjarena
+
+# Noms de services uniques sur le réseau edge partagé par tous les projets du VPS.
+services:
+  ninjarena-web:
+    build:
+      context: .
+      target: web
+    image: ninjarena-web:latest
+    restart: unless-stopped
+    mem_limit: 64m
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ninjarena-web.rule=Host(`mathisfremiot.fr`) && PathPrefix(`/ninjarena`)
+      - traefik.http.routers.ninjarena-web.entrypoints=websecure
+      - traefik.http.routers.ninjarena-web.tls.certresolver=letsencrypt
+      - traefik.http.services.ninjarena-web.loadbalancer.server.port=80
+    networks:
+      - edge
+
+  ninjarena-server:
+    build:
+      context: .
+      target: server
+    image: ninjarena-server:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      NINJARENA_HOST: 0.0.0.0
+      NINJARENA_PORT: 8080
+      NINJARENA_MAPS_DIR: /data/maps
+    volumes:
+      - maps:/data/maps
+    labels:
+      - traefik.enable=true
+      # Règle plus longue que celle du web: Traefik lui donne la priorité.
+      - traefik.http.routers.ninjarena-ws.rule=Host(`mathisfremiot.fr`) && PathPrefix(`/ninjarena/ws`)
+      - traefik.http.routers.ninjarena-ws.entrypoints=websecure
+      - traefik.http.routers.ninjarena-ws.tls.certresolver=letsencrypt
+      - traefik.http.routers.ninjarena-ws.middlewares=ninjarena-ws-strip
+      - traefik.http.middlewares.ninjarena-ws-strip.stripprefix.prefixes=/ninjarena/ws
+      - traefik.http.services.ninjarena-ws.loadbalancer.server.port=8080
+    networks:
+      - edge
+
+volumes:
+  maps:
+
+networks:
+  edge:
+    external: true

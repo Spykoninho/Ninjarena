@@ -20,10 +20,25 @@ const MIN_ZOOM = 1;
 const NAME_SUFFIX_LENGTH = 4;
 const NAME_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-export function loadClientConfig(search: string): ClientConfig {
+export interface Origin {
+  protocol: string;
+  host: string;
+}
+
+// En production le serveur est derrière le même reverse proxy que la page, sous `<base>ws`.
+export function sameOriginServerUrl(origin: Origin, base: string): string {
+  const scheme = origin.protocol === 'https:' ? 'wss' : 'ws';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${scheme}://${origin.host}${prefix}ws`;
+}
+
+export function loadClientConfig(
+  search: string,
+  defaultServerUrl: string = DEFAULT_SERVER_URL,
+): ClientConfig {
   const params = new URLSearchParams(search);
   return {
-    serverUrl: text(params.get('server')) ?? DEFAULT_SERVER_URL,
+    serverUrl: text(params.get('server')) ?? defaultServerUrl,
     playerName: text(params.get('name')) ?? randomName(),
     interpolationDelayTicks: number(params.get('delay'), DEFAULT_INTERPOLATION_DELAY_TICKS, 0),
     // Un zoom fractionnaire casse l'alignement au pixel des tuiles.

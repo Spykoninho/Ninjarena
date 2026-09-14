@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { loadClientConfig } from './clientConfig';
+import { loadClientConfig, sameOriginServerUrl } from './clientConfig';
 
 describe('loadClientConfig', () => {
   it('falls back to its defaults when the query string is empty', () => {
     const config = loadClientConfig('');
     expect(config.serverUrl).toBe('ws://localhost:8080');
+    expect(loadClientConfig('', 'wss://arena.example/ws').serverUrl).toBe('wss://arena.example/ws');
     expect(config.interpolationDelayTicks).toBe(6);
     expect(config.zoom).toBe(3);
     expect(config.playerName).toMatch(/^ninja-[a-z0-9]{4}$/);
   });
 
   it('keeps the server and the name given in the query string', () => {
-    const config = loadClientConfig('?server=ws://arena.example:9000&name=kage');
+    const config = loadClientConfig('?server=ws://arena.example:9000&name=kage', 'wss://other/ws');
     expect(config.serverUrl).toBe('ws://arena.example:9000');
     expect(config.playerName).toBe('kage');
   });
@@ -71,5 +72,25 @@ describe('loadClientConfig', () => {
   it('reads the requested basic attack', () => {
     expect(loadClientConfig('?basic=shuriken-throw').basicAttackId).toBe('shuriken-throw');
     expect(loadClientConfig('').basicAttackId).toBeNull();
+  });
+});
+
+describe('sameOriginServerUrl', () => {
+  it('speaks plain ws to a plain http origin', () => {
+    expect(sameOriginServerUrl({ protocol: 'http:', host: 'localhost:5173' }, '/')).toBe(
+      'ws://localhost:5173/ws',
+    );
+  });
+
+  it('speaks wss under the base path of an https origin', () => {
+    expect(
+      sameOriginServerUrl({ protocol: 'https:', host: 'mathisfremiot.fr' }, '/ninjarena/'),
+    ).toBe('wss://mathisfremiot.fr/ninjarena/ws');
+  });
+
+  it('tolerates a base path without its trailing slash', () => {
+    expect(sameOriginServerUrl({ protocol: 'https:', host: 'a.b' }, '/ninjarena')).toBe(
+      'wss://a.b/ninjarena/ws',
+    );
   });
 });

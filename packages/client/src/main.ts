@@ -1,7 +1,7 @@
 import { loadContent } from '@ninjarena/content';
 import { ClientApp } from './app/clientApp';
 import { WebAudioSynth } from './audio/webAudioSynth';
-import { loadClientConfig } from './config/clientConfig';
+import { loadClientConfig, sameOriginServerUrl } from './config/clientConfig';
 import { ClientGame } from './game/clientGame';
 import { DEFAULT_BINDINGS } from './input/bindings';
 import { DomInputAdapter } from './input/domInputAdapter';
@@ -25,7 +25,10 @@ if (stage === null || hudRoot === null || uiRoot === null) {
 
 const DEFAULT_TILESET_ID = 'default';
 
-const config = loadClientConfig(window.location.search);
+const config = loadClientConfig(
+  window.location.search,
+  sameOriginServerUrl(window.location, import.meta.env.BASE_URL),
+);
 const content = loadContent();
 const inputState = createInputState();
 const input = new DomInputAdapter(stage, inputState);

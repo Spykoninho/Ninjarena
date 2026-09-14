@@ -1,6 +1,15 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-  server: { port: 5173 },
+const PRODUCTION_BASE = '/ninjarena/';
+const DEV_SERVER_URL = 'ws://localhost:8080';
+
+export default defineConfig(({ command }) => ({
+  // Servi sous un sous-chemin en production, à la racine en développement.
+  base: command === 'build' ? PRODUCTION_BASE : '/',
+  server: {
+    port: 5173,
+    // Le client compose `<origine>/ws`: en dev, Vite relaie ce chemin vers le serveur de jeu.
+    proxy: { '/ws': { target: DEV_SERVER_URL, ws: true } },
+  },
   build: { target: 'es2022' },
-});
+}));

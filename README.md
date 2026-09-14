@@ -171,6 +171,32 @@ Then, from the other machine, open
 `http://<host>:5173/?server=ws://<host>:8080&name=b`. There is no authentication, which is why
 the default binding is `127.0.0.1`: only expose the server on a network you trust.
 
+## Deployment
+
+The game runs at <https://mathisfremiot.fr/ninjarena>. Every push on `main` that passes the
+`verify` job is deployed by the `deploy` job of [ci.yml](.github/workflows/ci.yml): it opens an
+SSH session on the VPS and runs [deploy/deploy.sh](deploy/deploy.sh), which fast-forwards the
+clone in `~/ninjarena` to the pushed commit and rebuilds the containers.
+
+[docker-compose.prod.yml](docker-compose.prod.yml) describes the two containers, both built from
+the root [Dockerfile](Dockerfile):
+
+- `ninjarena-web`: the Vite build (base path `/ninjarena/`) served by nginx.
+- `ninjarena-server`: the bundled Node server, listening on every interface, with player-saved maps
+  in the `maps` volume.
+
+Routing and TLS are handled by the Traefik instance already running on the VPS, through container
+labels: `/ninjarena` goes to nginx and `/ninjarena/ws` (prefix stripped) to the WebSocket server.
+The workflow needs two repository secrets: `VPS_SSH_KEY`, a private key whose public half is in
+the VPS user's `authorized_keys`, and `VPS_KNOWN_HOSTS`, the output of `ssh-keyscan` for the VPS.
+
+To build and try the images locally:
+
+```bash
+docker build --target web -t ninjarena-web .
+docker build --target server -t ninjarena-server .
+```
+
 ## Configuration
 
 The server reads its configuration from the environment at startup; every value is validated and
@@ -191,17 +217,17 @@ an invalid one stops the process.
 
 The client is configured through query parameters:
 
-| Parameter    | Default               | Meaning                                                                                                   |
-| ------------ | --------------------- | --------------------------------------------------------------------------------------------------------- |
-| `server`     | `ws://localhost:8080` | Server URL.                                                                                               |
-| `name`       | random `ninja-xxxx`   | Display name, 1 to 24 characters.                                                                         |
-| `room`       | none                  | Room code; prefills and focuses the join form on the home screen.                                         |
-| `editor`     | absent                | Opens the map editor instead of the home screen when present, regardless of value (`?editor`).            |
-| `build`      | none                  | Prefills the loadout panel's stat sliders: `vitality,strength,power,speed,maxChakra,chakraRegen,defense`. |
-| `basic`      | character's default   | Prefills the loadout panel's basic attack pick, by ability id.                                            |
-| `techniques` | none                  | Prefills the loadout panel's technique picks: a comma-separated list of ability ids.                      |
-| `delay`      | `6`                   | Interpolation delay for remote entities, in ticks (100 ms).                                               |
-| `zoom`       | `3`                   | Maximum integer display zoom for the fixed 640×360 view; 2 art pixels per world unit.                     |
+| Parameter    | Default             | Meaning                                                                                                      |
+| ------------ | ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `server`     | same origin + `/ws` | Server URL. The default is derived from the page's origin (`wss://` under HTTPS); Vite proxies `/ws` in dev. |
+| `name`       | random `ninja-xxxx` | Display name, 1 to 24 characters.                                                                            |
+| `room`       | none                | Room code; prefills and focuses the join form on the home screen.                                            |
+| `editor`     | absent              | Opens the map editor instead of the home screen when present, regardless of value (`?editor`).               |
+| `build`      | none                | Prefills the loadout panel's stat sliders: `vitality,strength,power,speed,maxChakra,chakraRegen,defense`.    |
+| `basic`      | character's default | Prefills the loadout panel's basic attack pick, by ability id.                                               |
+| `techniques` | none                | Prefills the loadout panel's technique picks: a comma-separated list of ability ids.                         |
+| `delay`      | `6`                 | Interpolation delay for remote entities, in ticks (100 ms).                                                  |
+| `zoom`       | `3`                 | Maximum integer display zoom for the fixed 640×360 view; 2 art pixels per world unit.                        |
 
 The server also writes to `data/` (the `NINJARENA_MAPS_DIR` default): player-saved maps land there
 as one JSON file per map, created on first save. The whole directory is git-ignored — it is local,
