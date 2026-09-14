@@ -42,148 +42,6 @@ body {
   pointer-events: none;
 }
 
-.hud-top {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 14px;
-  text-align: center;
-  background: var(--hud-background);
-  border: 1px solid var(--hud-border);
-  border-radius: 4px;
-}
-
-.hud-phase {
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.hud-timer {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-}
-
-.hud-status {
-  opacity: 0.7;
-}
-
-.hud-shield {
-  color: var(--hud-shield);
-  font-size: 11px;
-}
-
-.hud-build {
-  font-size: 10px;
-  opacity: 0.6;
-  letter-spacing: 0.04em;
-}
-
-.hud-panel {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  width: 240px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--hud-background);
-  border: 1px solid var(--hud-border);
-  border-radius: 4px;
-}
-
-.hud-bar {
-  position: relative;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.hud-bar-fill {
-  height: 100%;
-  width: 100%;
-}
-
-.hud-bar-health .hud-bar-fill {
-  background: var(--hud-health);
-}
-
-.hud-bar-chakra .hud-bar-fill {
-  background: var(--hud-chakra);
-}
-
-.hud-bar-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.hud-abilities {
-  display: flex;
-  gap: 6px;
-}
-
-.hud-chip {
-  position: relative;
-  flex: 1;
-  padding: 4px;
-  min-width: 0;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--hud-border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.hud-chip-cooldown {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 0;
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.hud-chip-binding {
-  position: relative;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-}
-
-.hud-chip-name {
-  position: relative;
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hud-chip-cost {
-  position: relative;
-  font-size: 9px;
-  color: var(--hud-chakra);
-}
-
-.hud-chip-timer {
-  position: relative;
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.hud-chip.is-cooling .hud-chip-timer {
-  opacity: 1;
-  color: var(--hud-cooldown);
-}
-
 #ui {
   position: fixed;
   inset: 0;
@@ -712,124 +570,7 @@ body {
 body {
   background: #101c24;
 }
-.hud-panel {
-  width: 210px;
-  bottom: 20px;
-  left: 20px;
-  border-radius: 0;
-  border-top: 2px solid #cf9565;
-  padding: 12px;
-}
-.hud-build {
-  display: none;
-}
-.hud-bar {
-  border-radius: 0;
-  height: 15px;
-}
-.hud-bar-chakra {
-  height: 12px;
-}
-.hud-bar-label {
-  font-size: 10px;
-  text-shadow:
-    1px 1px #172631,
-    -1px -1px #172631;
-}
-.hud-bar-health::before {
-  content: 'HP';
-  position: absolute;
-  left: 4px;
-  top: 0;
-  font-size: 10px;
-  z-index: 1;
-  color: #172631;
-}
-.hud-bar-chakra::before {
-  content: 'CK';
-  position: absolute;
-  left: 4px;
-  top: 0;
-  font-size: 9px;
-  z-index: 1;
-  color: #172631;
-}
-.hud-abilities {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  gap: 6px;
-}
-.hud-chip {
-  flex: none;
-  width: 68px;
-  padding: 5px 4px 4px;
-  background: #172631;
-  border-radius: 0;
-  border-top: 2px solid #cf9565;
-}
-.hud-chip-icon {
-  display: block;
-  width: 48px;
-  height: 48px;
-  margin: 3px auto;
-  image-rendering: pixelated;
-}
-.hud-chip-binding {
-  position: absolute;
-  right: 3px;
-  top: 2px;
-  font-weight: 700;
-  color: #f5edcd;
-  opacity: 1;
-}
-.hud-chip-name {
-  font-size: 8px;
-}
-.hud-chip-cost {
-  font-size: 8px;
-}
-.hud-chip-timer {
-  font-size: 10px;
-  color: #92d8b4;
-}
-.hud-chip-cooldown {
-  top: 0;
-  bottom: auto;
-  background: rgba(16, 28, 36, 0.75);
-  pointer-events: none;
-}
-.hud-chip.is-unavailable .hud-chip-icon {
-  opacity: 0.35;
-}
-.hud-top {
-  border-radius: 0;
-  padding: 5px 12px;
-  max-width: 90vw;
-}
-.hud-phase {
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-.hud-status {
-  font-size: 9px;
-}
-.hud-settings {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #172631;
-  border: 1px solid #49616b;
-  padding: 5px 8px;
-  pointer-events: auto;
-  font-size: 11px;
-}
-.hud-settings label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 0;
-}
+
 .screen {
   border-radius: 0;
   border-top: 3px solid #cf9565;
@@ -848,51 +589,509 @@ body {
 #ui:not(:empty) {
   background: radial-gradient(ellipse at 50% 35%, rgba(41, 79, 73, 0.7), rgba(16, 28, 36, 0.96));
 }
-@media (max-width: 700px) {
-  .hud-panel {
-    left: 8px;
-    bottom: 8px;
-    width: 145px;
-    padding: 7px;
-  }
-  .hud-abilities {
-    right: 8px;
-    bottom: 8px;
-    gap: 3px;
-  }
-  .hud-chip {
-    width: 49px;
-  }
-  .hud-chip-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .hud-chip-name {
-    max-width: 40px;
-  }
-  .hud-chip-cost {
-    display: none;
-  }
-  .hud-settings {
-    top: 65px;
-    right: 8px;
-  }
-}
-@media (max-width: 460px) {
-  .hud-panel {
-    bottom: 88px;
-  }
-  .hud-abilities {
-    left: 8px;
-    right: auto;
-  }
-}
-
-.hud-chip[data-family='dash'] {
-  order: 5;
-}
 
 /* Keep status and controls next to the fixed combat view, including portrait windows. */
 #hud {
   inset: var(--combat-top, 0px) var(--combat-side, 0px) var(--combat-bottom, 0px);
+}
+
+/* HUD 1.7 — panneaux encre, texte pixel et emplacements biseautés */
+.hud {
+  --hud-ink: rgba(23, 38, 49, 0.92);
+  --hud-edge: #49616b;
+  --hud-copper: #cf9565;
+  --hud-deep: #0c1820;
+  --hud-cut: 3px;
+  --hud-mute: #b8c2bc;
+  font:
+    11px/1.3 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--hud-text);
+}
+
+.hud-pixel-text {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Les `display` du HUD gagneraient sur la règle `[hidden]` du navigateur: on la réaffirme ici. */
+.hud [hidden] {
+  display: none !important;
+}
+
+/* Un pixel coupé à chaque coin et une ombre portée dure: jamais de flou ni d'arrondi. */
+.hud-ink {
+  background: var(--hud-ink);
+  border: 1px solid var(--hud-edge);
+  clip-path: polygon(
+    0 var(--hud-cut),
+    var(--hud-cut) 0,
+    calc(100% - var(--hud-cut)) 0,
+    100% var(--hud-cut),
+    100% calc(100% - var(--hud-cut)),
+    calc(100% - var(--hud-cut)) 100%,
+    var(--hud-cut) 100%,
+    0 calc(100% - var(--hud-cut))
+  );
+  filter: drop-shadow(2px 2px 0 var(--hud-deep));
+}
+
+.hud-top {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.hud-match {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 14px 6px;
+  border-top: 2px solid var(--hud-copper);
+}
+
+.hud-match-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 14px;
+}
+
+.hud-team {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hud-team-plate {
+  display: block;
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+}
+
+.hud-match-timer {
+  display: flex;
+  justify-content: center;
+  min-width: 72px;
+}
+
+.hud-match-phase {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-mute);
+}
+
+.hud-under {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--hud-mute);
+  text-shadow: 1px 1px 0 var(--hud-deep);
+}
+
+.hud-spectate {
+  letter-spacing: 0.14em;
+  color: var(--hud-copper);
+}
+
+.hud-banner {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  padding: 8px 20px;
+  border-top: 2px solid var(--hud-copper);
+  pointer-events: none;
+}
+
+.hud-corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hud-ping {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+}
+
+.hud-settings {
+  position: relative;
+  pointer-events: auto;
+}
+
+.hud-settings-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.hud-settings-button::-webkit-details-marker {
+  display: none;
+}
+
+.hud-settings-gear {
+  display: block;
+  width: 11px;
+  height: 11px;
+  image-rendering: pixelated;
+}
+
+.hud-settings-list {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  width: 176px;
+  padding: 6px 8px;
+}
+
+.hud-settings-list label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+  letter-spacing: normal;
+}
+
+.hud-vitals {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-top: 2px solid var(--hud-copper);
+}
+
+.hud-portrait {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  outline: 1px solid var(--hud-edge);
+}
+
+.hud-portrait-art {
+  display: block;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+
+.hud-portrait-team {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+}
+
+.hud-gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hud-gauge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-gauge-track {
+  position: relative;
+  width: 128px;
+  height: 16px;
+  background: #101c24;
+  border: 1px solid var(--hud-deep);
+  overflow: hidden;
+}
+
+.hud-gauge-chakra .hud-gauge-track {
+  height: 10px;
+}
+
+.hud-gauge-ghost,
+.hud-gauge-fill,
+.hud-gauge-shield {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.hud-gauge-health .hud-gauge-ghost {
+  background: #ffb9ad;
+}
+
+.hud-gauge-health .hud-gauge-fill {
+  background: var(--hud-health);
+}
+
+.hud-gauge-chakra .hud-gauge-ghost {
+  background: #b6ecf0;
+}
+
+.hud-gauge-chakra .hud-gauge-fill {
+  background: var(--hud-chakra);
+}
+
+.hud-gauge-shield {
+  background: var(--hud-shield);
+}
+
+/* Les crans sont un motif dur: une graduation tous les 20 PV, sans dégradé. */
+.hud-gauge-track.has-ticks::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(var(--hud-tick, 100%) - 1px),
+    rgba(12, 24, 32, 0.8) calc(var(--hud-tick, 100%) - 1px),
+    rgba(12, 24, 32, 0.8) var(--hud-tick, 100%)
+  );
+}
+
+.hud-gauge-read {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 62px;
+}
+
+.hud-gauge-shield-glyph {
+  display: block;
+  width: 7px;
+  height: 8px;
+  image-rendering: pixelated;
+}
+
+.hud-abilities {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hud-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 52px;
+}
+
+.hud-slot[data-family='dash'] {
+  order: 5;
+}
+
+/* Cadre biseauté: lumière en haut à gauche, ombre en bas à droite, comme le décor. */
+.hud-slot-frame {
+  position: relative;
+  box-sizing: content-box;
+  width: 48px;
+  height: 48px;
+  background: #101c24;
+  border: 2px solid;
+  border-color: var(--hud-edge) var(--hud-deep) var(--hud-deep) var(--hud-edge);
+  filter: drop-shadow(2px 2px 0 var(--hud-deep));
+}
+
+.hud-slot-icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+
+.hud-slot-veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: rgba(12, 24, 32, 0.8);
+}
+
+.hud-slot-lock {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 16px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+
+.hud-slot-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.hud-slot-key {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  padding: 2px 3px;
+  background: rgba(12, 24, 32, 0.88);
+  border: 1px solid var(--hud-edge);
+}
+
+.hud-slot-cost {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-slot-pip {
+  width: 6px;
+  height: 6px;
+  background: var(--hud-chakra);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.hud-slot.is-starved .hud-slot-pip {
+  background: var(--hud-health);
+}
+
+.hud-slot.is-starved .hud-slot-cost::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 1px;
+  background: var(--hud-health);
+}
+
+.hud-slot.is-starved .hud-slot-icon {
+  opacity: 0.35;
+}
+
+.hud-slot.is-locked .hud-slot-icon {
+  opacity: 0.5;
+}
+
+@keyframes hud-slot-flash {
+  from {
+    border-color: var(--hud-text);
+    background: #2c4351;
+  }
+  to {
+    border-color: var(--hud-edge) var(--hud-deep) var(--hud-deep) var(--hud-edge);
+    background: #101c24;
+  }
+}
+
+.hud-slot-frame.is-flash {
+  animation: hud-slot-flash 120ms steps(2, end);
+}
+
+.hud-slot-name {
+  max-width: 52px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 10px;
+  color: var(--hud-mute);
+  text-shadow: 1px 1px 0 var(--hud-deep);
+}
+
+@media (max-width: 760px) {
+  .hud-gauge-track {
+    width: 96px;
+  }
+  .hud-gauge-read {
+    min-width: 52px;
+  }
+  .hud-abilities {
+    gap: 4px;
+  }
+  /* Les icônes redescendent à l'échelle 1: un demi-pixel rendrait le HUD flou. */
+  .hud-slot {
+    width: 32px;
+  }
+  .hud-slot-frame {
+    width: 24px;
+    height: 24px;
+    border-width: 1px;
+  }
+  .hud-slot-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .hud-slot-cost {
+    display: none;
+  }
+  /* Le demi de l'échelle 2 retombe pile sur l'échelle 1: les pastilles restent nettes. */
+  .hud-slot-key {
+    left: 1px;
+    bottom: 1px;
+    padding: 1px;
+    transform: scale(0.5);
+    transform-origin: bottom left;
+  }
+  .hud-slot-timer {
+    transform: translateY(-50%) scale(0.5);
+  }
+  .hud-slot-lock {
+    left: 2px;
+    top: 2px;
+    width: 8px;
+    height: 10px;
+  }
+  .hud-slot-name {
+    max-width: 32px;
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .hud-vitals {
+    bottom: 54px;
+  }
+  .hud-gauge-track {
+    width: 84px;
+  }
 }

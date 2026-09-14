@@ -96,6 +96,73 @@ describe('buildHudView', () => {
     ]);
   });
 
+  it('blames the chakra pool when only the cost is missing', () => {
+    const player = makePlayer();
+    player.chakra = 0;
+    const view = buildHudView({
+      localPlayer: player,
+      abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
+      match,
+      tick: 100,
+      tickDurationMs: 1000 / 60,
+      status: '',
+      rttMs: null,
+      spectating: null,
+    });
+    const fireball = view.abilities.find((ability) => ability.name === 'Fireball');
+    expect(fireball?.reason).toBe('chakra');
+    expect(fireball?.available).toBe(false);
+    // L'attaque de base ne coûte rien: elle reste disponible pendant que les techniques ne le sont plus.
+    expect(view.abilities[0]?.reason).toBeNull();
+    expect(view.abilities[0]?.available).toBe(true);
+  });
+
+  it('blames the control state first, even when the chakra is also missing', () => {
+    const player = makePlayer();
+    player.chakra = 0;
+    player.phase = { kind: 'STUNNED', endsAt: 1000 };
+    const view = buildHudView({
+      localPlayer: player,
+      abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
+      match,
+      tick: 100,
+      tickDurationMs: 1000 / 60,
+      status: '',
+      rttMs: null,
+      spectating: null,
+    });
+    expect(view.abilities.map((ability) => ability.reason)).toEqual([
+      'control',
+      'control',
+      'control',
+      'control',
+      'control',
+    ]);
+    expect(view.abilities.every((ability) => ability.available === false)).toBe(true);
+  });
+
+  it('carries the portrait skin and the team code of the local player', () => {
+    const player = makePlayer();
+    const view = buildHudView({
+      localPlayer: player,
+      abilities: content.abilities,
+      bindings: DEFAULT_BINDINGS,
+      match,
+      tick: 100,
+      tickDurationMs: 1000 / 60,
+      status: '',
+      rttMs: null,
+      spectating: null,
+    });
+    expect(view.teamId).toBe('team-0');
+    // Les codes suivent les équipes triées du match, pas un hash: `team-0` est le premier.
+    expect(view.teamCode).toBe(0);
+    expect(view.skin).toBeGreaterThanOrEqual(0);
+    expect(view.skin).toBeLessThan(4);
+  });
+
   it('reports the remaining absorb of an active shield', () => {
     const player = makePlayer();
     player.statuses = [{ type: 'SHIELDED', expiresAt: 400, magnitude: 18 }];
@@ -169,6 +236,8 @@ describe('buildHudView', () => {
     expect(view.roundTimer).toBeNull();
     expect(view.buildSummary).toBe('');
     expect(view.spectating).toBeNull();
+    expect(view.teamId).toBeNull();
+    expect(view.teamCode).toBe(0);
   });
 
   it('carries the spectated player name through to the view', () => {

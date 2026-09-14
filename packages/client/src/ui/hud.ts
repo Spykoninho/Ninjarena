@@ -1,11 +1,25 @@
+import type { MatchPhase, TeamId } from '@ninjarena/core';
+import { P } from '../rendering/art/nativeArt';
+import { teamCodes } from '../rendering/art/presentation';
 import { iconCanvas } from '../rendering/art/spriteArt';
 import { setVisualSetting, visualSettings } from '../rendering/visualSettings';
-import type { MatchPhase, TeamId } from '@ninjarena/core';
+import {
+  gearCanvas,
+  lockCanvas,
+  portraitCanvas,
+  shieldGlyphCanvas,
+  teamColor,
+  teamPlateCanvas,
+} from './hudGlyphs';
+import { PixelText } from './pixelText';
+
+export type HudAbilityBlock = 'chakra' | 'control';
 
 export interface HudAbilityView {
   name: string;
   family?: string;
   available?: boolean;
+  reason?: HudAbilityBlock | null;
   binding: string;
   chakraCost: number;
   remainingMs: number;
@@ -27,64 +41,204 @@ export interface HudView {
   status: string;
   rttMs: number | null;
   spectating: string | null;
-}
-
-interface Bar {
-  fill: HTMLElement;
-  label: HTMLElement;
-  width: string;
-  text: string;
-}
-
-interface Line {
-  node: HTMLElement;
-  text: string;
-}
-
-interface AbilityChip {
-  root: HTMLElement;
-  cooldown: HTMLElement;
-  icon: HTMLCanvasElement;
-  family: string;
-  binding: HTMLElement;
-  name: HTMLElement;
-  cost: HTMLElement;
-  timer: HTMLElement;
-  hidden: boolean;
-  cooling: boolean;
-  bindingText: string;
-  nameText: string;
-  costText: string;
-  timerText: string;
-  height: string;
+  teamId: TeamId | null;
+  teamCode: number;
+  skin: number;
 }
 
 const MS_PER_SECOND = 1000;
+const GHOST_HOLD_MS = 400;
+const GHOST_DRAIN_MS = 320;
+const BANNER_ROUND_MS = 900;
+const BANNER_FIGHT_MS = 700;
+const BANNER_PHASE_MS = 1500;
+const HEALTH_PER_TICK = 20;
+const PORTRAIT_SIZE = 48;
+const PLATE_SIZE = 9;
+const ICON_SIZE = 24;
+const MAX_FRAME_MS = 200;
+
+const PHASE_LABELS: Record<MatchPhase, string> = {
+  WAITING: 'Waiting for players',
+  COUNTDOWN: 'Get ready',
+  IN_ROUND: 'Round in progress',
+  ROUND_END: 'Round over',
+  MATCH_END: 'Match over',
+};
+
+const BANNER_LABELS: Record<MatchPhase, string> = {
+  WAITING: 'STAND BY',
+  COUNTDOWN: 'GET READY',
+  IN_ROUND: 'FIGHT',
+  ROUND_END: 'ROUND OVER',
+  MATCH_END: 'MATCH OVER',
+};
 
 export class Hud {
-  private readonly phase: Line;
-  private readonly timer: Line;
-  private readonly status: Line;
-  private readonly health: Bar;
-  private readonly chakra: Bar;
-  private readonly shield: Line;
-  private readonly build: Line;
-  private readonly abilityList: HTMLElement;
-  private readonly chips: AbilityChip[] = [];
+  private readonly match: MatchPanel;
+  private readonly banner: Banner;
+  private readonly corner: CornerPanel;
+  private readonly vitals: VitalsPanel;
+  private readonly abilities: AbilityBar;
 
   constructor(root: HTMLElement) {
     root.replaceChildren();
+    root.classList.add('hud');
+    this.match = new MatchPanel(root);
+    this.banner = new Banner(root);
+    this.corner = new CornerPanel(root);
+    this.vitals = new VitalsPanel(root);
+    this.abilities = new AbilityBar(root);
+  }
+
+  // Le HUD est mis à jour à chaque image: chaque écriture DOM est conditionnée au changement.
+  update(view: HudView): void {
+    const now = performance.now();
+    this.match.update(view);
+    this.banner.update(view, now);
+    this.corner.update(view);
+    this.vitals.update(view, now);
+    this.abilities.update(view);
+  }
+}
+
+class MatchPanel {
+  private readonly round = new PixelText({ scale: 2, color: P.wood[2] });
+  private readonly timer = new PixelText({ scale: 3 });
+  private readonly timerBox: HTMLElement;
+  private readonly score: HTMLElement;
+  private readonly phase: HTMLElement;
+  private readonly status: HTMLElement;
+  private readonly spectate: HTMLElement;
+  private readonly rows = new Map<string, PixelText>();
+  private teamsKey = '';
+
+  constructor(root: HTMLElement) {
     const top = element('div', 'hud-top', root);
-    this.phase = createLine(top, 'hud-phase');
-    this.timer = createLine(top, 'hud-timer');
-    this.status = createLine(top, 'hud-status');
-    const panel = element('div', 'hud-panel', root);
-    this.health = createBar(panel, 'hud-bar-health');
-    this.chakra = createBar(panel, 'hud-bar-chakra');
-    this.shield = createLine(panel, 'hud-shield');
-    this.abilityList = element('div', 'hud-abilities', root);
-    this.addSettings(root);
-    this.build = createLine(panel, 'hud-build');
+    const panel = element('div', 'hud-match hud-ink', top);
+    panel.appendChild(this.round.canvas);
+    this.score = element('div', 'hud-match-score', panel);
+    this.timerBox = document.createElement('div');
+    this.timerBox.className = 'hud-match-timer';
+    this.timerBox.appendChild(this.timer.canvas);
+    this.phase = element('div', 'hud-match-phase', panel);
+    const under = element('div', 'hud-under', top);
+    this.status = element('div', 'hud-status', under);
+    this.spectate = element('div', 'hud-spectate', under);
+  }
+
+  update(view: HudView): void {
+    this.round.set(view.round > 0 ? `ROUND ${view.round}` : '');
+    this.updateScores(view.scores);
+    this.timer.set(view.roundTimer ?? '');
+    setText(this.phase, PHASE_LABELS[view.matchPhase]);
+    setText(this.status, view.status);
+    setText(this.spectate, view.spectating === null ? '' : `SPECTATING ${view.spectating}`);
+  }
+
+  private updateScores(scores: Record<TeamId, number>): void {
+    const codes = teamCodes(Object.keys(scores));
+    const key = [...codes.keys()].join(',');
+    if (key !== this.teamsKey) {
+      this.teamsKey = key;
+      this.rebuild(codes);
+    }
+    for (const [teamId, score] of this.rows) score.set(String(scores[teamId] ?? 0));
+  }
+
+  // Le minuteur s'intercale entre les deux premières équipes; au-delà, les équipes passent à la ligne.
+  private rebuild(codes: Map<string, number>): void {
+    this.rows.clear();
+    this.score.replaceChildren();
+    let index = 0;
+    for (const [teamId, code] of codes) {
+      if (index === 1) this.score.appendChild(this.timerBox);
+      const root = element('div', 'hud-team', this.score);
+      const plate = document.createElement('canvas');
+      plate.className = 'hud-team-plate';
+      plate.width = PLATE_SIZE;
+      plate.height = PLATE_SIZE;
+      plate.getContext('2d')?.drawImage(teamPlateCanvas(code), 0, 0);
+      const score = new PixelText({ scale: 2, color: teamColor(code) });
+      root.append(plate, score.canvas);
+      this.rows.set(teamId, score);
+      index++;
+    }
+    if (index < 2) this.score.appendChild(this.timerBox);
+  }
+}
+
+interface BannerStep {
+  text: string;
+  durationMs: number;
+}
+
+class Banner {
+  private readonly root: HTMLElement;
+  private readonly text = new PixelText({ scale: 4 });
+  private queue: BannerStep[] = [];
+  private phase: MatchPhase | null = null;
+  private current = '';
+  private untilMs = 0;
+
+  constructor(root: HTMLElement) {
+    this.root = element('div', 'hud-banner hud-ink', root);
+    this.root.appendChild(this.text.canvas);
+    this.root.hidden = true;
+  }
+
+  update(view: HudView, now: number): void {
+    if (this.phase !== view.matchPhase) {
+      const previous = this.phase;
+      this.phase = view.matchPhase;
+      // Rejoindre une manche en cours ne doit pas jouer le bandeau de son début.
+      if (previous !== null) this.enqueue(previous, view);
+    }
+    if (this.current !== '' && now >= this.untilMs) this.current = '';
+    while (this.current === '') {
+      const step = this.queue.shift();
+      if (step === undefined) break;
+      if (step.text === '') continue;
+      this.current = step.text;
+      this.untilMs = now + step.durationMs;
+    }
+    this.text.set(this.current);
+    if (this.root.hidden === (this.current !== '')) this.root.hidden = this.current === '';
+  }
+
+  private enqueue(previous: MatchPhase, view: HudView): void {
+    if (view.matchPhase === 'IN_ROUND') {
+      this.queue = [
+        { text: view.round > 0 ? `ROUND ${view.round}` : '', durationMs: BANNER_ROUND_MS },
+        { text: BANNER_LABELS.IN_ROUND, durationMs: BANNER_FIGHT_MS },
+      ];
+    } else if (previous === 'IN_ROUND') {
+      this.queue = [{ text: BANNER_LABELS[view.matchPhase], durationMs: BANNER_PHASE_MS }];
+    } else {
+      return;
+    }
+    this.current = '';
+    this.untilMs = 0;
+  }
+}
+
+class CornerPanel {
+  private readonly ping: HTMLElement;
+  private readonly value = new PixelText({ scale: 2 });
+
+  constructor(root: HTMLElement) {
+    const corner = element('div', 'hud-corner', root);
+    this.ping = element('div', 'hud-ping hud-ink', corner);
+    const unit = new PixelText({ scale: 2, color: P.edge });
+    unit.set('MS');
+    this.ping.append(this.value.canvas, unit.canvas);
+    this.addSettings(corner);
+  }
+
+  update(view: HudView): void {
+    const hidden = view.rttMs === null;
+    if (this.ping.hidden !== hidden) this.ping.hidden = hidden;
+    if (view.rttMs !== null) this.value.set(String(Math.round(view.rttMs)));
   }
 
   private addSettings(root: HTMLElement): void {
@@ -92,8 +246,16 @@ export class Hud {
     details.className = 'hud-settings';
     root.appendChild(details);
     const summary = document.createElement('summary');
-    summary.textContent = 'Visuels';
+    summary.className = 'hud-settings-button hud-ink';
+    summary.title = 'Visuels';
+    const gear = document.createElement('canvas');
+    gear.className = 'hud-settings-gear';
+    gear.width = 11;
+    gear.height = 11;
+    gear.getContext('2d')?.drawImage(gearCanvas(), 0, 0);
+    summary.appendChild(gear);
     details.appendChild(summary);
+    const list = element('div', 'hud-settings-list hud-ink', details);
     for (const [key, label] of [
       ['motion', 'Vent et eau animés'],
       ['flashes', 'Flashs d’impact'],
@@ -105,167 +267,289 @@ export class Hud {
       input.checked = visualSettings()[key];
       input.addEventListener('change', () => setVisualSetting(key, input.checked));
       row.append(input, document.createTextNode(label));
-      details.appendChild(row);
+      list.appendChild(row);
     }
   }
+}
 
-  // Le HUD est mis à jour à chaque image: chaque écriture DOM est conditionnée au changement.
+class VitalsPanel {
+  private readonly portrait: HTMLCanvasElement;
+  private readonly plate: HTMLCanvasElement;
+  private readonly health: Gauge;
+  private readonly chakra: Gauge;
+  private skin = -1;
+  private code = -1;
+  private build = '';
+
+  constructor(root: HTMLElement) {
+    const panel = element('div', 'hud-vitals hud-ink', root);
+    const frame = element('div', 'hud-portrait', panel);
+    this.portrait = document.createElement('canvas');
+    this.portrait.className = 'hud-portrait-art';
+    this.portrait.width = PORTRAIT_SIZE;
+    this.portrait.height = PORTRAIT_SIZE;
+    this.portrait.setAttribute('role', 'img');
+    this.plate = document.createElement('canvas');
+    this.plate.className = 'hud-portrait-team';
+    this.plate.width = PLATE_SIZE;
+    this.plate.height = PLATE_SIZE;
+    frame.append(this.portrait, this.plate);
+    const gauges = element('div', 'hud-gauges', panel);
+    this.health = new Gauge(gauges, 'hud-gauge-health', P.ivory, true);
+    this.chakra = new Gauge(gauges, 'hud-gauge-chakra', P.cyan, false);
+  }
+
+  update(view: HudView, now: number): void {
+    if (this.skin !== view.skin) {
+      this.skin = view.skin;
+      this.portrait.getContext('2d')?.drawImage(portraitCanvas(view.skin), 0, 0);
+    }
+    if (this.code !== view.teamCode) {
+      this.code = view.teamCode;
+      this.plate.getContext('2d')?.clearRect(0, 0, PLATE_SIZE, PLATE_SIZE);
+      this.plate.getContext('2d')?.drawImage(teamPlateCanvas(view.teamCode), 0, 0);
+    }
+    // Le détail de build reste dans la vue mais sort du panneau: il n'est plus qu'un libellé.
+    if (this.build !== view.buildSummary) {
+      this.build = view.buildSummary;
+      this.portrait.setAttribute('aria-label', view.buildSummary);
+    }
+    this.health.update(view.health, view.maxHealth, view.shield, now);
+    this.chakra.update(view.chakra, view.maxChakra, 0, now);
+  }
+}
+
+class Gauge {
+  private readonly track: HTMLElement;
+  private readonly ghost: HTMLElement;
+  private readonly fill: HTMLElement;
+  private readonly overlay: HTMLElement;
+  private readonly value: PixelText;
+  private readonly shieldGlyph: HTMLCanvasElement;
+  private ghostValue = -1;
+  private holdUntil = 0;
+  private sampledAt = 0;
+  private fillWidth = '';
+  private ghostWidth = '';
+  private overlayLeft = '';
+  private overlayWidth = '';
+  private tickWidth = '';
+  private shieldShown = true;
+
+  constructor(parent: HTMLElement, className: string, color: string, ticks: boolean) {
+    const root = element('div', `hud-gauge ${className}`, parent);
+    this.track = element('div', 'hud-gauge-track', root);
+    if (ticks) this.track.classList.add('has-ticks');
+    this.ghost = element('div', 'hud-gauge-ghost', this.track);
+    this.fill = element('div', 'hud-gauge-fill', this.track);
+    this.overlay = element('div', 'hud-gauge-shield', this.track);
+    const read = element('div', 'hud-gauge-read', root);
+    this.shieldGlyph = document.createElement('canvas');
+    this.shieldGlyph.className = 'hud-gauge-shield-glyph';
+    this.shieldGlyph.width = 7;
+    this.shieldGlyph.height = 8;
+    this.shieldGlyph.getContext('2d')?.drawImage(shieldGlyphCanvas(), 0, 0);
+    this.value = new PixelText({ scale: 2, color });
+    read.append(this.shieldGlyph, this.value.canvas);
+  }
+
+  update(value: number, max: number, shield: number, now: number): void {
+    this.trackGhost(value, max, now);
+    const ratio = max > 0 ? clamp01(value / max) : 0;
+    const fill = percent(ratio);
+    if (this.fillWidth !== fill) {
+      this.fillWidth = fill;
+      this.fill.style.width = fill;
+    }
+    const ghost = percent(max > 0 ? clamp01(this.ghostValue / max) : 0);
+    if (this.ghostWidth !== ghost) {
+      this.ghostWidth = ghost;
+      this.ghost.style.width = ghost;
+    }
+    const shieldRatio = max > 0 ? clamp01(shield / max) : 0;
+    const left = percent(Math.min(ratio, 1 - shieldRatio));
+    const width = percent(shieldRatio);
+    if (this.overlayLeft !== left) {
+      this.overlayLeft = left;
+      this.overlay.style.left = left;
+    }
+    if (this.overlayWidth !== width) {
+      this.overlayWidth = width;
+      this.overlay.style.width = width;
+    }
+    const shown = shield > 0;
+    if (this.shieldShown !== shown) {
+      this.shieldShown = shown;
+      this.shieldGlyph.hidden = !shown;
+      this.overlay.hidden = !shown;
+    }
+    const tick = max > 0 ? percent(HEALTH_PER_TICK / max) : '100%';
+    if (this.tickWidth !== tick) {
+      this.tickWidth = tick;
+      this.track.style.setProperty('--hud-tick', tick);
+    }
+    this.value.set(`${Math.round(value)}/${Math.round(max)}`);
+  }
+
+  // Le fantôme de dégâts tient la valeur perdue puis la rejoint: le coup se lit après coup.
+  private trackGhost(value: number, max: number, now: number): void {
+    const elapsed = Math.min(MAX_FRAME_MS, Math.max(0, now - this.sampledAt));
+    this.sampledAt = now;
+    if (this.ghostValue < 0 || value >= this.ghostValue) {
+      this.ghostValue = value;
+      this.holdUntil = 0;
+      return;
+    }
+    if (this.holdUntil === 0) this.holdUntil = now + GHOST_HOLD_MS;
+    else if (now >= this.holdUntil)
+      this.ghostValue = Math.max(value, this.ghostValue - (max * elapsed) / GHOST_DRAIN_MS);
+  }
+}
+
+class AbilityBar {
+  private readonly root: HTMLElement;
+  private readonly slots: Slot[] = [];
+
+  constructor(root: HTMLElement) {
+    this.root = element('div', 'hud-abilities', root);
+  }
+
   update(view: HudView): void {
-    updateLine(this.phase, phaseText(view));
-    updateLine(this.timer, view.roundTimer ?? '');
-    updateLine(this.status, statusText(view));
-    updateBar(this.health, view.health, view.maxHealth);
-    updateBar(this.chakra, view.chakra, view.maxChakra);
-    updateLine(this.shield, view.shield > 0 ? `shield ${Math.round(view.shield)}` : '');
-    updateLine(this.build, view.buildSummary);
-    this.updateAbilities(view.abilities);
+    while (this.slots.length < view.abilities.length) this.slots.push(new Slot(this.root));
+    for (let i = 0; i < this.slots.length; i++) this.slots[i]?.update(view.abilities[i]);
+  }
+}
+
+class Slot {
+  private readonly root: HTMLElement;
+  private readonly frame: HTMLElement;
+  private readonly icon: HTMLCanvasElement;
+  private readonly veil: HTMLElement;
+  private readonly lock: HTMLCanvasElement;
+  private readonly cost: HTMLElement;
+  private readonly costText = new PixelText({ scale: 2, color: P.cyan });
+  private readonly binding = new PixelText({ scale: 2 });
+  private readonly timer = new PixelText({ scale: 2, color: P.wood[2] });
+  private readonly name: HTMLElement;
+  private family = '';
+  private hidden = false;
+  private cooling = false;
+  private blocked: HudAbilityBlock | null = null;
+  private height = '';
+  private label = '';
+  private nameText = '';
+
+  constructor(parent: HTMLElement) {
+    this.root = element('div', 'hud-slot', parent);
+    this.frame = element('div', 'hud-slot-frame', this.root);
+    this.icon = document.createElement('canvas');
+    this.icon.className = 'hud-slot-icon';
+    this.icon.width = ICON_SIZE;
+    this.icon.height = ICON_SIZE;
+    this.frame.appendChild(this.icon);
+    this.veil = element('div', 'hud-slot-veil', this.frame);
+    this.lock = document.createElement('canvas');
+    this.lock.className = 'hud-slot-lock';
+    this.lock.width = 8;
+    this.lock.height = 10;
+    this.lock.getContext('2d')?.drawImage(lockCanvas(), 0, 0);
+    this.lock.hidden = true;
+    this.frame.appendChild(this.lock);
+    const timerBox = element('div', 'hud-slot-timer', this.frame);
+    timerBox.appendChild(this.timer.canvas);
+    const bindingBox = element('div', 'hud-slot-key', this.frame);
+    bindingBox.appendChild(this.binding.canvas);
+    this.cost = element('div', 'hud-slot-cost', this.frame);
+    element('div', 'hud-slot-pip', this.cost);
+    this.cost.appendChild(this.costText.canvas);
+    this.name = element('div', 'hud-slot-name', this.root);
   }
 
-  private updateAbilities(abilities: readonly HudAbilityView[]): void {
-    while (this.chips.length < abilities.length) this.chips.push(createChip(this.abilityList));
-    for (let i = 0; i < this.chips.length; i++) {
-      const chip = this.chips[i];
-      if (chip === undefined) continue;
-      updateChip(chip, abilities[i]);
+  update(ability: HudAbilityView | undefined): void {
+    const hidden = ability === undefined;
+    if (this.hidden !== hidden) {
+      this.hidden = hidden;
+      this.root.hidden = hidden;
+    }
+    if (ability === undefined) return;
+    const family = ability.family ?? 'melee';
+    if (this.family !== family) {
+      this.family = family;
+      this.root.dataset.family = family;
+      this.icon.getContext('2d')?.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+      this.icon.getContext('2d')?.drawImage(iconCanvas(family), 0, 0);
+    }
+    if (this.nameText !== ability.name) {
+      this.nameText = ability.name;
+      setText(this.name, ability.name);
+    }
+    this.updateStates(ability);
+    this.binding.set(ability.binding);
+    this.costText.set(ability.chakraCost > 0 ? String(ability.chakraCost) : '');
+    if (this.cost.hidden !== (ability.chakraCost === 0))
+      this.cost.hidden = ability.chakraCost === 0;
+    const label = `${ability.name}, ${ability.binding}, ${stateLabel(ability)}`;
+    if (this.label !== label) {
+      this.label = label;
+      this.root.setAttribute('aria-label', label);
     }
   }
-}
 
-function updateChip(chip: AbilityChip, ability: HudAbilityView | undefined): void {
-  const hidden = ability === undefined;
-  if (chip.hidden !== hidden) {
-    chip.hidden = hidden;
-    chip.root.hidden = hidden;
+  private updateStates(ability: HudAbilityView): void {
+    const blocked = ability.reason ?? (ability.available === false ? 'control' : null);
+    if (this.blocked !== blocked) {
+      this.blocked = blocked;
+      this.root.classList.toggle('is-locked', blocked === 'control');
+      this.root.classList.toggle('is-starved', blocked === 'chakra');
+      this.lock.hidden = blocked !== 'control';
+      this.costText.setColor(blocked === 'chakra' ? P.danger : P.cyan);
+    }
+    const cooling = ability.remainingMs > 0;
+    if (this.cooling !== cooling) {
+      // Le passage de recharge à prêt rejoue l'éclair: la classe est retirée puis reposée.
+      this.cooling = cooling;
+      this.root.classList.toggle('is-cooling', cooling);
+      if (!cooling && blocked === null) this.flash();
+    }
+    this.timer.set(cooling ? remainingLabel(ability.remainingMs) : '');
+    const ratio = ability.cooldownMs > 0 ? clamp01(ability.remainingMs / ability.cooldownMs) : 0;
+    const height = `${Math.round(ratio * 100)}%`;
+    if (this.height !== height) {
+      this.height = height;
+      this.veil.style.height = height;
+    }
   }
-  if (ability === undefined) return;
-  const family = ability.family ?? 'melee';
-  if (chip.family !== family) {
-    chip.family = family;
-    chip.root.dataset.family = family;
-    chip.icon.getContext('2d')?.drawImage(iconCanvas(family), 0, 0);
-  }
-  chip.root.classList.toggle('is-unavailable', ability.available === false);
-  chip.root.setAttribute(
-    'aria-label',
-    `${ability.name}, ${ability.binding}, ${ability.available === false ? 'indisponible' : ability.remainingMs > 0 ? 'recharge' : 'prêt'}`,
-  );
-  chip.root.title = ability.name;
-  const cooling = ability.remainingMs > 0;
-  if (chip.cooling !== cooling) {
-    chip.cooling = cooling;
-    chip.root.classList.toggle('is-cooling', cooling);
-  }
-  if (chip.bindingText !== ability.binding) {
-    chip.bindingText = ability.binding;
-    chip.binding.textContent = ability.binding;
-  }
-  if (chip.nameText !== ability.name) {
-    chip.nameText = ability.name;
-    chip.name.textContent = ability.name;
-  }
-  const cost = ability.chakraCost > 0 ? `${ability.chakraCost} ck` : 'free';
-  if (chip.costText !== cost) {
-    chip.costText = cost;
-    chip.cost.textContent = cost;
-  }
-  const timer = cooling
-    ? `${(ability.remainingMs / MS_PER_SECOND).toFixed(ability.remainingMs < 1000 ? 1 : 0)}s`
-    : ability.available === false
-      ? '—'
-      : 'Prêt';
-  if (chip.timerText !== timer) {
-    chip.timerText = timer;
-    chip.timer.textContent = timer;
-  }
-  const ratio = ability.cooldownMs > 0 ? ability.remainingMs / ability.cooldownMs : 0;
-  const height = `${Math.round(clamp01(ratio) * 100)}%`;
-  if (chip.height !== height) {
-    chip.height = height;
-    chip.cooldown.style.height = height;
+
+  private flash(): void {
+    this.frame.classList.remove('is-flash');
+    void this.frame.offsetWidth;
+    this.frame.classList.add('is-flash');
   }
 }
 
-function phaseText(view: HudView): string {
-  const scores = Object.entries(view.scores)
-    .map(([teamId, score]) => `${teamId} ${score}`)
-    .join(' · ');
-  const round = view.round > 0 ? ` — round ${view.round}` : '';
-  return scores.length > 0
-    ? `${view.matchPhase}${round} — ${scores}`
-    : `${view.matchPhase}${round}`;
+function remainingLabel(remainingMs: number): string {
+  const seconds = remainingMs / MS_PER_SECOND;
+  return remainingMs < MS_PER_SECOND ? seconds.toFixed(1) : String(Math.ceil(seconds));
 }
 
-function statusText(view: HudView): string {
-  const parts = [view.status];
-  if (view.spectating !== null) parts.push(`Spectating ${view.spectating}`);
-  if (view.rttMs !== null) parts.push(`${Math.round(view.rttMs)} ms`);
-  return parts.join(' · ');
+function stateLabel(ability: HudAbilityView): string {
+  if (ability.reason === 'control') return 'indisponible';
+  if (ability.reason === 'chakra') return 'chakra insuffisant';
+  return ability.remainingMs > 0 ? 'recharge' : 'prêt';
 }
 
-function updateBar(bar: Bar, value: number, max: number): void {
-  const width = `${clamp01(max > 0 ? value / max : 0) * 100}%`;
-  if (bar.width !== width) {
-    bar.width = width;
-    bar.fill.style.width = width;
-  }
-  const text = `${Math.round(value)} / ${Math.round(max)}`;
-  if (bar.text !== text) {
-    bar.text = text;
-    bar.label.textContent = text;
-  }
+function percent(ratio: number): string {
+  return `${(clamp01(ratio) * 100).toFixed(2)}%`;
 }
 
-function updateLine(line: Line, text: string): void {
-  if (line.text === text) return;
-  line.text = text;
-  line.node.textContent = text;
-  line.node.hidden = text.length === 0;
+function setText(node: HTMLElement, text: string): void {
+  if (node.textContent === text) return;
+  node.textContent = text;
+  node.hidden = text.length === 0;
 }
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
-}
-
-function createBar(parent: HTMLElement, className: string): Bar {
-  const root = element('div', `hud-bar ${className}`, parent);
-  return {
-    fill: element('div', 'hud-bar-fill', root),
-    label: element('div', 'hud-bar-label', root),
-    width: '100%',
-    text: '',
-  };
-}
-
-function createLine(parent: HTMLElement, className: string): Line {
-  const node = element('div', className, parent);
-  node.hidden = true;
-  return { node, text: '' };
-}
-
-function createChip(parent: HTMLElement): AbilityChip {
-  const root = element('div', 'hud-chip', parent);
-  const icon = document.createElement('canvas');
-  icon.width = 24;
-  icon.height = 24;
-  icon.className = 'hud-chip-icon';
-  root.appendChild(icon);
-  return {
-    icon,
-    family: '',
-    root,
-    cooldown: element('div', 'hud-chip-cooldown', root),
-    binding: element('div', 'hud-chip-binding', root),
-    name: element('div', 'hud-chip-name', root),
-    cost: element('div', 'hud-chip-cost', root),
-    timer: element('div', 'hud-chip-timer', root),
-    hidden: false,
-    cooling: false,
-    bindingText: '',
-    nameText: '',
-    costText: '',
-    timerText: '',
-    height: '0%',
-  };
 }
 
 function element(tag: string, className: string, parent: HTMLElement): HTMLElement {
