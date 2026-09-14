@@ -206,6 +206,7 @@ describe('buildRenderFrame', () => {
     expect(frame.projectiles).toEqual([
       {
         id: 'theirs',
+        dangerous: true,
         position: { x: 12, y: 34 },
         radius: 4,
         color: '#ff6a3d',
@@ -231,6 +232,9 @@ describe('buildRenderFrame', () => {
     };
     const frame = buildRenderFrame(inputFor(sim, { tick: 5 }));
     expect(frame.players[0]?.telegraph).toEqual({
+      dangerous: false,
+      family: 'projectile',
+      width: undefined,
       kind: 'orb',
       color: '#ff6a3d',
       size: 8,
@@ -280,7 +284,9 @@ describe('buildRenderFrame', () => {
     const frame = buildRenderFrame(inputFor(sim, { tick: 9 }));
     expect(frame.players[0]?.telegraph).toMatchObject({
       kind: 'ground-mark',
-      size: 24,
+      family: 'wall',
+      size: 48,
+      width: 8,
       anchor: { x: 42, y: 20 },
     });
   });
@@ -336,7 +342,14 @@ describe('buildRenderFrame', () => {
     sim.world.pending['theirs'] = pendingOf('theirs', 'other', 40);
     const frame = buildRenderFrame(inputFor(sim, { tick: 10 }));
     expect(frame.zones).toEqual([
-      { id: 'z1', position: { x: 60, y: 70 }, radius: 40, color: '#c9a26b', progress: 0.25 },
+      {
+        id: 'z1',
+        dangerous: false,
+        position: { x: 60, y: 70 },
+        radius: 40,
+        color: '#c9a26b',
+        progress: 0.25,
+      },
     ]);
   });
 

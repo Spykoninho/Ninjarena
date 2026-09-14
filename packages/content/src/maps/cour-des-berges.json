@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "id": "cour-des-berges",
+  "name": "Cour des berges",
+  "tileset": "default",
+  "width": 32,
+  "height": 24,
+  "layers": {
+    "ground": [
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 2, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2]
+    ],
+    "objects": [
+      [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, 4, null, null, null, null, null, null, null, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, 8, 4, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, 8, null, null, null, null, 5, 5, 5, 5, 5, null, null, null, null, null, null, null, null, null, 8, null, null, null, null, null, null, 3],
+      [3, 8, 8, null, null, 8, null, null, null, null, 8, null, null, null, 8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, 4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3, 3, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, 8, 8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, 4, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, 8, 8, null, null, null, null, null, 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, 4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, 8, null, null, null, null, null, null, null, null, null, null, null, null, 3, 3, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, 4, null, null, 8, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, 8, null, 4, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 3],
+      [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    ]
+  },
+  "colliders": [],
+  "spawns": [
+    {
+      "x": 9,
+      "y": 7,
+      "team": 0
+    },
+    {
+      "x": 9,
+      "y": 15,
+      "team": 0
+    },
+    {
+      "x": 9,
+      "y": 20,
+      "team": 0
+    },
+    {
+      "x": 23,
+      "y": 7,
+      "team": 1
+    },
+    {
+      "x": 23,
+      "y": 15,
+      "team": 1
+    },
+    {
+      "x": 23,
+      "y": 20,
+      "team": 1
+    },
+    {
+      "x": 9,
+      "y": 5
+    },
+    {
+      "x": 23,
+      "y": 5
+    },
+    {
+      "x": 9,
+      "y": 21
+    },
+    {
+      "x": 23,
+      "y": 21
+    }
+  ]
+}

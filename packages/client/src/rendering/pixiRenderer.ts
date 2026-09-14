@@ -1,22 +1,33 @@
 import type { LoadedMap, PlayerId, TilesetDefinition, Vec2 } from '@ninjarena/core';
-import { Application, Container, Graphics, TextureStyle } from 'pixi.js';
+import { Application, Container, RenderTexture, Sprite, TextureStyle } from 'pixi.js';
 import type { VisualCue } from '../feedback/cues';
 import { cameraTranslation } from './cameraTranslation';
+import { visualSettings } from './visualSettings';
+import { MapArt } from './mapArt';
+import { SpriteArt } from './art/spriteArt';
+import { ART_SCALE, VIEW_WIDTH, VIEW_HEIGHT, viewport } from './art/presentation';
 import { EffectsLayer } from './effectsLayer';
 import { EntityLayer } from './entityLayer';
 import type { RenderFrame, Renderer } from './renderer';
 
 const BACKGROUND_COLOR = '#101014';
-const EMPTY_TILE_ID = -1;
-const DASH_TRAIL_INTERVAL_MS = 35;
+const DASH_TRAIL_INTERVAL_MS = 65;
 
 export class PixiRenderer implements Renderer {
   private readonly zoom: number;
   private readonly worldContainer = new Container();
-  private readonly entityLayer = new EntityLayer();
+  private readonly art = new SpriteArt();
+  private readonly entityLayer = new EntityLayer(this.art);
   private readonly effectsLayer = new EffectsLayer();
   private app: Application | null = null;
-  private mapLayer: Container | null = null;
+  private mapLayer: MapArt | null = null;
+  private target: RenderTexture | null = null;
+  private screen: Sprite | null = null;
+  private screenScale = 1;
+  private viewportKey = '';
+  private host: HTMLElement | null = null;
+  private elapsed = 0;
+  private mapBounds = { x: 320, y: 180 };
   private shake: Vec2 = { x: 0, y: 0 };
   private translation: Vec2 = { x: 0, y: 0 };
   private dashTrailMs = 0;
@@ -37,44 +48,80 @@ export class PixiRenderer implements Renderer {
       background: BACKGROUND_COLOR,
     });
     container.appendChild(app.canvas);
-    this.worldContainer.scale.set(this.zoom);
+    this.host = container.parentElement;
+    this.worldContainer.scale.set(ART_SCALE);
     this.worldContainer.addChild(this.entityLayer.container, this.effectsLayer.container);
-    app.stage.addChild(this.worldContainer);
+    this.target = RenderTexture.create({ width: VIEW_WIDTH, height: VIEW_HEIGHT, resolution: 1 });
+    this.screen = new Sprite(this.target);
+    app.stage.addChild(this.screen);
     this.app = app;
   }
 
   setMap(map: LoadedMap, tileset: TilesetDefinition): void {
-    const layer = new Container();
-    layer.addChild(tileLayer(map, tileset, (tx, ty) => map.groundTileIdAt(tx, ty)));
-    layer.addChild(tileLayer(map, tileset, (tx, ty) => map.objectTileIdAt(tx, ty)));
-    this.mapLayer?.destroy({ children: true });
-    this.worldContainer.addChildAt(layer, 0);
+    this.mapBounds = { x: map.widthInUnits, y: map.heightInUnits };
+    this.mapLayer?.dispose();
+    this.entityLayer.clear();
+    this.effectsLayer.clear();
+    this.elapsed = 0;
+    const layer = new MapArt(map, tileset, this.art);
+    layer.attachDepth(this.entityLayer.depth);
+    this.worldContainer.addChildAt(layer.ground, 0);
     this.mapLayer = layer;
   }
 
   render(frame: RenderFrame, elapsedMs: number): void {
     const app = this.app;
     if (app === null) return;
-    this.translation = cameraTranslation(frame.camera, this.zoom, {
-      x: app.screen.width,
-      y: app.screen.height,
-    });
-    // Le tremblement ne secoue que l'image: `worldToScreen` garde la translation nette.
+    if (!this.screen || !this.target) return;
+    const fit = viewport(app.screen.width, app.screen.height, this.zoom);
+    this.screenScale = fit.zoom;
+    const key = `${app.screen.width}:${app.screen.height}:${fit.zoom}`;
+    if (key !== this.viewportKey) {
+      this.viewportKey = key;
+      const style = this.host?.style;
+      style?.setProperty('--combat-top', `${Math.max(0, fit.y - 84)}px`);
+      style?.setProperty(
+        '--combat-bottom',
+        `${Math.max(0, app.screen.height - fit.y - VIEW_HEIGHT * fit.zoom - 112)}px`,
+      );
+      style?.setProperty('--combat-side', `${Math.max(0, fit.x - 12)}px`);
+    }
+    this.screen.position.set(fit.x, fit.y);
+    this.screen.scale.set(fit.zoom);
+    const center = {
+      x: Math.max(
+        Math.min(VIEW_WIDTH / 4, this.mapBounds.x / 2),
+        Math.min(this.mapBounds.x - VIEW_WIDTH / 4, frame.camera.x),
+      ),
+      y: Math.max(
+        Math.min(VIEW_HEIGHT / 4, this.mapBounds.y / 2),
+        Math.min(this.mapBounds.y - VIEW_HEIGHT / 4, frame.camera.y),
+      ),
+    };
+    const camera = cameraTranslation(center, ART_SCALE, { x: VIEW_WIDTH, y: VIEW_HEIGHT });
+    this.translation = { x: fit.x + camera.x * fit.zoom, y: fit.y + camera.y * fit.zoom };
     this.worldContainer.position.set(
-      this.translation.x + Math.round(this.shake.x * this.zoom),
-      this.translation.y + Math.round(this.shake.y * this.zoom),
+      camera.x + Math.round(this.shake.x * ART_SCALE),
+      camera.y + Math.round(this.shake.y * ART_SCALE),
     );
+    this.elapsed += elapsedMs;
+    this.mapLayer?.advance(visualSettings().motion ? this.elapsed : 0, frame.players);
     this.entityLayer.sync(frame);
     this.entityLayer.advance(elapsedMs);
     this.effectsLayer.advance(elapsedMs);
     this.trailDashers(frame, elapsedMs);
+    app.renderer.render({ container: this.worldContainer, target: this.target, clear: true });
   }
 
   showCue(cue: VisualCue): void {
     switch (cue.kind) {
+      case 'portal':
+        return this.effectsLayer.portal(cue.position, cue.arriving);
       case 'hitFlash':
+        if (!visualSettings().flashes) return;
         return this.entityLayer.flashPlayer(cue.playerId);
       case 'castFlash':
+        if (!visualSettings().flashes) return;
         return this.entityLayer.flashPlayer(cue.playerId, colorValue(cue.color));
       case 'dashTrail':
         return this.afterimage(cue.playerId);
@@ -100,20 +147,28 @@ export class PixiRenderer implements Renderer {
   }
 
   setShake(offset: Vec2): void {
-    this.shake = offset;
+    this.shake = visualSettings().shake ? offset : { x: 0, y: 0 };
   }
 
   worldToScreen(position: Vec2): Vec2 {
     return {
-      x: this.translation.x + position.x * this.zoom,
-      y: this.translation.y + position.y * this.zoom,
+      x: this.translation.x + position.x * ART_SCALE * this.screenScale,
+      y: this.translation.y + position.y * ART_SCALE * this.screenScale,
     };
   }
 
   dispose(): void {
-    this.entityLayer.clear();
+    for (const name of ['--combat-top', '--combat-bottom', '--combat-side'])
+      this.host?.style.removeProperty(name);
+    this.mapLayer?.dispose();
+    this.entityLayer.dispose();
     this.effectsLayer.clear();
+    this.worldContainer.destroy({ children: true });
+    this.art.dispose();
     this.app?.destroy({ removeView: true }, { children: true });
+    this.target?.destroy(true);
+    this.target = null;
+    this.screen = null;
     this.app = null;
     this.mapLayer = null;
   }
@@ -130,7 +185,8 @@ export class PixiRenderer implements Renderer {
 
   private afterimage(playerId: PlayerId): void {
     const sample = this.entityLayer.playerSample(playerId);
-    if (sample !== null) this.effectsLayer.afterimage(sample.position, sample.color);
+    if (sample !== null)
+      this.effectsLayer.afterimage(sample.position, sample.color, sample.texture);
   }
 
   // Un effet ancré sur un joueur part du corps dessiné: le monde prédit est en avance sur lui.
@@ -143,23 +199,4 @@ export class PixiRenderer implements Renderer {
 
 function colorValue(color: string): number {
   return Number.parseInt(color.slice(1), 16);
-}
-
-function tileLayer(
-  map: LoadedMap,
-  tileset: TilesetDefinition,
-  tileIdAt: (tx: number, ty: number) => number,
-): Graphics {
-  const g = new Graphics();
-  const size = map.tileSize;
-  for (let ty = 0; ty < map.heightInTiles; ty++) {
-    for (let tx = 0; tx < map.widthInTiles; tx++) {
-      const id = tileIdAt(tx, ty);
-      if (id === EMPTY_TILE_ID) continue;
-      const tile = tileset.tiles[String(id)];
-      if (tile === undefined) continue;
-      g.rect(tx * size, ty * size, size, size).fill(tile.color);
-    }
-  }
-  return g;
 }

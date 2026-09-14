@@ -699,3 +699,200 @@ body {
   font-size: 11px;
   opacity: 0.6;
 }
+
+/* Veilleurs du Sceau Fendu — shared art bible 1.4 */
+:root {
+  --hud-background: rgba(23, 38, 49, 0.94);
+  --hud-border: #49616b;
+  --hud-text: #f5edcd;
+  --hud-health: #ff7867;
+  --hud-chakra: #75dce4;
+  --hud-shield: #92d8b4;
+}
+body {
+  background: #101c24;
+}
+.hud-panel {
+  width: 210px;
+  bottom: 20px;
+  left: 20px;
+  border-radius: 0;
+  border-top: 2px solid #cf9565;
+  padding: 12px;
+}
+.hud-build {
+  display: none;
+}
+.hud-bar {
+  border-radius: 0;
+  height: 15px;
+}
+.hud-bar-chakra {
+  height: 12px;
+}
+.hud-bar-label {
+  font-size: 10px;
+  text-shadow:
+    1px 1px #172631,
+    -1px -1px #172631;
+}
+.hud-bar-health::before {
+  content: 'HP';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  font-size: 10px;
+  z-index: 1;
+  color: #172631;
+}
+.hud-bar-chakra::before {
+  content: 'CK';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  font-size: 9px;
+  z-index: 1;
+  color: #172631;
+}
+.hud-abilities {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  gap: 6px;
+}
+.hud-chip {
+  flex: none;
+  width: 68px;
+  padding: 5px 4px 4px;
+  background: #172631;
+  border-radius: 0;
+  border-top: 2px solid #cf9565;
+}
+.hud-chip-icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  margin: 3px auto;
+  image-rendering: pixelated;
+}
+.hud-chip-binding {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  font-weight: 700;
+  color: #f5edcd;
+  opacity: 1;
+}
+.hud-chip-name {
+  font-size: 8px;
+}
+.hud-chip-cost {
+  font-size: 8px;
+}
+.hud-chip-timer {
+  font-size: 10px;
+  color: #92d8b4;
+}
+.hud-chip-cooldown {
+  top: 0;
+  bottom: auto;
+  background: rgba(16, 28, 36, 0.75);
+  pointer-events: none;
+}
+.hud-chip.is-unavailable .hud-chip-icon {
+  opacity: 0.35;
+}
+.hud-top {
+  border-radius: 0;
+  padding: 5px 12px;
+  max-width: 90vw;
+}
+.hud-phase {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.hud-status {
+  font-size: 9px;
+}
+.hud-settings {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #172631;
+  border: 1px solid #49616b;
+  padding: 5px 8px;
+  pointer-events: auto;
+  font-size: 11px;
+}
+.hud-settings label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+}
+.screen {
+  border-radius: 0;
+  border-top: 3px solid #cf9565;
+  box-shadow: 8px 8px 0 #0c1820;
+  background: linear-gradient(160deg, #293c49, #172631 55%);
+}
+.home-title {
+  color: #cf9565;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+.home button,
+.lobby-actions button {
+  border-radius: 0;
+}
+#ui:not(:empty) {
+  background: radial-gradient(ellipse at 50% 35%, rgba(41, 79, 73, 0.7), rgba(16, 28, 36, 0.96));
+}
+@media (max-width: 700px) {
+  .hud-panel {
+    left: 8px;
+    bottom: 8px;
+    width: 145px;
+    padding: 7px;
+  }
+  .hud-abilities {
+    right: 8px;
+    bottom: 8px;
+    gap: 3px;
+  }
+  .hud-chip {
+    width: 49px;
+  }
+  .hud-chip-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .hud-chip-name {
+    max-width: 40px;
+  }
+  .hud-chip-cost {
+    display: none;
+  }
+  .hud-settings {
+    top: 65px;
+    right: 8px;
+  }
+}
+@media (max-width: 460px) {
+  .hud-panel {
+    bottom: 88px;
+  }
+  .hud-abilities {
+    left: 8px;
+    right: auto;
+  }
+}
+
+.hud-chip[data-family='dash'] {
+  order: 5;
+}
+
+/* Keep status and controls next to the fixed combat view, including portrait windows. */
+#hud {
+  inset: var(--combat-top, 0px) var(--combat-side, 0px) var(--combat-bottom, 0px);
+}

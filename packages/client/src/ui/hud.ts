@@ -1,7 +1,11 @@
+import { iconCanvas } from '../rendering/art/spriteArt';
+import { setVisualSetting, visualSettings } from '../rendering/visualSettings';
 import type { MatchPhase, TeamId } from '@ninjarena/core';
 
 export interface HudAbilityView {
   name: string;
+  family?: string;
+  available?: boolean;
   binding: string;
   chakraCost: number;
   remainingMs: number;
@@ -40,6 +44,8 @@ interface Line {
 interface AbilityChip {
   root: HTMLElement;
   cooldown: HTMLElement;
+  icon: HTMLCanvasElement;
+  family: string;
   binding: HTMLElement;
   name: HTMLElement;
   cost: HTMLElement;
@@ -76,8 +82,31 @@ export class Hud {
     this.health = createBar(panel, 'hud-bar-health');
     this.chakra = createBar(panel, 'hud-bar-chakra');
     this.shield = createLine(panel, 'hud-shield');
-    this.abilityList = element('div', 'hud-abilities', panel);
+    this.abilityList = element('div', 'hud-abilities', root);
+    this.addSettings(root);
     this.build = createLine(panel, 'hud-build');
+  }
+
+  private addSettings(root: HTMLElement): void {
+    const details = document.createElement('details');
+    details.className = 'hud-settings';
+    root.appendChild(details);
+    const summary = document.createElement('summary');
+    summary.textContent = 'Visuels';
+    details.appendChild(summary);
+    for (const [key, label] of [
+      ['motion', 'Vent et eau animés'],
+      ['flashes', 'Flashs d’impact'],
+      ['shake', 'Secousses'],
+    ] as const) {
+      const row = document.createElement('label'),
+        input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = visualSettings()[key];
+      input.addEventListener('change', () => setVisualSetting(key, input.checked));
+      row.append(input, document.createTextNode(label));
+      details.appendChild(row);
+    }
   }
 
   // Le HUD est mis à jour à chaque image: chaque écriture DOM est conditionnée au changement.
@@ -109,6 +138,18 @@ function updateChip(chip: AbilityChip, ability: HudAbilityView | undefined): voi
     chip.root.hidden = hidden;
   }
   if (ability === undefined) return;
+  const family = ability.family ?? 'melee';
+  if (chip.family !== family) {
+    chip.family = family;
+    chip.root.dataset.family = family;
+    chip.icon.getContext('2d')?.drawImage(iconCanvas(family), 0, 0);
+  }
+  chip.root.classList.toggle('is-unavailable', ability.available === false);
+  chip.root.setAttribute(
+    'aria-label',
+    `${ability.name}, ${ability.binding}, ${ability.available === false ? 'indisponible' : ability.remainingMs > 0 ? 'recharge' : 'prêt'}`,
+  );
+  chip.root.title = ability.name;
   const cooling = ability.remainingMs > 0;
   if (chip.cooling !== cooling) {
     chip.cooling = cooling;
@@ -127,7 +168,11 @@ function updateChip(chip: AbilityChip, ability: HudAbilityView | undefined): voi
     chip.costText = cost;
     chip.cost.textContent = cost;
   }
-  const timer = cooling ? `${(ability.remainingMs / MS_PER_SECOND).toFixed(1)}s` : 'ready';
+  const timer = cooling
+    ? `${(ability.remainingMs / MS_PER_SECOND).toFixed(ability.remainingMs < 1000 ? 1 : 0)}s`
+    : ability.available === false
+      ? '—'
+      : 'Prêt';
   if (chip.timerText !== timer) {
     chip.timerText = timer;
     chip.timer.textContent = timer;
@@ -199,7 +244,14 @@ function createLine(parent: HTMLElement, className: string): Line {
 
 function createChip(parent: HTMLElement): AbilityChip {
   const root = element('div', 'hud-chip', parent);
+  const icon = document.createElement('canvas');
+  icon.width = 24;
+  icon.height = 24;
+  icon.className = 'hud-chip-icon';
+  root.appendChild(icon);
   return {
+    icon,
+    family: '',
     root,
     cooldown: element('div', 'hud-chip-cooldown', root),
     binding: element('div', 'hud-chip-binding', root),

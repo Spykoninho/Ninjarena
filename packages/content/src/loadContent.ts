@@ -27,10 +27,11 @@ import shadowStep from './abilities/shadow-step.json';
 import shurikenThrow from './abilities/shuriken-throw.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
+import courtyard from './maps/cour-des-berges.json';
 import statRules from './stat-rules.json';
 import defaultTileset from './tilesets/default.json';
 
-export const DEFAULT_MAP_ID = 'arena';
+export const DEFAULT_MAP_ID = 'cour-des-berges';
 export const DEFAULT_CHARACTER_ID = 'ninja';
 
 export interface GameContent {
@@ -67,6 +68,7 @@ export function loadContent(): GameContent {
     ]),
     maps: new DefinitionCatalog<MapDocument>([
       parseFile({ parse: migrateMapDocument }, 'maps/arena.json', arena),
+      parseFile({ parse: migrateMapDocument }, 'maps/cour-des-berges.json', courtyard),
     ]),
     statRules: parseFile(StatRulesDefinitionSchema, 'stat-rules.json', statRules),
   };

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ninjarena · Perspective du décor</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #101014;
+        color: #f5edcd;
+        font: 14px system-ui;
+      }
+      header {
+        min-height: 108px;
+        padding: 16px 24px;
+        background: #172631;
+        border-bottom: 1px solid #49616b;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 6px;
+      }
+      p {
+        color: #b8c2bc;
+        margin: 0 0 12px;
+        font-size: 12px;
+      }
+      nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button,
+      a {
+        color: #f5edcd;
+        background: #293c49;
+        border: 1px solid #49616b;
+        padding: 6px 12px;
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      button[aria-pressed='true'] {
+        border-color: #cf9565;
+        background: #465677;
+      }
+      a {
+        margin-left: auto;
+      }
+      #stage {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 360px;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Perspective du décor</h1>
+      <p>
+        Le décor rendu par le moteur du jeu. Les ninjas donnent l’échelle ; cet aperçu n’est pas une
+        partie.
+      </p>
+      <nav>
+        <button data-view="dojo" aria-pressed="true">Dojo</button
+        ><button data-view="forest" aria-pressed="false">Forêt</button
+        ><button data-view="river" aria-pressed="false">Berges</button><a href="/">Jouer</a>
+      </nav>
+    </header>
+    <main id="stage"></main>
+    <script type="module" src="/src/artReview.ts"></script>
+  </body>
+</html>

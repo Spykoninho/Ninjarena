@@ -198,7 +198,7 @@ The client is configured through query parameters:
 | `basic`      | character's default   | Prefills the loadout panel's basic attack pick, by ability id.                                            |
 | `techniques` | none                  | Prefills the loadout panel's technique picks: a comma-separated list of ability ids.                      |
 | `delay`      | `6`                   | Interpolation delay for remote entities, in ticks (100 ms).                                               |
-| `zoom`       | `3`                   | Render scale; the world is 16-unit tiles at native resolution.                                            |
+| `zoom`       | `3`                   | Maximum integer display zoom for the fixed 640×360 view; 2 art pixels per world unit.                     |
 
 The server also writes to `data/` (the `NINJARENA_MAPS_DIR` default): player-saved maps land there
 as one JSON file per map, created on first save. The whole directory is git-ignored — it is local,

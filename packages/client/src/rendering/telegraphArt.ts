@@ -1,114 +1,205 @@
 import type { Vec2 } from '@ninjarena/core';
 import type { Graphics } from 'pixi.js';
-import type { MeleeArcView, ObstacleView, TelegraphView, ZoneView } from './renderer';
+import { P } from './art/nativeArt';
+import type {
+  MeleeArcView,
+  ObstacleView,
+  ProjectileView,
+  TelegraphView,
+  ZoneView,
+} from './renderer';
 
-const OUTLINE_WIDTH = 1;
-const CHARGE_WIDTH = 2;
-const MIN_VISIBLE_RADIUS = 0.5;
-const PULSES_PER_CAST = 3;
-const ARC_COLOR = '#f5f5f5';
-const WALL_BORDER_BRIGHTNESS = 0.5;
-
-// Les télégraphes se dessinent autour de l'origine: le nœud est déjà posé sur leur ancre.
-export function drawTelegraph(g: Graphics, view: TelegraphView): void {
-  g.clear();
-  switch (view.kind) {
-    case 'orb':
-      return drawOrb(g, view);
-    case 'ring':
-      return drawRing(g, view);
-    case 'flash':
-      return drawFlash(g, view);
-    case 'ground-circle':
-      return drawGroundCircle(g, view);
-    case 'ground-mark':
-      return drawGroundMark(g, view);
-    case 'charge':
-      return drawCharge(g, view);
+const PX = 0.5;
+function perimeter(
+  g: Graphics,
+  r: number,
+  color: string,
+  progress: number,
+  dangerous = true,
+): void {
+  // The radius is always final; progress occupies the perimeter, never an expanding hitbox.
+  g.circle(0, 0, r).fill({ color, alpha: 0.08 }).stroke({ color: P.ink, width: 1 });
+  g.circle(0, 0, r).stroke({
+    color: dangerous ? P.danger : P.ivory,
+    width: PX,
+    alpha: dangerous ? 1 : 0.65,
+  });
+  const count = 16;
+  for (let i = 0; i < count; i++) {
+    const a = (i * Math.PI * 2) / count;
+    if (i / count <= progress)
+      g.moveTo(Math.cos(a) * (r - 1), Math.sin(a) * (r - 1))
+        .lineTo(Math.cos(a) * (r - 2), Math.sin(a) * (r - 2))
+        .stroke({ color, width: PX });
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2,
+      xx = Math.cos(a),
+      yy = Math.sin(a);
+    g.moveTo(xx * r - yy, yy * r + xx)
+      .lineTo(xx * (r - 2), yy * (r - 2))
+      .lineTo(xx * r + yy, yy * r - xx)
+      .stroke({ color: dangerous ? P.danger : P.ivory, width: PX });
   }
 }
 
-export function drawZone(g: Graphics, view: ZoneView): void {
+export function drawTelegraph(g: Graphics, v: TelegraphView): void {
   g.clear();
-  g.circle(0, 0, view.radius).stroke({ color: view.color, width: OUTLINE_WIDTH, alpha: 0.8 });
-  const filled = view.radius * view.progress;
-  if (filled < MIN_VISIBLE_RADIUS) return;
-  g.circle(0, 0, filled).fill({ color: view.color, alpha: 0.25 + 0.35 * view.progress });
+  const family = v.family;
+  if (family === 'defense') {
+    g.poly([
+      { x: -7, y: -11 },
+      { x: 0, y: -15 },
+      { x: 7, y: -11 },
+      { x: 6, y: 0 },
+      { x: 0, y: 4 },
+      { x: -6, y: 0 },
+    ]).stroke({ color: P.mint, width: PX });
+    return;
+  }
+  if (family === 'teleport') {
+    for (const dx of [-1, 1])
+      for (const dy of [-1, 1])
+        g.moveTo(dx * 7, dy * 7)
+          .lineTo(dx * 7, dy * 4)
+          .moveTo(dx * 7, dy * 7)
+          .lineTo(dx * 4, dy * 7)
+          .stroke({ color: P.violet, width: PX });
+    return;
+  }
+  if (family === 'wall') {
+    const w = v.size / 2,
+      h = (v.width ?? 8) / 2,
+      dx = v.direction.x,
+      dy = v.direction.y;
+    // Walls span perpendicular to the aim direction, exactly like the spawned collider.
+    const pts = [
+      [-w, -h],
+      [w, -h],
+      [w, h],
+      [-w, h],
+    ].map(([x = 0, y = 0]) => ({ x: -dy * x + dx * y, y: dx * x + dy * y }));
+    g.poly(pts)
+      .fill({ color: v.color, alpha: 0.1 })
+      .stroke({ color: v.dangerous === false ? P.ivory : P.danger, width: PX });
+    return;
+  }
+  if (family === 'dash' || v.kind === 'charge') {
+    const d = v.direction,
+      len = v.size,
+      w = v.width ?? 5;
+    const point = (x: number, y: number) => ({ x: d.x * x - d.y * y, y: d.y * x + d.x * y });
+    g.poly([point(0, -w), point(len, -w), point(len + w, 0), point(len, w), point(0, w)]).stroke({
+      color: v.dangerous === false ? P.ivory : P.danger,
+      width: PX,
+      alpha: 0.8,
+    });
+    for (let i = 1; i <= 3; i++) {
+      const x = (len * i) / 4,
+        a = point(x - 3, -3),
+        b = point(x, 0),
+        c = point(x - 3, 3);
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y).stroke({ color: P.cyan, width: PX });
+    }
+    return;
+  }
+  if (
+    v.kind === 'ground-circle' ||
+    v.kind === 'ground-mark' ||
+    family === 'area' ||
+    family === 'trap'
+  ) {
+    perimeter(g, v.size, v.color, v.progress, v.dangerous ?? true);
+    if (v.kind === 'ground-mark') {
+      g.moveTo(-3, 0)
+        .lineTo(-1, 0)
+        .moveTo(1, 0)
+        .lineTo(3, 0)
+        .moveTo(0, -3)
+        .lineTo(0, -1)
+        .moveTo(0, 1)
+        .lineTo(0, 3)
+        .stroke({ color: v.color, width: PX });
+    }
+    return;
+  }
+  const radius = Math.min(4, 1 + v.progress * 3);
+  g.circle(0, 0, radius + PX).fill(P.ink);
+  g.circle(0, 0, radius).fill(v.color);
+  g.rect(-0.5, -0.5, 1.5, 1).fill(P.ivory);
+  const d = v.direction;
+  g.moveTo(d.x * 6 - d.y * 2, d.y * 6 + d.x * 2)
+    .lineTo(d.x * 8, d.y * 8)
+    .lineTo(d.x * 6 + d.y * 2, d.y * 6 - d.x * 2)
+    .stroke({ color: v.color, width: PX });
 }
 
-// Le polygone est en coordonnées monde: le nœud reste à l'origine, seule son alpha suit l'usure.
-export function drawWall(g: Graphics, view: ObstacleView): void {
+export function drawZone(g: Graphics, v: ZoneView): void {
   g.clear();
-  if (view.points.length < 3) return;
-  const points = view.points.map((point: Vec2) => ({ x: point.x, y: point.y }));
-  g.poly(points).fill({ color: view.color, alpha: 0.95 });
-  g.poly(points).stroke({
-    color: darken(view.color, WALL_BORDER_BRIGHTNESS),
-    width: OUTLINE_WIDTH,
-    alignment: 1,
-  });
+  perimeter(g, v.radius, v.color, v.progress, v.dangerous ?? true);
 }
-
-export function drawMeleeArc(g: Graphics, view: MeleeArcView): void {
+export function drawWall(g: Graphics, v: ObstacleView): void {
   g.clear();
-  const half = (view.arcDegrees * Math.PI) / 360;
-  g.moveTo(0, 0)
-    .arc(0, 0, view.range, -half, half)
-    .lineTo(0, 0)
-    .fill({ color: ARC_COLOR, alpha: 0.28 });
+  if (v.points.length < 3) return;
+  const pts = v.points.map((p: Vec2) => ({ ...p }));
+  g.poly(pts).fill(P.stone[0]).stroke({ color: P.ink, width: 1 });
+  g.poly(pts).stroke({ color: P.stone[2], width: PX });
 }
-
-function drawOrb(g: Graphics, view: TelegraphView): void {
-  const radius = view.size * view.progress;
-  g.circle(0, 0, view.size).stroke({ color: view.color, width: OUTLINE_WIDTH, alpha: 0.35 });
-  if (radius < MIN_VISIBLE_RADIUS) return;
-  g.circle(0, 0, radius).fill({ color: view.color, alpha: 0.85 });
+export function drawMeleeArc(g: Graphics, v: MeleeArcView): void {
+  g.clear();
+  const half = (v.arcDegrees * Math.PI) / 360;
+  g.moveTo(0, 0).arc(0, 0, v.range, -half, half).lineTo(0, 0).fill({ color: P.ivory, alpha: 0.13 });
+  g.arc(0, 0, v.range, -half, half).stroke({ color: P.ivory, width: PX });
 }
-
-function drawRing(g: Graphics, view: TelegraphView): void {
-  const radius = Math.max(MIN_VISIBLE_RADIUS, view.size * view.progress);
-  g.circle(0, 0, radius).stroke({
-    color: view.color,
-    width: OUTLINE_WIDTH,
-    alpha: 1 - 0.6 * view.progress,
-  });
-}
-
-function drawFlash(g: Graphics, view: TelegraphView): void {
-  g.circle(0, 0, view.size).fill({ color: view.color, alpha: 0.7 * (1 - view.progress) });
-}
-
-function drawGroundCircle(g: Graphics, view: TelegraphView): void {
-  g.circle(0, 0, view.size).stroke({ color: view.color, width: OUTLINE_WIDTH, alpha: 0.9 });
-  const filled = view.size * view.progress;
-  if (filled < MIN_VISIBLE_RADIUS) return;
-  g.circle(0, 0, filled).fill({ color: view.color, alpha: 0.3 + 0.3 * view.progress });
-}
-
-function drawGroundMark(g: Graphics, view: TelegraphView): void {
-  const pulse = Math.abs(Math.sin(view.progress * Math.PI * PULSES_PER_CAST));
-  g.circle(0, 0, view.size).stroke({
-    color: view.color,
-    width: OUTLINE_WIDTH,
-    alpha: 0.3 + 0.6 * pulse,
-  });
-  g.circle(0, 0, view.size * 0.2).fill({ color: view.color, alpha: 0.4 + 0.4 * pulse });
-}
-
-function drawCharge(g: Graphics, view: TelegraphView): void {
-  const length = view.size * view.progress;
-  if (length < MIN_VISIBLE_RADIUS) return;
-  const tip = { x: view.direction.x * length, y: view.direction.y * length };
-  g.moveTo(0, 0)
-    .lineTo(tip.x, tip.y)
-    .stroke({ color: view.color, width: CHARGE_WIDTH, alpha: 0.9 });
-  g.circle(tip.x, tip.y, CHARGE_WIDTH).fill({ color: view.color, alpha: 0.9 });
-}
-
-function darken(color: string, factor: number): string {
-  const value = Number.parseInt(color.slice(1), 16);
-  const red = Math.round(((value >> 16) & 0xff) * factor);
-  const green = Math.round(((value >> 8) & 0xff) * factor);
-  const blue = Math.round((value & 0xff) * factor);
-  return `#${(((red << 16) | (green << 8) | blue) >>> 0).toString(16).padStart(6, '0')}`;
+export function drawProjectile(g: Graphics, v: ProjectileView, time: number): void {
+  g.clear();
+  const angle = Math.atan2(v.direction.y, v.direction.x),
+    r = v.radius;
+  // Quantized art direction preserves clusters; collision/trajectory still use the free angle.
+  const a = Math.round(angle / (Math.PI / 8)) * (Math.PI / 8);
+  const points = (list: number[][]) =>
+    list.map(([x = 0, y = 0]) => ({
+      x: Math.round((Math.cos(a) * x - Math.sin(a) * y) * 2) / 2,
+      y: Math.round((Math.sin(a) * x + Math.cos(a) * y) * 2) / 2,
+    }));
+  if (v.family === 'control') {
+    g.poly(
+      points([
+        [0, -r],
+        [r, 0],
+        [0, r],
+        [-r, 0],
+      ]),
+    )
+      .fill(P.ink)
+      .stroke({ color: P.violet, width: PX });
+    g.rect(-1, -1, 2, 2).fill(P.ivory);
+    g.moveTo(-r - 2, -2)
+      .lineTo(-r - 2, 2)
+      .stroke({ color: P.violet, width: PX });
+    return;
+  }
+  if (v.trail) {
+    const length = 7 + (Math.floor(time / 70) % 2);
+    g.poly(
+      points([
+        [-r - length, -1],
+        [-r - 2, -r],
+        [-r * 0.5, -r],
+        [r, 0],
+        [-r * 0.5, r],
+        [-r - 4, r * 0.7],
+        [-r - length + 2, 2],
+      ]),
+    ).fill(v.color);
+  }
+  g.circle(0, 0, r).fill(P.ink);
+  g.circle(0, 0, Math.max(0.5, r - 0.5)).fill(v.color);
+  g.poly(
+    points([
+      [-r * 0.7, -r * 0.45],
+      [r * 0.8, 0],
+      [-r * 0.7, r * 0.45],
+    ]),
+  ).fill(P.ivory);
 }

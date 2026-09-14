@@ -15,6 +15,9 @@ export interface TelegraphView {
   color: string;
   size: number;
   progress: number;
+  family?: string;
+  dangerous?: boolean;
+  width?: number;
   anchor: Vec2;
   direction: Vec2;
 }
@@ -37,6 +40,11 @@ export interface PlayerView {
   telegraph: TelegraphView | null;
   activeArc: MeleeArcView | null;
   isDashing: boolean;
+  velocity?: Vec2;
+  basicCast?: boolean;
+  rooted?: boolean;
+  slowed?: boolean;
+  invulnerable?: boolean;
 }
 
 export interface ProjectileView {
@@ -46,9 +54,12 @@ export interface ProjectileView {
   color: string;
   trail: boolean;
   direction: Vec2;
+  family?: string;
+  dangerous?: boolean;
 }
 
 export interface ZoneView {
+  dangerous?: boolean;
   id: EntityId;
   position: Vec2;
   radius: number;

@@ -31,7 +31,7 @@ export interface EditorActions {
 }
 
 const TITLE = 'Map editor';
-const PIXELS_PER_TILE = 12;
+const PIXELS_PER_TILE = 32;
 const DEFAULT_WIDTH = 24;
 const DEFAULT_HEIGHT = 18;
 // Le nom de la carte suit la même borne que le schéma protocole/coeur (non exportée de core).

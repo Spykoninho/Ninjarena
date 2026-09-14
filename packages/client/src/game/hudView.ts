@@ -7,6 +7,7 @@ import type {
   MatchState,
   PlayerState,
 } from '@ninjarena/core';
+import { abilityFamily } from '../rendering/art/abilityVisual';
 import { ATTRIBUTE_IDS, getStatus } from '@ninjarena/core';
 import type { InputBindings } from '../input/bindings';
 import { bindingLabel } from '../input/bindings';
@@ -65,6 +66,12 @@ function abilityView(input: HudViewInput, slot: AbilitySlot, index: number): Hud
   const binding = input.bindings.abilities[index];
   return {
     name: ability.name,
+    family: abilityFamily(ability),
+    available:
+      (input.localPlayer?.chakra ?? 0) >= ability.chakraCost &&
+      !['STUNNED', 'DEAD', 'CASTING', 'DASHING', 'KNOCKBACK'].includes(
+        input.localPlayer?.phase.kind ?? 'DEAD',
+      ),
     binding: binding === undefined ? '' : bindingLabel(binding),
     chakraCost: ability.chakraCost,
     remainingMs: Math.max(0, (slot.readyAt - input.tick) * input.tickDurationMs),

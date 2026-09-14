@@ -270,6 +270,8 @@ export class ClientGame {
         tick: simulation.world.tick,
         isFfa: this.isFfa,
         cameraTarget: this.spectateCameraTarget(remotes) ?? this.cameraPosition,
+        map: simulation.map,
+        friendlyFire: simulation.matchConfig.friendlyFire,
       }),
       elapsedMs,
     );

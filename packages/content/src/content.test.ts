@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isSolidTile } from '@ninjarena/core';
 import type { Effect } from '@ninjarena/core';
-import { DEFAULT_MAP_ID, loadContent, loadMap } from './index';
+import { loadContent, loadMap } from './index';
 
 describe('content', () => {
   const content = loadContent();
@@ -57,7 +57,7 @@ describe('content', () => {
   });
 
   it('builds the arena with merged wall colliders, a polygon and spawns for 6 players', () => {
-    const map = loadMap(content, DEFAULT_MAP_ID);
+    const map = loadMap(content, 'arena');
     expect(map.widthInUnits).toBe(640);
     expect(map.colliders.some((s) => s.type === 'polygon')).toBe(true);
     expect(map.spawns.filter((s) => s.team === 0)).toHaveLength(3);

@@ -58,12 +58,15 @@ describe('fillTileId', () => {
 describe('paletteOf', () => {
   it('lists every tile sorted by id with its layer', () => {
     expect(paletteOf(tileset)).toEqual([
-      { id: 0, name: 'ground', color: '#c9b97a', layer: 'ground' },
-      { id: 1, name: 'grass', color: '#5aa15a', layer: 'ground' },
-      { id: 2, name: 'water', color: '#4a86c8', layer: 'ground' },
-      { id: 3, name: 'wall', color: '#6b6b7a', layer: 'objects' },
-      { id: 4, name: 'tree', color: '#2f6b3a', layer: 'objects' },
-      { id: 5, name: 'building', color: '#8a4b3b', layer: 'objects' },
+      { id: 0, name: 'ground', color: '#A7AA8B', layer: 'ground' },
+      { id: 1, name: 'grass', color: '#5C7D60', layer: 'ground' },
+      { id: 2, name: 'water', color: '#386C78', layer: 'ground' },
+      { id: 3, name: 'wall', color: '#777B70', layer: 'objects' },
+      { id: 4, name: 'tree', color: '#47705B', layer: 'objects' },
+      { id: 5, name: 'building', color: '#264956', layer: 'objects' },
+      { id: 6, name: 'paving', color: '#A7AA8B', layer: 'ground' },
+      { id: 7, name: 'bridge', color: '#A16C50', layer: 'ground' },
+      { id: 8, name: 'bush', color: '#47705B', layer: 'objects' },
     ]);
   });
 });

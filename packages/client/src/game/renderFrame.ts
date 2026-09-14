@@ -9,7 +9,10 @@ import type {
   ProjectileState,
   Vec2,
   WorldState,
+  LoadedMap,
+  Shape,
 } from '@ninjarena/core';
+import { dashPreviewDistance } from '../rendering/art/telegraphGeometry';
 import { add, getStatus, isVisibleTo, normalize, scale } from '@ninjarena/core';
 import type { InterpolatedWorld } from '../netcode/snapshotInterpolator';
 import type {
@@ -33,6 +36,8 @@ export interface RenderFrameInput {
   tick: number;
   isFfa: boolean;
   cameraTarget: Vec2;
+  map?: LoadedMap;
+  friendlyFire?: boolean;
 }
 
 type CastingPhase = Extract<CombatPhaseState, { kind: 'CASTING' }>;
@@ -65,10 +70,16 @@ function projectileViews(input: RenderFrameInput): ProjectileView[] {
   // Les tirs du joueur local partent de sa simulation: ils apparaissent sans attendre le serveur.
   for (const projectile of own(input.predicted.projectiles, input.localPlayerId)) {
     const position = add(projectile.position, scale(projectile.velocity, input.dt * input.alpha));
-    views.push(toProjectileView(projectile, position));
+    views.push({
+      ...toProjectileView(projectile, position, input.abilities),
+      dangerous: dangerousFor(projectile.ownerId, projectile.teamId, input),
+    });
   }
   for (const projectile of others(input.remotes?.projectiles, input.localPlayerId)) {
-    views.push(toProjectileView(projectile, projectile.renderPosition));
+    views.push({
+      ...toProjectileView(projectile, projectile.renderPosition, input.abilities),
+      dangerous: dangerousFor(projectile.ownerId, projectile.teamId, input),
+    });
   }
   return views;
 }
@@ -76,10 +87,18 @@ function projectileViews(input: RenderFrameInput): ProjectileView[] {
 function zoneViews(input: RenderFrameInput): ZoneView[] {
   const views: ZoneView[] = [];
   for (const pending of own(input.predicted.pending, input.localPlayerId)) {
-    push(views, toZoneView(pending, input.tick));
+    const view = toZoneView(pending, input.tick);
+    push(
+      views,
+      view ? { ...view, dangerous: dangerousFor(pending.ownerId, pending.teamId, input) } : null,
+    );
   }
   for (const pending of others(input.remotes?.pending, input.localPlayerId)) {
-    push(views, toZoneView(pending, remoteTickOf(input)));
+    const view = toZoneView(pending, remoteTickOf(input));
+    push(
+      views,
+      view ? { ...view, dangerous: dangerousFor(pending.ownerId, pending.teamId, input) } : null,
+    );
   }
   return views;
 }
@@ -141,9 +160,27 @@ function toPlayerView(
     telegraph:
       casting === null || ability === null
         ? null
-        : toTelegraphView(casting, ability, player.aim, position, tick),
+        : toTelegraphView(
+            casting,
+            ability,
+            player.aim,
+            position,
+            tick,
+            input.map,
+            dangerousFor(player.id, player.teamId, input),
+            player.stats.colliderRadius,
+            [
+              ...Object.values(input.predicted.obstacles),
+              ...Object.values(input.remotes?.obstacles ?? {}),
+            ].map((o) => o.shape),
+          ),
     activeArc: casting === null || ability === null ? null : toArcView(casting, ability, tick),
     isDashing: player.phase.kind === 'DASHING',
+    velocity: player.velocity,
+    basicCast: ability?.kind === 'basic',
+    rooted: getStatus(player, 'ROOTED') !== undefined,
+    slowed: getStatus(player, 'SLOWED') !== undefined,
+    invulnerable: getStatus(player, 'INVULNERABLE') !== undefined,
   };
 }
 
@@ -153,6 +190,10 @@ function toTelegraphView(
   aim: Vec2,
   position: Vec2,
   tick: number,
+  map?: LoadedMap,
+  dangerous = true,
+  colliderRadius = 5,
+  obstacles: readonly Shape[] = [],
 ): TelegraphView | null {
   const telegraph = ability.telegraph;
   if (telegraph === null) return null;
@@ -160,12 +201,54 @@ function toTelegraphView(
   if (casting.activated || tick >= casting.activatesAt) return null;
   const direction = normalize(aim);
   const distance = telegraph.anchor === 'aim' ? aimedDistance(ability, telegraph.size) : 0;
+  const first = ability.effects[0];
+  let anchor = add(position, scale(direction, distance));
+  if (first?.type === 'area' && map)
+    anchor = {
+      x: Math.max(0, Math.min(map.widthInUnits, anchor.x)),
+      y: Math.max(0, Math.min(map.heightInUnits, anchor.y)),
+    };
+  const terrainFactor =
+    first?.type === 'area' && map
+      ? first.terrain.reduce(
+          (factor, rule) =>
+            map.terrainAt(anchor).tags.includes(rule.tag)
+              ? factor * (rule.radiusMultiplier ?? 1)
+              : factor,
+          1,
+        )
+      : 1;
   return {
+    dangerous,
+    family:
+      first?.type === 'spawnEntity' ? 'wall' : first?.type === 'shield' ? 'defense' : first?.type,
+    width:
+      first?.type === 'spawnEntity'
+        ? first.thickness
+        : first?.type === 'dash'
+          ? colliderRadius
+          : undefined,
     kind: telegraph.kind,
     color: telegraph.color,
-    size: telegraph.size,
+    size:
+      first?.type === 'area'
+        ? first.radius * terrainFactor
+        : first?.type === 'spawnEntity'
+          ? first.width
+          : first?.type === 'dash'
+            ? map
+              ? dashPreviewDistance(
+                  map,
+                  position,
+                  direction,
+                  first.distance,
+                  colliderRadius,
+                  obstacles,
+                )
+              : first.distance
+            : telegraph.size,
     progress: progressOf(tick - casting.startedAt, casting.activatesAt - casting.startedAt),
-    anchor: add(position, scale(direction, distance)),
+    anchor,
     direction,
   };
 }
@@ -190,8 +273,15 @@ function toArcView(
   return { range: first.range, arcDegrees: first.arcDegrees };
 }
 
-function toProjectileView(projectile: ProjectileState, position: Vec2): ProjectileView {
+function toProjectileView(
+  projectile: ProjectileState,
+  position: Vec2,
+  abilities: DefinitionCatalog<AbilityDefinition>,
+): ProjectileView {
   return {
+    ...(abilities.get(projectile.source.abilityId).tags.includes('control')
+      ? { family: 'control' }
+      : {}),
     id: projectile.id,
     position,
     radius: projectile.radius,
@@ -234,4 +324,10 @@ function ratioOf(value: number, max: number): number {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function dangerousFor(ownerId: string, teamId: string, input: RenderFrameInput): boolean {
+  const local = input.predicted.players[input.localPlayerId];
+  if (ownerId === input.localPlayerId) return false;
+  return !local || input.friendlyFire === true || teamId !== local.teamId;
 }

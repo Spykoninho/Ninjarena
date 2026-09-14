@@ -1,304 +1,360 @@
-import type { EntityId, PlayerId, TeamId, Vec2 } from '@ninjarena/core';
-import { Container, Graphics } from 'pixi.js';
-import { drawPlayerGraphic, drawVitals, teamColor } from './placeholderArt';
-import type { ObstacleView, PlayerView, ProjectileView, RenderFrame, ZoneView } from './renderer';
-import { drawMeleeArc, drawTelegraph, drawWall, drawZone } from './telegraphArt';
-
-const PLAYER_RADIUS = 6;
-const AIM_LENGTH = 16;
-const AIM_COLOR = 0xf5f5f5;
-const LOCAL_OUTLINE_COLOR = 0xffffff;
-const VITALS_OFFSET = -PLAYER_RADIUS - 5;
-const DEAD_ALPHA = 0.25;
-const DASH_ALPHA = 0.7;
-const TRAIL_LENGTH = 7;
-const TRAIL_ALPHA = 0.35;
-const FLASH_MS = 60;
-const FLASH_ALPHA = 0.85;
-const FLASH_COLOR = 0xffffff;
+import type { EntityId, PlayerId, Vec2 } from '@ninjarena/core';
+import { ColorMatrixFilter, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { P, pen, surface, symbol, teams } from './art/nativeArt';
+import type { Direction } from './art/nativeArt';
+import { animationOf, facing, poseFrame, teamCodes } from './art/presentation';
+import type { Animation } from './art/presentation';
+import type { SpriteArt } from './art/spriteArt';
+import type { PlayerView, ProjectileView, RenderFrame } from './renderer';
+import { drawMeleeArc, drawTelegraph, drawWall, drawZone, drawProjectile } from './telegraphArt';
 
 interface PlayerNode {
+  flashFilter: ColorMatrixFilter;
   container: Container;
-  aim: Graphics;
-  arc: Graphics;
+  labels: Container;
+  body: Sprite;
+  marker: Sprite;
+  status: Graphics;
   vitals: Graphics;
-  flash: Graphics;
+  arc: Graphics;
+  aim: Graphics;
   flashMs: number;
+  flashColor: number;
   color: number;
-  healthRatio: number;
-  shieldRatio: number;
-  arcKey: string;
+  view: PlayerView;
+  direction: Direction;
+  animation: Animation;
+  age: number;
+  distance: number;
+  moving: boolean;
+  poseKey: string;
+  teamKey: string;
 }
-
 export interface PlayerSample {
   position: Vec2;
   color: number;
+  texture: Texture;
 }
-
 interface ProjectileNode {
   container: Container;
-  trail: Graphics | null;
+  body: Graphics;
 }
 
-interface ObstacleNode {
-  graphics: Graphics;
-  remaining: number;
-}
-
-// Le layer possède les nœuds Pixi des entités: le renderer ne garde que l'application et la carte.
 export class EntityLayer {
   readonly container = new Container();
+  readonly depth = new Container();
   private readonly ground = new Container();
-  private readonly entities = new Container();
+  private readonly labels = new Container();
   private readonly players = new Map<PlayerId, PlayerNode>();
   private readonly telegraphs = new Map<PlayerId, Graphics>();
-  private readonly projectiles = new Map<EntityId, ProjectileNode>();
   private readonly zones = new Map<EntityId, Graphics>();
-  private readonly obstacles = new Map<EntityId, ObstacleNode>();
+  private readonly obstacles = new Map<EntityId, Graphics>();
+  private readonly projectiles = new Map<EntityId, ProjectileNode>();
+  private readonly markerTextures = new Map<string, Texture>();
+  private time = 0;
 
-  constructor() {
-    // Télégraphes, zones et murs passent sous les entités: ils annoncent le sol.
-    this.container.addChild(this.ground, this.entities);
+  constructor(private readonly art: SpriteArt) {
+    this.depth.sortableChildren = true;
+    this.container.addChild(this.ground, this.depth, this.labels);
   }
 
   sync(frame: RenderFrame): void {
-    const localTeamId = frame.players.find((player) => player.isLocal)?.teamId ?? null;
-    this.syncPlayers(frame.players, localTeamId, frame.isFfa);
-    this.syncTelegraphs(frame.players);
-    this.syncZones(frame.zones);
-    this.syncObstacles(frame.obstacles);
+    const codes = teamCodes(frame.players.map((p) => p.teamId));
+    const seen = new Set<string>();
+    for (const view of frame.players) {
+      seen.add(view.id);
+      const node = this.players.get(view.id) ?? this.createPlayer(view);
+      const distance = Math.hypot(
+        view.position.x - node.view.position.x,
+        view.position.y - node.view.position.y,
+      );
+      node.moving = view.velocity
+        ? Math.hypot(view.velocity.x, view.velocity.y) > 0.1
+        : distance > 0.01;
+      if (distance < 20) node.distance += distance;
+      node.direction = facing(view.aim, node.direction);
+      const next = animationOf(view.phase, node.moving, view.basicCast ?? false, node.flashMs > 0);
+      if (node.animation !== next) {
+        node.animation = next;
+        node.age = 0;
+      }
+      node.view = view;
+      node.container.position.set(
+        Math.round(view.position.x * 2) / 2,
+        Math.round(view.position.y * 2) / 2,
+      );
+      node.container.zIndex = view.position.y;
+      node.labels.position.copyFrom(node.container.position);
+      node.container.visible = view.visible;
+      node.labels.visible = view.visible && view.phase !== 'DEAD';
+      const code = codes.get(view.teamId) ?? 0,
+        teamKey = `${code}:${view.isLocal}`;
+      node.color = Number.parseInt((teams[code % teams.length] ?? P.ivory).slice(1), 16);
+      if (node.teamKey !== teamKey) {
+        node.marker.texture = this.markerTexture(code, view.isLocal);
+        node.teamKey = teamKey;
+      }
+      node.aim.visible = view.isLocal && view.phase !== 'DEAD';
+      node.aim.position.set(
+        Math.round(view.aim.x * 15 * 2) / 2,
+        Math.round(view.aim.y * 15 * 2) / 2,
+      );
+      node.vitals.clear().rect(-5, -18, 10, 1.5).fill(P.ink);
+      node.vitals.rect(-4.5, -17.5, 9 * view.healthRatio, 0.5).fill(P.danger);
+      if (view.shieldRatio > 0) node.vitals.rect(-4.5, -19, 9 * view.shieldRatio, 0.5).fill(P.mint);
+      node.arc.visible = view.activeArc !== null;
+      if (view.activeArc) {
+        drawMeleeArc(node.arc, view.activeArc);
+        node.arc.rotation = Math.atan2(view.aim.y, view.aim.x);
+      }
+      this.drawStatus(node);
+      this.players.set(view.id, node);
+    }
+    for (const [id, node] of this.players)
+      if (!seen.has(id)) {
+        node.container.destroy({ children: true });
+        node.labels.destroy({ children: true });
+        this.players.delete(id);
+      }
+    const telegraphs = new Set<string>();
+    for (const view of frame.players) {
+      if (!view.visible || !view.telegraph) continue;
+      telegraphs.add(view.id);
+      const g = this.graphic(this.telegraphs, view.id, this.ground);
+      g.position.set(view.telegraph.anchor.x, view.telegraph.anchor.y);
+      drawTelegraph(g, view.telegraph);
+    }
+    this.removeGraphics(this.telegraphs, telegraphs);
+    const zones = new Set<string>();
+    for (const view of frame.zones) {
+      zones.add(view.id);
+      const g = this.graphic(this.zones, view.id, this.ground);
+      g.position.set(view.position.x, view.position.y);
+      drawZone(g, view);
+    }
+    this.removeGraphics(this.zones, zones);
+    const obstacles = new Set<string>();
+    for (const view of frame.obstacles) {
+      obstacles.add(view.id);
+      const g = this.graphic(this.obstacles, view.id, this.depth);
+      drawWall(g, view);
+      g.alpha = Math.max(0.3, view.remaining);
+      g.zIndex = Math.max(...view.points.map((p) => p.y));
+    }
+    this.removeGraphics(this.obstacles, obstacles);
     this.syncProjectiles(frame.projectiles);
   }
 
-  // Le flash de coup s'éteint tout seul: la couche avance avec le temps réel du rendu.
-  advance(dtMs: number): void {
+  advance(dt: number): void {
+    this.time += dt;
     for (const node of this.players.values()) {
-      if (node.flashMs <= 0) continue;
-      node.flashMs = Math.max(0, node.flashMs - dtMs);
-      node.flash.alpha = FLASH_ALPHA * (node.flashMs / FLASH_MS);
-      if (node.flashMs === 0) node.flash.visible = false;
+      node.age += dt;
+      node.flashMs = Math.max(0, node.flashMs - dt);
+      const frame = poseFrame(node.animation, node.age, node.distance);
+      const key = `${node.direction}:${node.animation}:${frame}`;
+      if (node.poseKey !== key) {
+        node.body.texture = this.art.pose(
+          node.direction,
+          node.animation,
+          frame,
+          skinIndex(node.view.id),
+        );
+        node.poseKey = key;
+      }
+      node.body.tint = node.flashMs > 0 ? node.flashColor : 0xffffff;
+      node.body.filters = node.flashMs > 0 ? [node.flashFilter] : [];
+      node.container.alpha = node.animation === 'death' ? Math.max(0.2, 1 - node.age / 1800) : 1;
     }
   }
 
-  flashPlayer(playerId: PlayerId, color: number = FLASH_COLOR): void {
-    const node = this.players.get(playerId);
-    if (node === undefined) return;
-    node.flash.tint = color;
-    node.flash.alpha = FLASH_ALPHA;
-    node.flash.visible = true;
-    node.flashMs = FLASH_MS;
+  flashPlayer(id: PlayerId, color = 0xf5edcd): void {
+    const node = this.players.get(id);
+    if (node) {
+      node.flashMs = 65;
+      node.flashColor = color;
+    }
   }
-
-  playerSample(playerId: PlayerId): PlayerSample | null {
-    const node = this.players.get(playerId);
-    if (node === undefined) return null;
-    return {
-      position: { x: node.container.position.x, y: node.container.position.y },
-      color: node.color,
-    };
+  playerSample(id: PlayerId): PlayerSample | null {
+    const node = this.players.get(id);
+    return !node || !node.view.visible
+      ? null
+      : {
+          position: { x: node.container.x, y: node.container.y },
+          color: node.color,
+          texture: node.body.texture,
+        };
   }
 
   clear(): void {
-    destroyAll(this.players, (node) => node.container);
-    destroyAll(this.telegraphs, (graphics) => graphics);
-    destroyAll(this.projectiles, (node) => node.container);
-    destroyAll(this.zones, (graphics) => graphics);
-    destroyAll(this.obstacles, (node) => node.graphics);
-  }
-
-  private syncPlayers(
-    views: readonly PlayerView[],
-    localTeamId: TeamId | null,
-    isFfa: boolean,
-  ): void {
-    const seen = new Set<PlayerId>();
-    for (const view of views) {
-      seen.add(view.id);
-      const node = this.players.get(view.id) ?? this.createPlayerNode(view, localTeamId, isFfa);
-      node.container.position.set(view.position.x, view.position.y);
-      node.container.visible = view.visible;
-      node.container.alpha = alphaOf(view);
-      node.aim.rotation = Math.atan2(view.aim.y, view.aim.x);
-      node.arc.rotation = node.aim.rotation;
-      if (node.healthRatio !== view.healthRatio || node.shieldRatio !== view.shieldRatio) {
-        node.healthRatio = view.healthRatio;
-        node.shieldRatio = view.shieldRatio;
-        drawVitals(node.vitals, view.healthRatio, view.shieldRatio);
-      }
-      this.syncArc(node, view);
+    for (const node of this.players.values()) {
+      node.container.destroy({ children: true });
+      node.labels.destroy({ children: true });
     }
-    removeMissing(this.players, seen, (node) => node.container);
-  }
-
-  private syncArc(node: PlayerNode, view: PlayerView): void {
-    const arc = view.activeArc;
-    node.arc.visible = arc !== null;
-    if (arc === null) return;
-    const key = `${arc.range}:${arc.arcDegrees}`;
-    if (node.arcKey === key) return;
-    node.arcKey = key;
-    drawMeleeArc(node.arc, arc);
-  }
-
-  private syncTelegraphs(views: readonly PlayerView[]): void {
-    const seen = new Set<PlayerId>();
-    for (const view of views) {
-      const telegraph = view.telegraph;
-      if (telegraph === null || !view.visible) continue;
-      seen.add(view.id);
-      let graphics = this.telegraphs.get(view.id);
-      if (graphics === undefined) {
-        graphics = new Graphics();
-        this.ground.addChild(graphics);
-        this.telegraphs.set(view.id, graphics);
-      }
-      graphics.position.set(telegraph.anchor.x, telegraph.anchor.y);
-      // Un télégraphe s'anime à chaque image: son tracé est refait à chaque fois.
-      drawTelegraph(graphics, telegraph);
+    this.players.clear();
+    for (const collection of [this.telegraphs, this.zones, this.obstacles]) {
+      for (const g of collection.values()) g.destroy();
+      collection.clear();
     }
-    removeMissing(this.telegraphs, seen, (graphics) => graphics);
+    for (const node of this.projectiles.values()) node.container.destroy({ children: true });
+    this.projectiles.clear();
+  }
+  dispose(): void {
+    this.clear();
+    for (const texture of this.markerTextures.values()) texture.destroy(true);
+    this.markerTextures.clear();
   }
 
-  private syncZones(views: readonly ZoneView[]): void {
-    const seen = new Set<EntityId>();
-    for (const view of views) {
-      seen.add(view.id);
-      let graphics = this.zones.get(view.id);
-      if (graphics === undefined) {
-        graphics = new Graphics();
-        this.ground.addChild(graphics);
-        this.zones.set(view.id, graphics);
-      }
-      graphics.position.set(view.position.x, view.position.y);
-      drawZone(graphics, view);
+  private drawStatus(node: PlayerNode): void {
+    const v = node.view,
+      g = node.status;
+    g.clear();
+    if (v.shieldRatio > 0 || v.invulnerable) {
+      const points = [
+        { x: -7, y: -13 },
+        { x: 0, y: -16 },
+        { x: 7, y: -13 },
+        { x: 6, y: -3 },
+        { x: 0, y: 1 },
+        { x: -6, y: -3 },
+      ];
+      g.poly(points).fill({ color: P.mint, alpha: 0.08 }).stroke({ color: P.mint, width: 0.5 });
     }
-    removeMissing(this.zones, seen, (graphics) => graphics);
+    if (v.rooted || v.phase === 'STUNNED') {
+      g.ellipse(0, 0, 6, 2).stroke({ color: P.violet, width: 0.5 });
+      g.rect(-2, -23, 4, 3).fill(P.violet);
+      g.rect(-1.5, -25, 3, 3).stroke({ color: P.violet, width: 0.5 });
+      g.rect(0, -22, 0.5, 1).fill(P.ink);
+      if (v.phase === 'STUNNED') g.rect(-3, -26, 6, 0.5).fill(P.ivory);
+    }
+    if (v.slowed)
+      g.moveTo(-5, 0)
+        .lineTo(-2, 2)
+        .lineTo(0, 0)
+        .lineTo(2, 2)
+        .lineTo(5, 0)
+        .stroke({ color: P.cyan, width: 0.5 });
   }
 
-  private syncObstacles(views: readonly ObstacleView[]): void {
-    const seen = new Set<EntityId>();
-    for (const view of views) {
-      seen.add(view.id);
-      let node = this.obstacles.get(view.id);
-      if (node === undefined) {
-        const graphics = new Graphics();
-        // Le polygone est figé: seule l'alpha du nœud suit la fin de vie du mur.
-        drawWall(graphics, view);
-        this.ground.addChild(graphics);
-        node = { graphics, remaining: -1 };
-        this.obstacles.set(view.id, node);
-      }
-      if (node.remaining !== view.remaining) {
-        node.remaining = view.remaining;
-        node.graphics.alpha = view.remaining;
-      }
-    }
-    removeMissing(this.obstacles, seen, (node) => node.graphics);
-  }
-
-  private syncProjectiles(views: readonly ProjectileView[]): void {
-    const seen = new Set<EntityId>();
-    for (const view of views) {
-      seen.add(view.id);
-      const node = this.projectiles.get(view.id) ?? this.createProjectileNode(view);
-      node.container.position.set(view.position.x, view.position.y);
-      if (node.trail !== null) orientTrail(node.trail, view.direction);
-    }
-    removeMissing(this.projectiles, seen, (node) => node.container);
-  }
-
-  private createPlayerNode(
-    view: PlayerView,
-    localTeamId: TeamId | null,
-    isFfa: boolean,
-  ): PlayerNode {
-    const container = new Container();
-    const color = teamColor(view.teamId, localTeamId, isFfa);
-    const body = new Graphics();
-    drawPlayerGraphic(body, color, PLAYER_RADIUS);
-    if (view.isLocal) {
-      const outline = PLAYER_RADIUS + 2;
-      body
-        .rect(-outline, -outline, outline * 2, outline * 2)
-        .stroke({ color: LOCAL_OUTLINE_COLOR, width: 1, alignment: 1 });
-    }
-    const aim = new Graphics();
-    aim.moveTo(PLAYER_RADIUS, 0).lineTo(AIM_LENGTH, 0).stroke({ color: AIM_COLOR, width: 1 });
-    const arc = new Graphics();
-    arc.visible = false;
-    const vitals = new Graphics();
-    vitals.position.set(0, VITALS_OFFSET);
-    drawVitals(vitals, view.healthRatio, view.shieldRatio);
-    const flash = new Graphics();
-    flash
-      .rect(-PLAYER_RADIUS, -PLAYER_RADIUS, PLAYER_RADIUS * 2, PLAYER_RADIUS * 2)
-      .fill(FLASH_COLOR);
-    flash.visible = false;
-    container.addChild(arc, aim, body, flash, vitals);
-    this.entities.addChild(container);
-    const node: PlayerNode = {
+  private createPlayer(view: PlayerView): PlayerNode {
+    const container = new Container(),
+      labels = new Container();
+    const shadow = new Graphics().ellipse(0, 0, 4.5, 1.5).fill({ color: P.ink, alpha: 0.3 });
+    const body = new Sprite(this.art.pose('s', 'idle', 0, skinIndex(view.id)));
+    body.anchor.set(0.5, 45 / 64);
+    body.scale.set(0.5);
+    const arc = new Graphics(),
+      status = new Graphics(),
+      vitals = new Graphics();
+    const marker = new Sprite();
+    marker.anchor.set(0.5, 40 / 48);
+    marker.scale.set(0.5);
+    const aim = new Graphics()
+      .rect(-1.5, -1.5, 3, 3)
+      .stroke({ color: P.ink, width: 1 })
+      .stroke({ color: P.ivory, width: 0.5 });
+    container.addChild(shadow, arc, body, status);
+    labels.addChild(marker, vitals, aim);
+    this.depth.addChild(container);
+    this.labels.addChild(labels);
+    const flashFilter = new ColorMatrixFilter();
+    flashFilter.brightness(2, false);
+    return {
+      flashFilter,
       container,
-      aim,
-      arc,
+      labels,
+      body,
+      marker,
+      status,
       vitals,
-      flash,
+      arc,
+      aim,
       flashMs: 0,
-      color,
-      healthRatio: view.healthRatio,
-      shieldRatio: view.shieldRatio,
-      arcKey: '',
+      flashColor: 0xf5edcd,
+      color: 0xffffff,
+      view,
+      direction: 's',
+      animation: 'idle',
+      age: 0,
+      distance: 0,
+      moving: false,
+      poseKey: '',
+      teamKey: '',
     };
-    this.players.set(view.id, node);
-    return node;
   }
 
-  private createProjectileNode(view: ProjectileView): ProjectileNode {
-    const container = new Container();
-    const body = new Graphics();
-    body.circle(0, 0, view.radius).fill(view.color);
-    let trail: Graphics | null = null;
-    if (view.trail) {
-      trail = new Graphics();
-      trail
-        .moveTo(-view.radius, 0)
-        .lineTo(-view.radius - TRAIL_LENGTH, 0)
-        .stroke({ color: view.color, width: view.radius, alpha: TRAIL_ALPHA });
-      // La traînée est orientée dès la naissance du tir: elle ne suit pas une image de retard.
-      orientTrail(trail, view.direction);
-      container.addChild(trail);
+  private markerTexture(code: number, local: boolean): Texture {
+    const key = `${code}:${local}`;
+    let texture = this.markerTextures.get(key);
+    if (texture) return texture;
+    const canvas = surface(32, 48),
+      c = pen(canvas),
+      color = teams[code % teams.length] ?? P.ivory;
+    c.fillStyle = P.ink;
+    c.fillRect(12, 42, 9, 6);
+    symbol(c, code, 14, 43, color);
+    c.fillStyle = color;
+    c.fillRect(5, 39, 1, 3);
+    c.fillRect(26, 39, 1, 3);
+    c.fillRect(6, 42, 3, 1);
+    c.fillRect(23, 42, 3, 1);
+    // More than eight teams remain distinguishable via extra binary ticks.
+    for (let bit = 0; bit < 4; bit++)
+      if (Math.floor(code / 8) & (1 << bit)) c.fillRect(10 + bit * 3, 40, 2, 1);
+    if (local) {
+      c.fillStyle = P.ivory;
+      c.fillRect(13, 4, 2, 1);
+      c.fillRect(15, 5, 2, 1);
+      c.fillRect(17, 4, 2, 1);
     }
-    container.addChild(body);
-    this.entities.addChild(container);
-    const node: ProjectileNode = { container, trail };
-    this.projectiles.set(view.id, node);
-    return node;
+    texture = Texture.from(canvas);
+    this.markerTextures.set(key, texture);
+    return texture;
+  }
+  private syncProjectiles(views: readonly ProjectileView[]): void {
+    const seen = new Set<string>();
+    for (const view of views) {
+      seen.add(view.id);
+      let node = this.projectiles.get(view.id);
+      if (!node) {
+        const container = new Container(),
+          body = new Graphics();
+        container.addChild(body);
+        this.depth.addChild(container);
+        node = { container, body };
+        this.projectiles.set(view.id, node);
+      }
+      node.container.position.set(
+        Math.round(view.position.x * 2) / 2,
+        Math.round(view.position.y * 2) / 2,
+      );
+      node.container.zIndex = view.position.y + 1;
+      drawProjectile(node.body, view, this.time);
+    }
+    for (const [id, node] of this.projectiles)
+      if (!seen.has(id)) {
+        node.container.destroy({ children: true });
+        this.projectiles.delete(id);
+      }
+  }
+  private graphic(map: Map<string, Graphics>, id: string, parent: Container): Graphics {
+    let g = map.get(id);
+    if (!g) {
+      g = new Graphics();
+      parent.addChild(g);
+      map.set(id, g);
+    }
+    return g;
+  }
+  private removeGraphics(map: Map<string, Graphics>, seen: Set<string>): void {
+    for (const [id, g] of map)
+      if (!seen.has(id)) {
+        g.destroy();
+        map.delete(id);
+      }
   }
 }
-
-function orientTrail(trail: Graphics, direction: Vec2): void {
-  // Un tir sans direction garde l'orientation qu'il avait.
-  if (direction.x === 0 && direction.y === 0) return;
-  trail.rotation = Math.atan2(direction.y, direction.x);
-}
-
-function alphaOf(view: PlayerView): number {
-  if (view.phase === 'DEAD') return DEAD_ALPHA;
-  return view.isDashing ? DASH_ALPHA : 1;
-}
-
-function destroyAll<T>(nodes: Map<string, T>, containerOf: (node: T) => Container): void {
-  for (const node of nodes.values()) containerOf(node).destroy({ children: true });
-  nodes.clear();
-}
-
-function removeMissing<T>(
-  nodes: Map<string, T>,
-  seen: ReadonlySet<string>,
-  containerOf: (node: T) => Container,
-): void {
-  for (const [id, node] of nodes) {
-    if (seen.has(id)) continue;
-    containerOf(node).destroy({ children: true });
-    nodes.delete(id);
-  }
+function skinIndex(id: string): number {
+  let n = 0;
+  for (const ch of id) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
+  return n % 4;
 }

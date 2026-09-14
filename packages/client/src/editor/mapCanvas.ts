@@ -1,4 +1,7 @@
+import { shrubCanvas } from '../rendering/art/landscapeArt';
 import type { MapDocument, MapSpawn, TilesetDefinition } from '@ninjarena/core';
+import { hash, tile } from '../rendering/art/nativeArt';
+import { terrainCanvas, neighborMask } from '../rendering/art/terrainArt';
 import type { EditorState } from './editorModel';
 
 export interface TileCoordinates {
@@ -20,6 +23,7 @@ export class MapCanvas {
   private readonly context: CanvasRenderingContext2D;
   private readonly tileset: TilesetDefinition;
   private readonly pixelsPerTile: number;
+  private readonly textures = new Map<string, HTMLCanvasElement>();
   private columns = 0;
   private rows = 0;
   private highlight: TileCoordinates | null = null;
@@ -29,6 +33,7 @@ export class MapCanvas {
     if (context === null) throw new Error('the map editor needs a 2d canvas context');
     this.canvas = canvas;
     this.context = context;
+    context.imageSmoothingEnabled = false;
     this.tileset = tileset;
     this.pixelsPerTile = pixelsPerTile;
   }
@@ -67,6 +72,7 @@ export class MapCanvas {
     if (this.canvas.height !== height) this.canvas.height = height;
     this.canvas.style.width = `${String(width)}px`;
     this.canvas.style.height = `${String(height)}px`;
+    this.context.imageSmoothingEnabled = false;
     this.context.clearRect(0, 0, width, height);
   }
 
@@ -76,12 +82,37 @@ export class MapCanvas {
       const ground = document.layers.ground[y] ?? [];
       const objects = document.layers.objects[y] ?? [];
       for (let x = 0; x < document.width; x++) {
-        this.context.fillStyle = this.colorOf(ground[x] ?? null);
-        this.context.fillRect(x * size, y * size, size, size);
+        const groundId = ground[x] ?? null;
+        const info = this.tileset.tiles[String(groundId)];
+        const variant = hash(x, y) % 12;
+        const mask = neighborMask(x, y, (xx, yy) => document.layers.ground[yy]?.[xx] === groundId);
+        const key = `${groundId}:${x}:${y}:${mask}`;
+        let image = this.textures.get(key);
+        if (!image) {
+          image = terrainCanvas(
+            info?.name ?? 'ground',
+            variant,
+            mask,
+            0,
+            this.colorOf(groundId),
+            x * 32,
+            y * 32,
+          );
+          this.textures.set(key, image);
+        }
+        this.context.drawImage(image, x * size, y * size, size, size);
         const object = objects[x] ?? null;
-        if (object === null) continue;
-        this.context.fillStyle = this.colorOf(object);
-        this.context.fillRect(x * size, y * size, size, size);
+        if (object !== null) {
+          const objectInfo = this.tileset.tiles[String(object)],
+            objectKey = `object:${object}`;
+          let objectImage = this.textures.get(objectKey);
+          if (!objectImage) {
+            objectImage =
+              objectInfo?.name === 'bush' ? shrubCanvas() : tile(objectInfo?.name ?? 'wall');
+            this.textures.set(objectKey, objectImage);
+          }
+          this.context.drawImage(objectImage, x * size, y * size, size, size);
+        }
       }
     }
   }

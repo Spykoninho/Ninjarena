@@ -117,7 +117,7 @@ describe('cuesForEvent', () => {
       },
       view,
     );
-    expect(kinds(cue.visual)).toEqual(['burst', 'burst']);
+    expect(kinds(cue.visual)).toEqual(['portal', 'portal', 'burst', 'burst']);
     expect(cue.audio).toBe('dash');
   });
 

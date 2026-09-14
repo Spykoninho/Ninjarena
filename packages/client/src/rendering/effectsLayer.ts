@@ -1,22 +1,22 @@
 import type { Vec2 } from '@ninjarena/core';
-import { Container, Graphics, Text } from 'pixi.js';
-import { drawPlayerGraphic } from './placeholderArt';
+import type { Texture } from 'pixi.js';
+import { Container, Graphics, Sprite, Text } from 'pixi.js';
+import { P } from './art/nativeArt';
 
-const PARTICLE_SIZE = 1.2;
-const PARTICLE_LIFE_MS = 420;
-const PARTICLE_LIFE_JITTER_MS = 180;
+const PARTICLE_SIZE = 0.5;
+const PARTICLE_LIFE_MS = 160;
+const PARTICLE_LIFE_JITTER_MS = 80;
 const PARTICLE_SPEED = 45;
 const PARTICLE_SPEED_JITTER = 35;
 const PARTICLE_DRAG = 0.88;
-const MAX_PARTICLES = 240;
+const MAX_PARTICLES = 64;
 
-const RING_LIFE_MS = 260;
+const RING_LIFE_MS = 160;
 const RING_START_RATIO = 0.35;
-const RING_END_RATIO = 1.45;
+const RING_END_RATIO = 1;
 
-const AFTERIMAGE_LIFE_MS = 220;
+const AFTERIMAGE_LIFE_MS = 120;
 const AFTERIMAGE_ALPHA = 0.45;
-const AFTERIMAGE_RADIUS = 6;
 
 const NUMBER_LIFE_MS = 700;
 const NUMBER_RISE = 14;
@@ -37,7 +37,7 @@ interface Ring {
 }
 
 interface Afterimage {
-  node: Graphics;
+  node: Sprite;
   ageMs: number;
 }
 
@@ -56,9 +56,18 @@ export class EffectsLayer {
   private readonly numbers: DamageNumber[] = [];
   private readonly particlePool: Graphics[] = [];
   private readonly ringPool: Graphics[] = [];
-  private readonly afterimagePool: Graphics[] = [];
+  private readonly afterimagePool: Sprite[] = [];
   private readonly numberPool: Text[] = [];
   private seed = 0;
+  private readonly portals: { node: Graphics; age: number; arriving: boolean }[] = [];
+
+  portal(position: Vec2, arriving: boolean): void {
+    if (this.portals.length >= 16) return;
+    const node = new Graphics();
+    node.position.set(position.x, position.y - 7);
+    this.container.addChild(node);
+    this.portals.push({ node, age: 0, arriving });
+  }
 
   burst(position: Vec2, color: string, count: number): void {
     for (let index = 0; index < count; index++) {
@@ -81,6 +90,7 @@ export class EffectsLayer {
   }
 
   impact(position: Vec2, color: string, size: number): void {
+    if (this.rings.length >= 32) return;
     const node = this.ringPool.pop() ?? new Graphics();
     // Un anneau recyclé garde son tracé: il s'efface avant d'être remis en scène.
     node.clear();
@@ -89,10 +99,13 @@ export class EffectsLayer {
     this.rings.push({ node, color, size, ageMs: 0 });
   }
 
-  afterimage(position: Vec2, color: number): void {
-    const node = this.afterimagePool.pop() ?? new Graphics();
-    node.clear();
-    drawPlayerGraphic(node, color, AFTERIMAGE_RADIUS);
+  afterimage(position: Vec2, color: number, texture: Texture): void {
+    if (this.afterimages.length >= 16) return;
+    const node = this.afterimagePool.pop() ?? new Sprite();
+    node.texture = texture;
+    node.anchor.set(0.5, 45 / 64);
+    node.scale.set(0.5);
+    node.tint = color;
     node.position.set(position.x, position.y);
     node.alpha = AFTERIMAGE_ALPHA;
     this.container.addChild(node);
@@ -100,6 +113,7 @@ export class EffectsLayer {
   }
 
   damageNumber(position: Vec2, amount: number): void {
+    if (this.numbers.length >= 24) return;
     const node = this.numberPool.pop() ?? newDamageText();
     node.text = String(Math.round(amount));
     node.alpha = 1;
@@ -111,6 +125,33 @@ export class EffectsLayer {
 
   advance(dtMs: number): void {
     const seconds = dtMs / 1000;
+    for (let i = this.portals.length - 1; i >= 0; i--) {
+      const p = this.portals[i];
+      if (!p) continue;
+      p.age += dtMs;
+      if (p.age >= 260) {
+        p.node.destroy();
+        this.portals.splice(i, 1);
+        continue;
+      }
+      const progress = p.age / 260,
+        spread = p.arriving ? 1 - progress : progress;
+      p.node.clear();
+      for (const dx of [-1, 1]) {
+        const x = dx * (3 + Math.floor(spread * 5));
+        p.node
+          .moveTo(x, -6)
+          .lineTo(x, -3)
+          .moveTo(x, 6)
+          .lineTo(x, 3)
+          .stroke({ color: P.violet, width: 0.5 });
+      }
+      for (let j = 0; j < 5; j++) {
+        p.node
+          .rect(((j % 3) - 1) * (1 + spread * 5), -9 + j * 3, 0.5, 2)
+          .fill({ color: P.ivory, alpha: 1 - progress });
+      }
+    }
     this.advanceParticles(dtMs, seconds);
     this.advanceRings(dtMs);
     this.advanceAfterimages(dtMs);
@@ -118,6 +159,8 @@ export class EffectsLayer {
   }
 
   clear(): void {
+    for (const p of this.portals) p.node.destroy();
+    this.portals.length = 0;
     this.container.removeChildren();
     destroyAll(this.particles, (particle) => particle.node, this.particlePool);
     destroyAll(this.rings, (ring) => ring.node, this.ringPool);
@@ -156,7 +199,23 @@ export class EffectsLayer {
       }
       const radius = ring.size * (RING_START_RATIO + (RING_END_RATIO - RING_START_RATIO) * ratio);
       ring.node.clear();
-      ring.node.circle(0, 0, radius).stroke({ color: ring.color, width: 1, alpha: 1 - ratio });
+      if (ring.size > 12) {
+        ring.node
+          .circle(0, 0, ring.size)
+          .stroke({ color: ring.color, width: 0.5, alpha: 1 - ratio });
+      }
+      const r = Math.min(radius, 10),
+        points = [];
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4,
+          length = i % 2 ? r * 0.32 : r;
+        points.push({
+          x: Math.round(Math.cos(angle) * length * 2) / 2,
+          y: Math.round(Math.sin(angle) * length * 2) / 2,
+        });
+      }
+      ring.node.poly(points).fill({ color: ring.color, alpha: 1 - ratio });
+      ring.node.rect(-0.5, -1, 1, 2).fill({ color: P.ivory, alpha: 1 - ratio });
     }
   }
 
@@ -225,10 +284,10 @@ function newDamageText(): Text {
     text: '',
     style: {
       fontFamily: 'monospace',
-      fontSize: 9,
+      fontSize: 4.5,
       fontWeight: 'bold',
       fill: 0xfff2c4,
-      stroke: { color: 0x101014, width: 3 },
+      stroke: { color: 0x101014, width: 1 },
     },
   });
   node.anchor.set(0.5, 1);

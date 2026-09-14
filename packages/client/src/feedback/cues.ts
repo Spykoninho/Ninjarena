@@ -9,6 +9,7 @@ import type {
 
 // Une gerbe ancrée sur un joueur suit le corps dessiné, en retard sur le monde prédit.
 export type VisualCue =
+  | { kind: 'portal'; position: Vec2; arriving: boolean }
   | { kind: 'hitFlash'; playerId: PlayerId }
   | { kind: 'impact'; position: Vec2; color: string; size: number }
   | { kind: 'playerImpact'; playerId: PlayerId; color: string; size: number }
@@ -130,6 +131,8 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
     case 'teleported':
       return cue({
         visual: [
+          { kind: 'portal', position: event.from, arriving: false },
+          { kind: 'portal', position: event.to, arriving: true },
           { kind: 'burst', position: event.from, color: NEUTRAL_COLOR, count: TELEPORT_PARTICLES },
           { kind: 'burst', position: event.to, color: NEUTRAL_COLOR, count: TELEPORT_PARTICLES },
         ],
