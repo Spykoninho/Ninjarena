@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSolidTile } from '@ninjarena/core';
+import { isSolidTile, validateMapDocument } from '@ninjarena/core';
 import type { Effect } from '@ninjarena/core';
 import { loadContent, loadMap } from './index';
 
@@ -64,6 +64,68 @@ describe('content', () => {
     expect(map.spawns.filter((s) => s.team === 1)).toHaveLength(3);
     expect(map.spawns.filter((s) => s.team === undefined)).toHaveLength(4);
     for (const spawn of map.spawns) expect(map.terrainAt(spawn).solid).toBe(false);
+  });
+
+  it('ships the decor tiles with the layer and solidity the renderer expects', () => {
+    const tiles = content.tilesets.get('default').tiles;
+    const byName = new Map(Object.values(tiles).map((tile) => [tile.name, tile]));
+    for (const name of ['lantern', 'rock', 'fence', 'well', 'crate', 'torii']) {
+      const tile = byName.get(name);
+      expect(tile?.layer).toBe('objects');
+      expect(tile?.solid).toBe(true);
+    }
+    for (const name of ['path', 'flowers']) {
+      const tile = byName.get(name);
+      expect(tile?.layer).toBe('ground');
+      expect(tile?.solid).toBe(false);
+      expect(tile?.speedMultiplier).toBe(1);
+    }
+    // Le feu garde son bonus d'herbe sur les fleurs; la terre battue reste neutre.
+    expect(byName.get('flowers')?.tags).toEqual(['grass']);
+    expect(byName.get('path')?.tags).toEqual([]);
+  });
+
+  it('keeps every bundled map valid once the decor is placed', () => {
+    for (const map of content.maps.all()) {
+      expect(validateMapDocument(map, content.tilesets.get(map.tileset))).toEqual([]);
+    }
+  });
+
+  it('walks the decorated courtyard track and blocks its solid decor', () => {
+    const map = loadMap(content, 'cour-des-berges');
+    const tileset = content.tilesets.get('default');
+    const named = (name: string) =>
+      Object.entries(tileset.tiles).find(([, tile]) => tile.name === name)?.[0];
+    const objects = content.maps.get('cour-des-berges').layers.objects;
+    for (const name of ['lantern', 'rock', 'fence', 'well', 'crate', 'torii']) {
+      const id = Number(named(name));
+      const cells: [number, number][] = [];
+      objects.forEach((row, y) =>
+        row.forEach((cell, x) => {
+          if (cell === id) cells.push([x, y]);
+        }),
+      );
+      expect(cells.length).toBeGreaterThan(0);
+      for (const [x, y] of cells) expect(map.tileAt(x, y).solid).toBe(true);
+    }
+    const ground = content.maps.get('cour-des-berges').layers.ground;
+    const groundCells = (name: string) => {
+      const id = Number(named(name));
+      const cells: [number, number][] = [];
+      ground.forEach((row, y) =>
+        row.forEach((cell, x) => {
+          if (cell === id) cells.push([x, y]);
+        }),
+      );
+      return cells;
+    };
+    for (const name of ['path', 'flowers']) {
+      const cells = groundCells(name);
+      expect(cells.length).toBeGreaterThan(0);
+      for (const [x, y] of cells)
+        if (objects[y]?.[x] == null) expect(map.tileAt(x, y).solid).toBe(false);
+    }
+    for (const [x, y] of groundCells('flowers')) expect(map.tileAt(x, y).tags).toContain('grass');
   });
 
   it('parses every bundled map document with a known tileset and open spawns', () => {

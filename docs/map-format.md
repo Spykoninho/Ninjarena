@@ -49,10 +49,35 @@ that will grow a step per future version rather than a second parser living next
 ```
 
 This is a valid, self-contained map: an 8×8 arena with a wall ring, a small pond in the middle,
-four trees, and two spawns per team. It loads on the `default` tileset (`0` ground, `1` grass,
-`2` water, `3` wall, `4` tree, `5` building — see `packages/content/src/tilesets/default.json`).
+four trees, and two spawns per team. It loads on the `default` tileset, whose ids are listed
+under "Tile ids" below.
 It is a **team** map — every spawn is tagged with a `team` — so a free-for-all room would need its
 own generic (untagged) spawns instead; see `spawnIssues` under "Validation" below.
+
+## Tile ids
+
+`packages/content/src/tilesets/default.json` is the source of truth; ids are append-only, so a
+saved map keeps meaning when the tileset grows.
+
+| Id  | Name       | Layer     | Solid | Tags       | Notes                                                                 |
+| --- | ---------- | --------- | ----- | ---------- | --------------------------------------------------------------------- |
+| 0   | `ground`   | `ground`  | no    |            | Bare sand, the editor's default fill                                  |
+| 1   | `grass`    | `ground`  | no    | `grass`    |                                                                       |
+| 2   | `water`    | `ground`  | no    | `water`    | `speedMultiplier` 0.6                                                 |
+| 3   | `wall`     | `objects` | yes   |            |                                                                       |
+| 4   | `tree`     | `objects` | yes   | `tree`     | Canopy overhangs without widening the footprint                       |
+| 5   | `building` | `objects` | yes   | `building` | Adjacent cells merge into one rectangle                               |
+| 6   | `paving`   | `ground`  | no    |            |                                                                       |
+| 7   | `bridge`   | `ground`  | no    | `bridge`   |                                                                       |
+| 8   | `bush`     | `objects` | yes   | `bush`     |                                                                       |
+| 9   | `path`     | `ground`  | no    |            | Packed dirt; autotiles its ruts on the run axis                       |
+| 10  | `flowers`  | `ground`  | no    | `grass`    | Grass, so fire techniques keep their grass bonus                      |
+| 11  | `lantern`  | `objects` | yes   |            | Stone lantern, one tile, ~44 art px tall                              |
+| 12  | `rock`     | `objects` | yes   |            | 3 variants chosen by position                                         |
+| 13  | `fence`    | `objects` | yes   |            | Autotiles from its cardinal `fence` neighbours                        |
+| 14  | `well`     | `objects` | yes   |            | ~48 art px tall                                                       |
+| 15  | `crate`    | `objects` | yes   |            | 2 variants, one or two stacked crates                                 |
+| 16  | `torii`    | `objects` | yes   |            | Two side-by-side tiles draw one gate; its lintel fades over a fighter |
 
 ## Fields
 
@@ -76,8 +101,8 @@ this is a description of what it accepts.
 A tile's world position is its centre: `spawnWorldPosition` places a spawn at
 `((x + 0.5) * tileSize, (y + 0.5) * tileSize)`, and `tileSize` comes from the tileset (16 units for
 `default`). Solidity comes from the tileset: a cell is solid if either its ground tile or its
-object tile (when not `null`) declares `solid: true` (`isSolidTile`); a wall, a tree and a building
-are the solid entries in `default.json`, all declared on the `objects` layer. Every other terrain
+object tile (when not `null`) declares `solid: true` (`isSolidTile`); every solid entry in
+`default.json` is declared on the `objects` layer (see "Tile ids" above). Every other terrain
 effect (`speedMultiplier`, `tags`) is read from the object tile when there is one, otherwise from
 the ground tile (`LoadedMap.fromDocument`, `packages/core/src/map/loadedMap.ts`).
 

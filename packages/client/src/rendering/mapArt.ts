@@ -4,6 +4,7 @@ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { ART_SCALE } from './art/presentation';
 import { P, hash, pen, rect, surface } from './art/nativeArt';
 import { buildingCanvas, buildingGeometry, buildingRectangle } from './art/buildingArt';
+import { DecorPlacer, decorFloorCanvas } from './decorArt';
 import { neighborMask, terrainCanvas } from './art/terrainArt';
 import type { SpriteArt } from './art/spriteArt';
 import type { PlayerView } from './renderer';
@@ -64,7 +65,15 @@ export class MapArt {
                 : tile.name;
             const mask = neighborMask(x, y, (xx, yy) => nameAt(xx, yy) === tile.name),
               variant = hash(x, y) % 12;
-            if (kind === 'water') {
+            if (tile.name === 'path' || tile.name === 'flowers') {
+              ctx.drawImage(
+                decorFloorCanvas(tile.name, variant, mask, x * 32, y * 32),
+                (x - cx) * native,
+                (y - cy) * native,
+                native,
+                native,
+              );
+            } else if (kind === 'water') {
               const frames = Array.from({ length: 4 }, (_, phase) =>
                 make(`${kind}:${mask}:${variant}:${phase}`, () =>
                   terrainCanvas(kind, variant, mask, phase, tile.color),
@@ -114,6 +123,11 @@ export class MapArt {
         ])
         .fill(P.ink);
     };
+    const decor = new DecorPlacer(map, tileset, size, {
+      make,
+      shadows,
+      cover: (entry) => this.covers.push(entry),
+    });
     const claimed = new Set<string>();
     for (let y = 0; y < map.heightInTiles; y++)
       for (let x = 0; x < map.widthInTiles; x++) {
@@ -203,6 +217,8 @@ export class MapArt {
             width: bounds.width * size,
             height: bounds.height * size,
           });
+        } else if (decor.place(tile.name, x, y, holder)) {
+          // Le placeur de décor a dessiné la tile: rien de plus à empiler ici.
         } else {
           // An unknown solid object remains visible and occupies exactly its declared footprint.
           const sprite = new Sprite(art.floor(tile.name, hash(x, y) % 4));
