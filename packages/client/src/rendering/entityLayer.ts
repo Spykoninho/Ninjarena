@@ -121,9 +121,15 @@ export class EntityLayer {
         Math.round(view.aim.x * 15 * 2) / 2,
         Math.round(view.aim.y * 15 * 2) / 2,
       );
-      node.vitals.clear().rect(-5, -18, 10, 1.5).fill(P.ink);
-      node.vitals.rect(-4.5, -17.5, 9 * view.healthRatio, 0.5).fill(P.danger);
-      if (view.shieldRatio > 0) node.vitals.rect(-4.5, -19, 9 * view.shieldRatio, 0.5).fill(P.mint);
+      // Barre encadrée, graduée au quart: la perte se lit en crans, pas en pente continue.
+      node.vitals.clear().rect(-6, -18.5, 12, 2.5).fill(P.ink);
+      node.vitals.rect(-5.5, -18, 11, 1.5).fill(P.ui);
+      node.vitals.rect(-5.5, -18, Math.round(22 * view.healthRatio) / 2, 1).fill(P.danger);
+      node.vitals.rect(-5.5, -17, Math.round(22 * view.healthRatio) / 2, 0.5).fill(0xb8483c);
+      for (const tick of [-2.75, 0, 2.75])
+        node.vitals.rect(tick - 0.25, -18, 0.5, 1.5).fill({ color: P.ink, alpha: 0.6 });
+      if (view.shieldRatio > 0)
+        node.vitals.rect(-5.5, -19.5, Math.round(22 * view.shieldRatio) / 2, 0.5).fill(P.mint);
       node.arc.visible = view.activeArc !== null;
       if (view.activeArc) {
         drawMeleeArc(node.arc, view.activeArc);
@@ -276,10 +282,17 @@ export class EntityLayer {
     const marker = new Sprite();
     marker.anchor.set(0.5, 40 / 48);
     marker.scale.set(0.5);
-    const aim = new Graphics()
-      .rect(-1.5, -1.5, 3, 3)
-      .stroke({ color: P.ink, width: 1 })
-      .stroke({ color: P.ivory, width: 0.5 });
+    // Réticule 7 x 7 à centre vide: quatre traits ivoire sur un sous-contour d'encre.
+    const aim = new Graphics();
+    for (const [x, y, w, h] of [
+      [-2, -0.25, 1.5, 0.5],
+      [0.5, -0.25, 1.5, 0.5],
+      [-0.25, -2, 0.5, 1.5],
+      [-0.25, 0.5, 0.5, 1.5],
+    ] as const) {
+      aim.rect(x - 0.5, y - 0.5, w + 1, h + 1).fill({ color: P.ink, alpha: 0.7 });
+      aim.rect(x, y, w, h).fill(P.ivory);
+    }
     container.addChild(shadow, arc, body, status);
     labels.addChild(marker, vitals, aim);
     this.depth.addChild(container);
