@@ -15,6 +15,11 @@ services:
       - traefik.http.routers.ninjarena-web.entrypoints=websecure
       - traefik.http.routers.ninjarena-web.tls.certresolver=letsencrypt
       - traefik.http.services.ninjarena-web.loadbalancer.server.port=80
+      # Alias www sur un routeur à part: son certificat ne dépend pas de celui de l'apex.
+      - traefik.http.routers.ninjarena-web-www.rule=Host(`www.mathisfremiot.fr`) && PathPrefix(`/ninjarena`)
+      - traefik.http.routers.ninjarena-web-www.entrypoints=websecure
+      - traefik.http.routers.ninjarena-web-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.ninjarena-web-www.service=ninjarena-web
     networks:
       - edge
 
@@ -40,6 +45,11 @@ services:
       - traefik.http.routers.ninjarena-ws.middlewares=ninjarena-ws-strip
       - traefik.http.middlewares.ninjarena-ws-strip.stripprefix.prefixes=/ninjarena/ws
       - traefik.http.services.ninjarena-ws.loadbalancer.server.port=8080
+      - traefik.http.routers.ninjarena-ws-www.rule=Host(`www.mathisfremiot.fr`) && PathPrefix(`/ninjarena/ws`)
+      - traefik.http.routers.ninjarena-ws-www.entrypoints=websecure
+      - traefik.http.routers.ninjarena-ws-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.ninjarena-ws-www.middlewares=ninjarena-ws-strip
+      - traefik.http.routers.ninjarena-ws-www.service=ninjarena-ws
     networks:
       - edge
 

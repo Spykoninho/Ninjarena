@@ -32,7 +32,6 @@ jobs:
       cancel-in-progress: false
     env:
       VPS: mathis@169.58.114.165
-      PUBLIC_URL: https://mathisfremiot.fr/ninjarena/
     steps:
       - uses: actions/checkout@v4
       - name: Install the deploy key
@@ -43,5 +42,3 @@ jobs:
           printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
       - name: Deploy on the VPS
         run: ssh -i ~/.ssh/deploy "$VPS" "NINJARENA_SHA=$GITHUB_SHA bash -s" < deploy/deploy.sh
-      - name: Smoke test
-        run: curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$PUBLIC_URL"

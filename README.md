@@ -173,7 +173,9 @@ the default binding is `127.0.0.1`: only expose the server on a network you trus
 
 ## Deployment
 
-The game runs at <https://mathisfremiot.fr/ninjarena>. Every push on `main` that passes the
+The game runs at <https://mathisfremiot.fr/ninjarena> (also reachable through
+`www.mathisfremiot.fr`; both hostnames need an `A` record pointing at the VPS, without the
+Cloudflare proxy, so that Traefik can pass the TLS-ALPN challenge). Every push on `main` that passes the
 `verify` job is deployed by the `deploy` job of [ci.yml](.github/workflows/ci.yml): it opens an
 SSH session on the VPS and runs [deploy/deploy.sh](deploy/deploy.sh), which fast-forwards the
 clone in `~/ninjarena` to the pushed commit and rebuilds the containers.
@@ -187,6 +189,7 @@ the root [Dockerfile](Dockerfile):
 
 Routing and TLS are handled by the Traefik instance already running on the VPS, through container
 labels: `/ninjarena` goes to nginx and `/ninjarena/ws` (prefix stripped) to the WebSocket server.
+The deploy script ends with a smoke test through Traefik on the VPS itself.
 The workflow needs two repository secrets: `VPS_SSH_KEY`, a private key whose public half is in
 the VPS user's `authorized_keys`, and `VPS_KNOWN_HOSTS`, the output of `ssh-keyscan` for the VPS.
 
