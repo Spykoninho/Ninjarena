@@ -62,3 +62,10 @@ export function viewport(width: number, height: number, maxZoom: number) {
 export function teamCodes(ids: readonly string[]): Map<string, number> {
   return new Map([...new Set(ids)].sort().map((id, index) => [id, index]));
 }
+
+// Un identifiant donne toujours la même tenue, du sprite du monde au portrait du HUD.
+export function skinIndex(id: string): number {
+  let n = 0;
+  for (const ch of id) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
+  return n % 4;
+}

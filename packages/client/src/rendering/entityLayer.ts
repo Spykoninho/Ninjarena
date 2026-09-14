@@ -2,7 +2,7 @@ import type { EntityId, PlayerId, Vec2 } from '@ninjarena/core';
 import { ColorMatrixFilter, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { P, pen, surface, symbol, teams } from './art/nativeArt';
 import type { Direction } from './art/nativeArt';
-import { animationOf, facing, poseFrame, teamCodes } from './art/presentation';
+import { animationOf, facing, poseFrame, skinIndex, teamCodes } from './art/presentation';
 import type { Animation } from './art/presentation';
 import type { SpriteArt } from './art/spriteArt';
 import type { PlayerView, ProjectileView, RenderFrame } from './renderer';
@@ -352,9 +352,4 @@ export class EntityLayer {
         map.delete(id);
       }
   }
-}
-function skinIndex(id: string): number {
-  let n = 0;
-  for (const ch of id) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
-  return n % 4;
 }
