@@ -382,6 +382,7 @@ are the same keys without any setting.
 | Slot 3 | E                    | Technique 2 (chosen at setup)  |
 | Slot 4 | R                    | Technique 3 (chosen at setup)  |
 | —      | Tab                  | Cycle the spectator target     |
+| —      | F                    | Toggle fullscreen              |
 
 Every ninja shares the same basic attack (Kunai Strike, a free melee arc) and dash (Shadow Step,
 which walls still stop); the three technique slots are whatever the player picked on the setup
@@ -389,7 +390,13 @@ panel, each with its own chakra cost, cooldown and telegraph. Chakra regenerates
 gates everything but the basic attack; a technique whose cost is not available is rejected.
 Holding a button does not repeat the cast: only the press matters. Tab only does something once
 the local player is dead and the match is `IN_ROUND`: it cycles the camera through living
-teammates (or every living player in a free-for-all mode).
+teammates (or every living player in a free-for-all mode). F toggles fullscreen from any screen
+(except while typing in a field), and the HUD's gear menu has the same button; during a match the
+system pointer is replaced by a pixel reticle drawn at load like the rest of the art.
+
+When the match ends, a result panel names the winner or winners and lists every player's damage
+dealt, damage taken, eliminations and deaths — plus, in a ranked room, the new rating and how much
+it moved — until the room returns to the lobby.
 
 ## Roadmap
 

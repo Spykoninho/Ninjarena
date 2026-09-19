@@ -113,7 +113,11 @@ a special code path: it goes through the same `finish()` a normal `matchEnded` e
 
 On `matchEnded`, the room stores a `MatchResult` (skipped only if the room emptied in the same
 tick) through `MatchResultRepository`, flushes one last snapshot so the terminal state is visible
-even if it falls between two scheduled snapshots, and broadcasts `FINISHED`. The match host keeps
+even if it falls between two scheduled snapshots, sends every seated player a `matchSummary`
+(winner, scores, and per participant the damage dealt and taken, kills and deaths tallied by
+`MatchStats` from the simulation's events over the whole match, plus the rating before and after
+in a ranked room), and broadcasts `FINISHED`. The client keeps the summary on screen until the
+room returns to `WAITING`. The match host keeps
 calling `simulation.step` for `postMatchTicks` more ticks, still snapshotting at the normal rate,
 so clients watching the result see a live (if static) world rather than a frozen last frame:
 players are still seated (`session.playerId` is not cleared yet) and their `input` messages still
