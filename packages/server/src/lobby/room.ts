@@ -62,6 +62,8 @@ export interface RoomDeps {
   onMatchEnded?: (result: MatchResult) => readonly RatingChange[] | void;
   // Le tirage de l'arbre du tournoi; injectable pour que les tests connaissent l'ordre.
   randomInt?: (max: number) => number;
+  // Une salle de la file classée: personne n'y règle rien et elle part dès que tout le monde est prêt.
+  locked?: boolean;
 }
 
 export class Room {
@@ -75,6 +77,7 @@ export class Room {
   private readonly characterId: string;
   private readonly onMatchEnded: ((result: MatchResult) => readonly RatingChange[] | void) | null;
   private readonly randomInt: (max: number) => number;
+  private readonly locked: boolean;
   private readonly roster: RoomPlayer[] = [];
   private roomSettings: RoomSettings;
   private roomStatus: RoomStatus = 'WAITING';
@@ -95,6 +98,7 @@ export class Room {
     this.characterId = deps.characterId;
     this.onMatchEnded = deps.onMatchEnded ?? null;
     this.randomInt = deps.randomInt ?? ((max) => cryptoRandomInt(max));
+    this.locked = deps.locked ?? false;
   }
 
   get status(): RoomStatus {
@@ -189,6 +193,7 @@ export class Room {
   updateSettings(session: ClientSession, patch: unknown): RoomResult {
     const denied = this.requireHostInLobby(session);
     if (denied !== null) return denied;
+    if (this.locked) return fail('WRONG_STATUS', 'the settings of a matchmade room are fixed');
 
     const applied = applySettingsPatch(this.roomSettings, patch, this.content.statRules);
     if (!applied.ok) return fail('INVALID_SETTINGS', applied.reason);
@@ -282,9 +287,13 @@ export class Room {
   }
 
   tick(): void {
+    if (this.activeMatch === null) {
+      this.autoStart();
+      return;
+    }
     // La simulation tourne à vide après la fin: les clients gardent l'état final sous les yeux.
     const counting = this.roomStatus === 'FINISHED';
-    this.activeMatch?.host.tick();
+    this.activeMatch.host.tick();
     if (!counting) return;
     this.ticksSinceEnd += 1;
     if (this.ticksSinceEnd < this.postMatchTicks) return;
@@ -294,6 +303,13 @@ export class Room {
       if (this.playNextTournamentMatch()) return;
     }
     this.resetToLobby();
+  }
+
+  // Une salle verrouillée n'attend pas son hôte: elle part seule dès que rien ne bloque.
+  private autoStart(): void {
+    if (!this.locked || this.roomStatus !== 'WAITING') return;
+    if (this.mapCache.document === null || this.startBlockers().length > 0) return;
+    this.launch(this.roster);
   }
 
   // Le tirage au sort place les joueurs dans l'arbre; leurs noms sont figés pour l'affichage.
@@ -355,6 +371,7 @@ export class Room {
     return {
       code: this.code,
       hasPassword: this.passwordHash !== null,
+      locked: this.locked,
       // Une salle vide n'a pas d'hôte: le code tient lieu de valeur pour rester décodable.
       hostId: this.hostId ?? this.code,
       status: this.roomStatus,

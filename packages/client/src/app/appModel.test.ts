@@ -53,6 +53,7 @@ function room(status: RoomStatus): RoomView {
   return {
     code: 'AB7K2P',
     hasPassword: false,
+    locked: false,
     hostId: 'session-1',
     status,
     settings,

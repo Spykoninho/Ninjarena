@@ -68,6 +68,7 @@ function room(overrides: Partial<RoomView> = {}): RoomView {
   return {
     code: 'AB7K2P',
     hasPassword: false,
+    locked: false,
     hostId: 'c1',
     status: 'WAITING',
     settings,

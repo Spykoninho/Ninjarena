@@ -194,6 +194,7 @@ const TournamentViewSchema: z.ZodType<TournamentView> = z.strictObject({
 const RoomViewSchema: z.ZodType<RoomView> = z.strictObject({
   code: z.string().regex(CODE_PATTERN),
   hasPassword: z.boolean(),
+  locked: z.boolean(),
   hostId: z.string().min(1),
   status: z.enum(['WAITING', 'STARTING', 'IN_GAME', 'FINISHED']),
   settings: RoomSettingsSchema,
@@ -231,6 +232,8 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
     code: z.string().regex(CODE_PATTERN),
     password: z.string().min(1).max(MAX_PASSWORD_LENGTH).optional(),
   }),
+  z.strictObject({ type: z.literal('joinQueue') }),
+  z.strictObject({ type: z.literal('leaveQueue') }),
   z.strictObject({ type: z.literal('leaveRoom') }),
   z.strictObject({ type: z.literal('updateSettings'), patch: RoomSettingsPatchSchema }),
   z.strictObject({ type: z.literal('setLoadout'), loadout: LoadoutSchema }),
@@ -265,6 +268,11 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
   }),
   z.object({ type: z.literal('roomState'), room: RoomViewSchema }),
   z.object({ type: z.literal('roomLeft') }),
+  z.object({
+    type: z.literal('queueState'),
+    queued: z.boolean(),
+    size: z.number().int().nonnegative(),
+  }),
   z.object({
     type: z.literal('matchStarted'),
     playerId: z.string().min(1),

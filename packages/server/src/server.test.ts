@@ -479,6 +479,77 @@ describe('GameServer dispatch', () => {
     ]);
   });
 
+  it('pairs two queued accounts into a locked ranked room that starts by itself', async () => {
+    const timers = new VirtualTimers();
+    const { transport } = await startServer({ NINJARENA_TICK_RATE: '30' }, timers);
+    const guest = transport.accept('c0');
+    const one = transport.accept('c1');
+    const two = transport.accept('c2');
+    hello(guest, 'guest');
+    hello(one, 'one');
+    hello(two, 'two');
+    send(guest, { type: 'joinQueue' });
+    expect(lastOf(guest, 'error')).toMatchObject({ code: 'NOT_LOGGED_IN' });
+
+    send(one, { type: 'register', name: 'kage', password: 'shadow' });
+    send(two, { type: 'register', name: 'hanzo', password: 'shadow' });
+    await settled(one);
+    await settled(two);
+    send(one, { type: 'joinQueue' });
+    expect(lastOf(one, 'queueState')).toEqual({ type: 'queueState', queued: true, size: 1 });
+    send(two, { type: 'joinQueue' });
+    expect(lastOf(one, 'queueState')).toEqual({ type: 'queueState', queued: true, size: 2 });
+
+    // L'appariement tourne une fois par seconde: un tick ne suffit pas, une seconde oui.
+    const tickMs = tickDurationMs({ tickRate: 30 });
+    timers.advance(1000 + tickMs);
+    await flush();
+    expect(lastOf(one, 'queueState')).toEqual({ type: 'queueState', queued: false, size: 0 });
+    const room = lastOf(two, 'roomState')?.room;
+    expect(room).toMatchObject({
+      locked: true,
+      settings: { ranked: true, mode: 'team', teamCount: 2, playersPerTeam: 1 },
+    });
+    expect(room?.players.map((player) => player.name)).toEqual(['kage', 'hanzo']);
+    expect(codeOf(one)).toBe(room?.code);
+
+    send(one, { type: 'updateSettings', patch: { bestOf: 5 } });
+    expect(lastOf(one, 'error')).toMatchObject({ code: 'WRONG_STATUS' });
+
+    readyUp(one);
+    readyUp(two);
+    for (let i = 0; i < 10 && lastOf(one, 'roomState')?.room.status === 'WAITING'; i++) {
+      timers.advance(tickMs);
+    }
+    expect(lastOf(one, 'roomState')?.room.status).toBe('STARTING');
+    expect(messagesOf(two, 'matchStarted')).toHaveLength(1);
+  });
+
+  it('drops a player from the queue when they leave it, open a room or disconnect', async () => {
+    const timers = new VirtualTimers();
+    const { server, transport } = await startServer({}, timers);
+    const one = transport.accept('c1');
+    const two = transport.accept('c2');
+    hello(one, 'one');
+    hello(two, 'two');
+    send(one, { type: 'register', name: 'kage', password: 'shadow' });
+    send(two, { type: 'register', name: 'hanzo', password: 'shadow' });
+    await settled(one);
+    await settled(two);
+
+    send(one, { type: 'joinQueue' });
+    send(one, { type: 'leaveQueue' });
+    expect(lastOf(one, 'queueState')).toEqual({ type: 'queueState', queued: false, size: 0 });
+    send(one, { type: 'joinQueue' });
+    send(two, { type: 'joinQueue' });
+    expect(lastOf(one, 'queueState')?.size).toBe(2);
+    send(two, { type: 'createRoom' });
+    expect(lastOf(one, 'queueState')?.size).toBe(1);
+    expect(server.queue.size).toBe(1);
+    one.close();
+    expect(server.queue.size).toBe(0);
+  });
+
   it('ignores input from a session outside any room but refuses the other room messages', async () => {
     const { transport } = await startServer();
     const connection = transport.accept('c1');

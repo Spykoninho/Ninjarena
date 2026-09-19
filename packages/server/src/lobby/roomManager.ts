@@ -10,6 +10,7 @@ const MAX_CODE_ATTEMPTS = 100;
 export interface CreateRoomRequest {
   password?: string;
   settings?: unknown;
+  locked?: boolean;
 }
 
 export type CreateRoomError = {
@@ -29,7 +30,12 @@ export type JoinRoomResult = { ok: true; room: Room } | { ok: false; error: Join
 export interface RoomManagerOptions {
   maxRooms: number;
   randomInt: (max: number) => number;
-  createRoom: (code: string, passwordHash: Buffer | null, settings: RoomSettings) => Room;
+  createRoom: (
+    code: string,
+    passwordHash: Buffer | null,
+    settings: RoomSettings,
+    locked: boolean,
+  ) => Room;
   log?: (line: string) => void;
 }
 
@@ -40,6 +46,7 @@ export class RoomManager {
     code: string,
     passwordHash: Buffer | null,
     settings: RoomSettings,
+    locked: boolean,
   ) => Room;
   private readonly log: (line: string) => void;
   private readonly rooms = new Map<string, Room>();
@@ -82,7 +89,7 @@ export class RoomManager {
 
     const code = this.freeCode();
     const passwordHash = request.password === undefined ? null : hashPassword(request.password);
-    const room = this.createRoom(code, passwordHash, settings.settings);
+    const room = this.createRoom(code, passwordHash, settings.settings, request.locked ?? false);
     this.rooms.set(code, room);
     // La carte se charge en arrière-plan: la salle se rediffusera d'elle-même une fois prête.
     void room.refreshMap().catch((error: unknown) => {
@@ -117,11 +124,9 @@ export class RoomManager {
     if (room.isEmpty) this.rooms.delete(room.code);
   }
 
+  // Chaque salle tique, match ou pas: une salle verrouillée décide seule de son départ.
   tick(): void {
-    for (const room of this.rooms.values()) {
-      if (room.match === null) continue;
-      room.tick();
-    }
+    for (const room of this.rooms.values()) room.tick();
   }
 
   private settingsFor(

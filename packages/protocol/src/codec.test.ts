@@ -45,6 +45,7 @@ const LOADOUT: Loadout = {
 const ROOM_VIEW: RoomView = {
   code: 'AB12CD',
   hasPassword: true,
+  locked: false,
   hostId: 'c1',
   status: 'WAITING',
   settings: {

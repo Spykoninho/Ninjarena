@@ -3,7 +3,7 @@ import type { GameContent } from '@ninjarena/content';
 import { DEFAULT_CHARACTER_ID, DEFAULT_MAP_ID } from '@ninjarena/content';
 import type { RoomSettings } from '@ninjarena/core';
 import { defaultRoomSettings, tickDurationMs } from '@ninjarena/core';
-import type { ClientMessage } from '@ninjarena/protocol';
+import type { ClientMessage, RoomSettingsPatch } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec } from '@ninjarena/protocol';
 import { AccountService } from './accounts/accountService';
 import type { AccountResult } from './accounts/accountService';
@@ -13,6 +13,7 @@ import { Room } from './lobby/room';
 import { RoomManager } from './lobby/roomManager';
 import { MapLibrary } from './maps/mapLibrary';
 import { TickLoop } from './match/tickLoop';
+import { Matchmaker } from './matchmaking/matchmaker';
 import type { AccountRepository } from './persistence/accountRepository';
 import type { MapRepository } from './persistence/mapRepository';
 import type { MatchResult, MatchResultRepository } from './persistence/matchResultRepository';
@@ -49,6 +50,15 @@ type RoomMessage = Extract<
 
 const MAX_INVALID_MESSAGES = 20;
 
+// Une partie de la file: un duel classé au meilleur des trois, sur la carte par défaut.
+const QUEUE_ROOM_SETTINGS: RoomSettingsPatch = {
+  ranked: true,
+  mode: 'team',
+  teamCount: 2,
+  playersPerTeam: 1,
+  bestOf: 3,
+};
+
 export class GameServer {
   private readonly config: ServerConfig;
   private readonly transport: ServerTransport;
@@ -58,6 +68,7 @@ export class GameServer {
   private readonly accounts: AccountService;
   private readonly log: (line: string) => void;
   private readonly roomManager: RoomManager;
+  private readonly matchmaker: Matchmaker;
   private readonly now: () => number;
   private readonly schedule: (callback: () => void, delayMs: number) => unknown;
   private readonly cancel: (handle: unknown) => void;
@@ -79,11 +90,18 @@ export class GameServer {
     this.roomManager = new RoomManager({
       maxRooms: deps.config.maxRooms,
       randomInt: deps.randomInt ?? ((max) => cryptoRandomInt(max)),
-      createRoom: (code, passwordHash, settings) => this.createRoom(code, passwordHash, settings),
+      createRoom: (code, passwordHash, settings, locked) =>
+        this.createRoom(code, passwordHash, settings, locked),
       log: this.log,
     });
     // Les minuteurs sont injectables: les tests pilotent la boucle sans horloge réelle.
     this.now = deps.now ?? (() => performance.now());
+    this.matchmaker = new Matchmaker({
+      now: this.now,
+      onMatch: (one, two) => {
+        this.seatMatchedPair(one, two);
+      },
+    });
     this.schedule = deps.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
     this.cancel =
       deps.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
@@ -91,6 +109,10 @@ export class GameServer {
 
   get rooms(): RoomManager {
     return this.roomManager;
+  }
+
+  get queue(): Matchmaker {
+    return this.matchmaker;
   }
 
   async start(): Promise<void> {
@@ -101,6 +123,7 @@ export class GameServer {
     const loop = new TickLoop(
       tickDurationMs({ tickRate: this.config.tickRate }),
       () => {
+        this.matchmaker.tick();
         this.roomManager.tick();
       },
       { now: this.now, schedule: this.schedule, cancel: this.cancel },
@@ -115,11 +138,17 @@ export class GameServer {
     await this.transport.close();
   }
 
-  private createRoom(code: string, passwordHash: Buffer | null, settings: RoomSettings): Room {
+  private createRoom(
+    code: string,
+    passwordHash: Buffer | null,
+    settings: RoomSettings,
+    locked: boolean,
+  ): Room {
     return new Room({
       code,
       passwordHash,
       settings,
+      locked,
       content: this.content,
       maps: this.mapLibrary,
       tickRate: this.config.tickRate,
@@ -162,6 +191,7 @@ export class GameServer {
     });
     connection.onClose(() => {
       this.openConnections -= 1;
+      this.leaveQueue(session, false);
       this.roomManager.leave(session);
       this.accounts.logout(session);
     });
@@ -205,6 +235,12 @@ export class GameServer {
         return;
       case 'joinRoom':
         this.handleJoinRoom(session, message);
+        return;
+      case 'joinQueue':
+        this.handleJoinQueue(session);
+        return;
+      case 'leaveQueue':
+        this.leaveQueue(session, true);
         return;
       case 'listMaps':
         this.handleListMaps(session);
@@ -284,8 +320,57 @@ export class GameServer {
       session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'leave the room first' });
       return;
     }
+    this.leaveQueue(session, false);
     this.accounts.logout(session);
     session.send({ type: 'accountState', account: null });
+  }
+
+  private handleJoinQueue(session: ClientSession): void {
+    const joined = this.matchmaker.join(session);
+    if (!joined.ok) {
+      session.send({ type: 'error', code: joined.error.code, message: joined.error.message });
+      return;
+    }
+    this.broadcastQueue();
+  }
+
+  // Sortir de la file est toujours silencieux, sauf quand le joueur l'a demandé lui-même.
+  private leaveQueue(session: ClientSession, reply: boolean): void {
+    const left = this.matchmaker.leave(session);
+    if (reply) session.send({ type: 'queueState', queued: false, size: this.matchmaker.size });
+    if (left) this.broadcastQueue();
+  }
+
+  private broadcastQueue(): void {
+    const size = this.matchmaker.size;
+    for (const queued of this.matchmaker.sessions()) {
+      queued.send({ type: 'queueState', queued: true, size });
+    }
+  }
+
+  // Les deux joueurs appariés atterrissent dans une salle classée verrouillée, prête à partir.
+  private seatMatchedPair(one: ClientSession, two: ClientSession): void {
+    const defaults = defaultRoomSettings(this.content.statRules, DEFAULT_MAP_ID);
+    const created = this.roomManager.create(
+      one,
+      { settings: QUEUE_ROOM_SETTINGS, locked: true },
+      this.content.statRules,
+      defaults,
+    );
+    if (!created.ok) {
+      const error = { type: 'error', code: created.error.code, message: created.error.message };
+      one.send({ ...error, type: 'error' });
+      two.send({ ...error, type: 'error' });
+      return;
+    }
+    const joined = this.roomManager.join(two, created.room.code, undefined);
+    if (!joined.ok) {
+      two.send({ type: 'error', code: joined.error.code, message: joined.error.message });
+    }
+    for (const session of [one, two]) {
+      session.send({ type: 'queueState', queued: false, size: this.matchmaker.size });
+    }
+    this.broadcastQueue();
   }
 
   private handleLeaderboard(session: ClientSession): void {
@@ -304,6 +389,7 @@ export class GameServer {
     session: ClientSession,
     message: Extract<ClientMessage, { type: 'createRoom' }>,
   ): void {
+    this.leaveQueue(session, false);
     const defaults = defaultRoomSettings(this.content.statRules, DEFAULT_MAP_ID);
     const created = this.roomManager.create(
       session,
@@ -320,6 +406,7 @@ export class GameServer {
     session: ClientSession,
     message: Extract<ClientMessage, { type: 'joinRoom' }>,
   ): void {
+    this.leaveQueue(session, false);
     const joined = this.roomManager.join(session, message.code, message.password);
     if (!joined.ok) {
       session.send({ type: 'error', code: joined.error.code, message: joined.error.message });

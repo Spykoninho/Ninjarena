@@ -87,6 +87,8 @@ export interface TournamentView {
 export interface RoomView {
   code: string;
   hasPassword: boolean;
+  // Une salle sortie de la file classée: réglages figés, départ automatique une fois tout le monde prêt.
+  locked: boolean;
   hostId: string;
   status: RoomStatus;
   settings: RoomSettings;
@@ -106,6 +108,8 @@ export type ClientMessage =
   | { type: 'getLeaderboard' }
   | { type: 'createRoom'; password?: string; settings?: RoomSettingsPatch }
   | { type: 'joinRoom'; code: string; password?: string }
+  | { type: 'joinQueue' }
+  | { type: 'leaveQueue' }
   | { type: 'leaveRoom' }
   | { type: 'updateSettings'; patch: RoomSettingsPatch }
   | { type: 'setLoadout'; loadout: Loadout }
@@ -153,6 +157,7 @@ export type ServerMessage =
   | { type: 'leaderboard'; entries: AccountView[] }
   | { type: 'roomState'; room: RoomView }
   | { type: 'roomLeft' }
+  | { type: 'queueState'; queued: boolean; size: number }
   | {
       // Un spectateur reçoit le match sans y être: son `playerId` n'existe pas dans le monde.
       type: 'matchStarted';
