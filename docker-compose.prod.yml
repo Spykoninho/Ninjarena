@@ -34,8 +34,10 @@ services:
       NINJARENA_HOST: 0.0.0.0
       NINJARENA_PORT: 8080
       NINJARENA_MAPS_DIR: /data/maps
+      NINJARENA_ACCOUNTS_FILE: /data/accounts/accounts.json
     volumes:
       - maps:/data/maps
+      - accounts:/data/accounts
     labels:
       - traefik.enable=true
       # Règle plus longue que celle du web: Traefik lui donne la priorité.
@@ -55,6 +57,7 @@ services:
 
 volumes:
   maps:
+  accounts:
 
 networks:
   edge:

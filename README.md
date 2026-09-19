@@ -207,7 +207,7 @@ the root [Dockerfile](Dockerfile):
 
 - `ninjarena-web`: the Vite build (base path `/ninjarena/`) served by nginx.
 - `ninjarena-server`: the bundled Node server, listening on every interface, with player-saved maps
-  in the `maps` volume.
+  in the `maps` volume and the accounts file in the `accounts` volume.
 
 Routing and TLS are handled by the Traefik instance already running on the VPS, through container
 labels: `/ninjarena` goes to nginx and `/ninjarena/ws` (prefix stripped) to the WebSocket server.

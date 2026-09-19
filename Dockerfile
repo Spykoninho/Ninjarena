@@ -33,7 +33,7 @@ COPY --from=server-deps /app/node_modules /app/node_modules
 COPY --from=server-deps /app/packages/server/node_modules ./node_modules
 COPY --from=build /app/packages/server/dist ./dist
 # Le volume des cartes hérite du propriétaire de ce dossier à sa création.
-RUN mkdir -p /data/maps && chown node:node /data/maps
+RUN mkdir -p /data/maps /data/accounts && chown node:node /data/maps /data/accounts
 USER node
 EXPOSE 8080
 CMD ["node", "dist/main.js"]
