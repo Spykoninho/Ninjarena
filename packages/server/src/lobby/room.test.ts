@@ -421,6 +421,36 @@ describe('Room start blockers', () => {
   });
 });
 
+describe('Room practice', () => {
+  it('lets a lone player start a practice room and keeps the round open', async () => {
+    const { room } = createRoom({ practice: true });
+    await room.refreshMap();
+    const one = createSession('c1');
+    expect(room.join(one.session, undefined)).toEqual({ ok: true });
+    expect(room.startBlockers()).toEqual(['PLAYER_NOT_READY']);
+    room.setLoadout(one.session, loadoutOf());
+    room.setReady(one.session, true);
+    expect(room.startBlockers()).toEqual([]);
+
+    expect(room.start(one.session)).toEqual({ ok: true });
+    tickUntil(room, () => room.status === 'IN_GAME');
+    for (let i = 0; i < 300; i++) room.tick();
+    expect(room.status).toBe('IN_GAME');
+    expect(room.match?.simulation.world.match.phaseEndsAt).toBeNull();
+    expect(messagesOfType(one.connection, 'matchStarted')[0]?.matchConfig.practice).toBe(true);
+  });
+
+  it('still asks two players of a room that is not a practice one', async () => {
+    const { room } = createRoom();
+    await room.refreshMap();
+    const one = createSession('c1');
+    room.join(one.session, undefined);
+    room.setLoadout(one.session, loadoutOf());
+    room.setReady(one.session, true);
+    expect(room.startBlockers()).toEqual(['NOT_ENOUGH_PLAYERS']);
+  });
+});
+
 describe('Room ranked play', () => {
   it('reports a guest in a ranked room and refuses a guest joining one', async () => {
     const { room } = createRoom({ ranked: true });

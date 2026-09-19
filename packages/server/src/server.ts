@@ -392,6 +392,8 @@ export class GameServer {
   private handleRoomMessage(session: ClientSession, message: RoomMessage): void {
     const room = session.room;
     if (room === null) {
+      // Les entrées envoyées entre un départ et son accusé ne méritent pas une erreur à l'écran.
+      if (message.type === 'input') return;
       session.send({ type: 'error', code: 'NOT_IN_ROOM', message: 'join a room first' });
       return;
     }

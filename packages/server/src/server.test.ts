@@ -479,6 +479,16 @@ describe('GameServer dispatch', () => {
     ]);
   });
 
+  it('ignores input from a session outside any room but refuses the other room messages', async () => {
+    const { transport } = await startServer();
+    const connection = transport.accept('c1');
+    hello(connection, 'one');
+    send(connection, { type: 'input', seq: 1, input: neutralInput() });
+    expect(messagesOf(connection, 'error')).toHaveLength(0);
+    send(connection, { type: 'setReady', ready: true });
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'NOT_IN_ROOM' });
+  });
+
   it('drops input sent before a match starts and refuses ready once the game is running', async () => {
     const timers = new VirtualTimers();
     const { transport } = await startServer({ NINJARENA_TICK_RATE: '30' }, timers);
