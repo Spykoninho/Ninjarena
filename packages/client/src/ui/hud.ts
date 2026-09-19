@@ -1,4 +1,6 @@
 import type { MatchPhase, TeamId } from '@ninjarena/core';
+import type { MatchSummary } from '@ninjarena/protocol';
+import { toggleFullscreen } from '../input/fullscreen';
 import { P } from '../rendering/art/nativeArt';
 import { teamCodes } from '../rendering/art/presentation';
 import { iconCanvas } from '../rendering/art/spriteArt';
@@ -11,6 +13,7 @@ import {
   teamColor,
   teamPlateCanvas,
 } from './hudGlyphs';
+import { MatchSummaryPanel } from './matchSummaryPanel';
 import { PixelText } from './pixelText';
 
 export type HudAbilityBlock = 'chakra' | 'control';
@@ -80,6 +83,7 @@ export class Hud {
   private readonly corner: CornerPanel;
   private readonly vitals: VitalsPanel;
   private readonly abilities: AbilityBar;
+  private readonly summary: MatchSummaryPanel;
 
   constructor(root: HTMLElement) {
     root.replaceChildren();
@@ -89,6 +93,15 @@ export class Hud {
     this.corner = new CornerPanel(root);
     this.vitals = new VitalsPanel(root);
     this.abilities = new AbilityBar(root);
+    this.summary = new MatchSummaryPanel(root);
+  }
+
+  showSummary(summary: MatchSummary, localPlayerId: string | null): void {
+    this.summary.show(summary, localPlayerId);
+  }
+
+  hideSummary(): void {
+    this.summary.hide();
   }
 
   // Le HUD est mis à jour à chaque image: chaque écriture DOM est conditionnée au changement.
@@ -269,6 +282,14 @@ class CornerPanel {
       row.append(input, document.createTextNode(label));
       list.appendChild(row);
     }
+    const fullscreen = document.createElement('button');
+    fullscreen.type = 'button';
+    fullscreen.className = 'hud-settings-action';
+    fullscreen.textContent = 'Plein écran (F)';
+    fullscreen.addEventListener('click', () => {
+      void toggleFullscreen();
+    });
+    list.appendChild(fullscreen);
   }
 }
 

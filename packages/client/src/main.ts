@@ -5,6 +5,7 @@ import { loadClientConfig, sameOriginServerUrl } from './config/clientConfig';
 import { ClientGame } from './game/clientGame';
 import { DEFAULT_BINDINGS } from './input/bindings';
 import { DomInputAdapter } from './input/domInputAdapter';
+import { isFullscreenShortcut, toggleFullscreen } from './input/fullscreen';
 import { createInputState } from './input/inputState';
 import { NetworkClient } from './network/networkClient';
 import { PixiRenderer } from './rendering/pixiRenderer';
@@ -40,6 +41,9 @@ const content = loadContent();
 const inputState = createInputState();
 const input = new DomInputAdapter(stage, inputState);
 input.attach();
+window.addEventListener('keydown', (event) => {
+  if (isFullscreenShortcut(event, DEFAULT_BINDINGS.fullscreen)) void toggleFullscreen();
+});
 
 const network = new NetworkClient();
 const game = new ClientGame({

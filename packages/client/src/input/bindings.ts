@@ -5,6 +5,7 @@ export interface InputBindings {
   right: string;
   abilities: [string, string, string, string, string];
   spectateNext: string;
+  fullscreen: string;
 }
 
 // Les codes physiques rendent ZQSD et WASD identiques sans réglage.
@@ -15,6 +16,7 @@ export const DEFAULT_BINDINGS: InputBindings = {
   right: 'KeyD',
   abilities: ['Mouse0', 'Space', 'Mouse2', 'KeyE', 'KeyR'],
   spectateNext: 'Tab',
+  fullscreen: 'KeyF',
 };
 
 const KEY_PREFIX = 'Key';

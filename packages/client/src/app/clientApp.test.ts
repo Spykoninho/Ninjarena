@@ -3,6 +3,7 @@ import type { MapDocument, MatchConfig, RoomSettings } from '@ninjarena/core';
 import type {
   AccountView,
   ClientMessage,
+  MatchSummary,
   RoomPlayerView,
   RoomStatus,
   RoomView,
@@ -133,6 +134,7 @@ class FakeGame implements ClientAppGame {
   readonly calls: string[] = [];
   readonly begun: RoomPlayerView[][] = [];
   readonly snapshots: SnapshotMessage[] = [];
+  readonly summaries: MatchSummary[] = [];
   roomPlayers: RoomPlayerView[] = [];
   active = false;
 
@@ -154,6 +156,11 @@ class FakeGame implements ClientAppGame {
 
   handlePong(_message: PongMessage): void {
     this.calls.push('handlePong');
+  }
+
+  showSummary(summary: MatchSummary): void {
+    this.calls.push('showSummary');
+    this.summaries.push(summary);
   }
 
   setRoomPlayers(roomPlayers: RoomPlayerView[]): void {
@@ -312,7 +319,7 @@ beforeEach(async () => {
 
 describe('ClientApp.start', () => {
   it('introduces the session with the configured name', () => {
-    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 4, name: 'kage' }]);
+    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 5, name: 'kage' }]);
     expect(h.game.calls).toContain('init');
     expect(h.home.mounted).toBe(true);
   });
@@ -347,6 +354,22 @@ describe('ClientApp message routing', () => {
     h.network.deliver(matchStarted);
     h.network.deliver(snapshot);
     expect(h.game.snapshots).toEqual([snapshot]);
+  });
+
+  it('hands the match summary to a running game and drops it otherwise', () => {
+    const summary: MatchSummary = {
+      winnerTeamId: 'team-0',
+      scores: { 'team-0': 2 },
+      ranked: false,
+      players: [],
+    };
+    h.network.deliver({ type: 'matchSummary', summary });
+    expect(h.game.summaries).toEqual([]);
+    h.network.deliver({ type: 'roomState', room: room('STARTING') });
+    h.network.deliver(matchStarted);
+    h.network.deliver({ type: 'matchSummary', summary });
+    expect(h.game.summaries).toEqual([summary]);
+    expect(h.app.state.screen).toBe('game');
   });
 
   it('starts the match with the players the room last reported', () => {

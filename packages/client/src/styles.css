@@ -252,6 +252,120 @@ body {
   letter-spacing: normal;
 }
 
+.hud-settings-action {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hud-edge);
+  color: var(--hud-text);
+  font: inherit;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.hud-settings-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Bilan de fin de partie: le verdict en gros, puis le tableau des joueurs, vainqueurs en tête. */
+
+.hud-summary {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 360px;
+  max-width: calc(100% - 32px);
+  padding: 16px 20px 12px;
+  border-top: 2px solid var(--hud-copper);
+}
+
+.hud-summary-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-summary-subtitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--hud-mute);
+}
+
+.hud-summary-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  letter-spacing: normal;
+}
+
+.hud-summary-table th,
+.hud-summary-table td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--hud-edge);
+  white-space: nowrap;
+}
+
+.hud-summary-table th {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hud-copper);
+  text-align: right;
+}
+
+.hud-summary-table th:first-child {
+  text-align: left;
+}
+
+.hud-summary-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-summary-plate {
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+}
+
+.hud-summary-name {
+  font-weight: 700;
+}
+
+.hud-summary-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-summary-row.is-winner .hud-summary-name {
+  color: var(--hud-copper);
+}
+
+.hud-summary-row.is-local {
+  background: rgba(117, 220, 228, 0.12);
+}
+
+.hud-summary-delta.is-gain {
+  color: var(--hud-shield);
+}
+
+.hud-summary-delta.is-loss {
+  color: var(--hud-health);
+}
+
+.hud-summary-hint {
+  font-size: 10px;
+  color: var(--hud-mute);
+}
+
 .hud-vitals {
   position: absolute;
   left: 8px;

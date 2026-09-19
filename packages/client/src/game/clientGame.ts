@@ -9,7 +9,7 @@ import {
   sub,
   tickDurationMs,
 } from '@ninjarena/core';
-import type { RoomPlayerView, ServerMessage } from '@ninjarena/protocol';
+import type { MatchSummary, RoomPlayerView, ServerMessage } from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
 import { feedbackView } from '../feedback/cues';
 import { FeedbackController } from '../feedback/feedbackController';
@@ -24,6 +24,7 @@ import type { InterpolatedWorld } from '../netcode/snapshotInterpolator';
 import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
+import { gameCursorStyle } from '../ui/gameCursor';
 import type { Hud } from '../ui/hud';
 import { routeEvents } from './eventRouter';
 import { buildHudView } from './hudView';
@@ -75,6 +76,7 @@ export class ClientGame {
   private rttMs: number | null = null;
   private stopped = false;
   private status = '';
+  private stage: HTMLElement | null = null;
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
@@ -82,6 +84,7 @@ export class ClientGame {
   }
 
   async init(container: HTMLElement): Promise<void> {
+    this.stage = container;
     await this.deps.renderer.init(container);
   }
 
@@ -99,10 +102,17 @@ export class ClientGame {
     this.updateHud();
   }
 
+  showSummary(summary: MatchSummary): void {
+    if (this.stopped || this.simulation === null) return;
+    this.deps.hud.showSummary(summary, this.localPlayerId);
+  }
+
   endMatch(): void {
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     this.stopPing();
+    if (!this.stopped) this.deps.hud.hideSummary();
+    this.setCursor(false);
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
     this.simulation = null;
     this.accumulator = null;
@@ -153,8 +163,15 @@ export class ClientGame {
     this.cameraPosition = { x: map.widthInUnits / 2, y: map.heightInUnits / 2 };
     this.localRenderPosition = { ...this.cameraPosition };
     renderer.setMap(map, tileset);
+    this.setCursor(true);
     this.startPing();
     this.startLoop();
+  }
+
+  // La flèche du système n'a rien à faire sur un champ de bataille: le réticule la remplace.
+  private setCursor(playing: boolean): void {
+    if (this.stage === null) return;
+    this.stage.style.cursor = playing ? gameCursorStyle() : '';
   }
 
   handleSnapshot(message: SnapshotMessage): void {

@@ -3,6 +3,7 @@ import type { MapDocument, MapSummary } from '@ninjarena/core';
 import type {
   AccountView,
   ClientMessage,
+  MatchSummary,
   RoomPlayerView,
   RoomView,
   ServerMessage,
@@ -29,6 +30,7 @@ export interface ClientAppGame {
   beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void;
   handleSnapshot(message: SnapshotMessage): void;
   handlePong(message: PongMessage): void;
+  showSummary(summary: MatchSummary): void;
   setRoomPlayers(players: RoomPlayerView[]): void;
   setStatus(status: string): void;
   endMatch(): void;
@@ -244,6 +246,9 @@ export class ClientApp {
       case 'matchStarted':
         this.intent = 'lobby';
         game.beginMatch(message, this.appState.room?.players ?? []);
+        return;
+      case 'matchSummary':
+        if (game.active) game.showSummary(message.summary);
         return;
       case 'accountState':
         // Le compte impose son pseudo: le prochain `hello` et les salles l'utilisent.
