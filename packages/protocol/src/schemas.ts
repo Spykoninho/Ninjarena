@@ -84,6 +84,7 @@ export const RoomSettingsPatchSchema = z.strictObject({
     .optional(),
   friendlyFire: z.boolean().optional(),
   ranked: z.boolean().optional(),
+  practice: z.boolean().optional(),
 });
 
 // Version pleine (tous les champs requis) pour l'état de salle diffusé sur le fil.
@@ -97,6 +98,7 @@ const RoomSettingsSchema: z.ZodType<RoomSettings> = z.strictObject({
   roundDurationMs: z.number().int().min(MIN_ROUND_DURATION_MS).max(MAX_ROUND_DURATION_MS),
   friendlyFire: z.boolean(),
   ranked: z.boolean(),
+  practice: z.boolean(),
 });
 
 // Un pseudo de compte est unique et lisible: ni vide ni fait d'espaces, contrairement au nom d'invité.

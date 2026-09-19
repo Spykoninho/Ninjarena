@@ -23,6 +23,7 @@ export interface RoomSettings {
   roundDurationMs: number;
   friendlyFire: boolean;
   ranked: boolean;
+  practice: boolean;
 }
 
 export type RoomSettingsPatch = Partial<RoomSettings>;
@@ -59,10 +60,15 @@ export function roomSettingsSchema(rules: StatRulesDefinition): z.ZodType<RoomSe
       roundDurationMs: z.number().int().min(MIN_ROUND_DURATION_MS).max(MAX_ROUND_DURATION_MS),
       friendlyFire: z.boolean(),
       ranked: z.boolean(),
+      practice: z.boolean(),
     })
     .refine((settings) => settings.mode === 'team' || settings.playersPerTeam === 1, {
       path: ['playersPerTeam'],
       message: 'ffa uses one player per team',
+    })
+    .refine((settings) => !(settings.practice && settings.ranked), {
+      path: ['ranked'],
+      message: 'a practice room cannot be ranked',
     });
 }
 
@@ -77,6 +83,7 @@ export function defaultRoomSettings(rules: StatRulesDefinition, mapId: string): 
     roundDurationMs: DEFAULT_ROUND_DURATION_MS,
     friendlyFire: false,
     ranked: false,
+    practice: false,
   };
 }
 
@@ -125,5 +132,6 @@ export function toMatchConfig(settings: RoomSettings, timing: MatchTiming): Matc
     roundEndDelayMs: timing.roundEndDelayMs,
     friendlyFire: settings.friendlyFire,
     buildPoints: settings.buildPoints,
+    practice: settings.practice,
   });
 }

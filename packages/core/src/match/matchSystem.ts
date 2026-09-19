@@ -49,7 +49,9 @@ export function matchPostStep(ctx: SimulationContext): void {
 function beginRound(ctx: SimulationContext): void {
   const match = ctx.world.match;
   match.phase = 'IN_ROUND';
-  match.phaseEndsAt = ctx.now + ctx.ticks(ctx.matchConfig.roundDurationMs);
+  match.phaseEndsAt = ctx.matchConfig.practice
+    ? null
+    : ctx.now + ctx.ticks(ctx.matchConfig.roundDurationMs);
   ctx.events.push({ type: 'roundStarted', tick: ctx.now, round: match.round });
 }
 

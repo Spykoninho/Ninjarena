@@ -57,6 +57,7 @@ const ROOM_VIEW: RoomView = {
     roundDurationMs: 240_000,
     friendlyFire: false,
     ranked: true,
+    practice: false,
   },
   map: { id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true },
   players: [

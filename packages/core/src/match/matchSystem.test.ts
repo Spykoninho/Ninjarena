@@ -71,6 +71,16 @@ describe('match rules', () => {
     expect(all).toContainEqual(expect.objectContaining({ type: 'roundEnded', winnerTeamId: null }));
   });
 
+  it('keeps a practice round open alone and past the round duration', () => {
+    const sim = duelWith({ practice: true, roundDurationMs: 100 });
+    addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    sim.startMatch();
+    for (let i = 0; i < 20; i++) sim.step({ a: moveRight() });
+    expect(sim.world.match.phase).toBe('IN_ROUND');
+    expect(sim.world.match.phaseEndsAt).toBeNull();
+    expect(sim.world.match.round).toBe(1);
+  });
+
   it('treats free-for-all as one team per player', () => {
     const sim = createTestSimulation({
       matchConfig: { id: 'ffa-3', mode: 'ffa', teamCount: 3, playersPerTeam: 1 },

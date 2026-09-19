@@ -12,6 +12,8 @@ export const MatchConfigSchema = z
     roundEndDelayMs: z.number().nonnegative(),
     friendlyFire: z.boolean().default(false),
     buildPoints: z.number().int().nonnegative().optional(),
+    // Un entraînement n'a pas de chronomètre: la manche dure tant que le joueur reste.
+    practice: z.boolean().default(false),
   })
   .refine((c) => c.mode === 'team' || c.playersPerTeam === 1, {
     message: 'ffa uses one player per team',

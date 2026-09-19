@@ -22,6 +22,7 @@ describe('defaultRoomSettings', () => {
       roundDurationMs: 240_000,
       friendlyFire: false,
       ranked: false,
+      practice: false,
     });
   });
 });
@@ -35,6 +36,18 @@ describe('applySettingsPatch', () => {
       ok: true,
       settings: { ...defaults, mode: 'ffa', playersPerTeam: 1 },
     });
+  });
+
+  it('refuses a ranked practice room and carries practice into the match config', () => {
+    expect(applySettingsPatch(defaults, { practice: true, ranked: true }, TEST_RULES).ok).toBe(
+      false,
+    );
+    const applied = applySettingsPatch(defaults, { practice: true }, TEST_RULES);
+    expect(applied.ok).toBe(true);
+    if (applied.ok) {
+      expect(toMatchConfig(applied.settings, DEFAULT_MATCH_TIMING).practice).toBe(true);
+    }
+    expect(toMatchConfig(defaults, DEFAULT_MATCH_TIMING).practice).toBe(false);
   });
 
   it('rejects a patch with an unknown field, an out-of-range value or too many players', () => {
