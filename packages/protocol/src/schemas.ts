@@ -13,7 +13,13 @@ import {
 } from '@ninjarena/core';
 import type { RoomSettings, WorldEvent, WorldState } from '@ninjarena/core';
 import { z } from 'zod';
-import type { ClientMessage, RoomPlayerView, RoomView, ServerMessage } from './messages';
+import type {
+  AccountView,
+  ClientMessage,
+  RoomPlayerView,
+  RoomView,
+  ServerMessage,
+} from './messages';
 import { SERVER_ERROR_CODES, START_BLOCKERS } from './messages';
 
 const MAX_PLAYER_NAME_LENGTH = 24;
@@ -21,6 +27,10 @@ const MAX_ATTRIBUTE_POINTS = 50;
 const MAX_TECHNIQUE_ID_LENGTH = 64;
 const MAX_TECHNIQUE_IDS = 8;
 const MAX_PASSWORD_LENGTH = 32;
+const MIN_ACCOUNT_NAME_LENGTH = 2;
+const MIN_ACCOUNT_PASSWORD_LENGTH = 4;
+const MAX_ACCOUNT_PASSWORD_LENGTH = 64;
+const MAX_LEADERBOARD_ENTRIES = 200;
 const MAX_MAP_STRING_LENGTH = 40;
 const MAX_BASIC_ATTACK_ID_LENGTH = 64;
 const MAX_BUILD_POINTS = 50;
@@ -72,6 +82,7 @@ export const RoomSettingsPatchSchema = z.strictObject({
     .max(MAX_ROUND_DURATION_MS)
     .optional(),
   friendlyFire: z.boolean().optional(),
+  ranked: z.boolean().optional(),
 });
 
 // Version pleine (tous les champs requis) pour l'état de salle diffusé sur le fil.
@@ -84,6 +95,27 @@ const RoomSettingsSchema: z.ZodType<RoomSettings> = z.strictObject({
   bestOf: z.union(BEST_OF_OPTIONS.map((value) => z.literal(value))),
   roundDurationMs: z.number().int().min(MIN_ROUND_DURATION_MS).max(MAX_ROUND_DURATION_MS),
   friendlyFire: z.boolean(),
+  ranked: z.boolean(),
+});
+
+// Un pseudo de compte est unique et lisible: ni vide ni fait d'espaces, contrairement au nom d'invité.
+const AccountNameSchema = z
+  .string()
+  .max(MAX_PLAYER_NAME_LENGTH)
+  .refine((name) => name.trim().length >= MIN_ACCOUNT_NAME_LENGTH && name.trim() === name, {
+    message: 'an account name has 2 to 24 characters without surrounding spaces',
+  });
+
+const AccountPasswordSchema = z
+  .string()
+  .min(MIN_ACCOUNT_PASSWORD_LENGTH)
+  .max(MAX_ACCOUNT_PASSWORD_LENGTH);
+
+const AccountViewSchema: z.ZodType<AccountView> = z.strictObject({
+  name: AccountNameSchema,
+  rating: z.number().int().nonnegative(),
+  wins: z.number().int().nonnegative(),
+  losses: z.number().int().nonnegative(),
 });
 
 const MapSummarySchema = z.strictObject({
@@ -102,6 +134,7 @@ const RoomPlayerViewSchema: z.ZodType<RoomPlayerView> = z.strictObject({
   ready: z.boolean(),
   loadout: LoadoutSchema.nullable(),
   loadoutValid: z.boolean(),
+  rating: z.number().int().nonnegative().nullable(),
 });
 
 const RoomViewSchema: z.ZodType<RoomView> = z.strictObject({
@@ -121,6 +154,18 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
     protocolVersion: z.number().int(),
     name: z.string().min(1).max(MAX_PLAYER_NAME_LENGTH),
   }),
+  z.strictObject({
+    type: z.literal('register'),
+    name: AccountNameSchema,
+    password: AccountPasswordSchema,
+  }),
+  z.strictObject({
+    type: z.literal('login'),
+    name: AccountNameSchema,
+    password: AccountPasswordSchema,
+  }),
+  z.strictObject({ type: z.literal('logout') }),
+  z.strictObject({ type: z.literal('getLeaderboard') }),
   z.strictObject({
     type: z.literal('createRoom'),
     password: z.string().min(1).max(MAX_PASSWORD_LENGTH).optional(),
@@ -158,6 +203,11 @@ const WorldEventSchema = z.custom<WorldEvent>(isObject);
 
 export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnion('type', [
   z.object({ type: z.literal('welcome'), sessionId: z.string().min(1) }),
+  z.object({ type: z.literal('accountState'), account: AccountViewSchema.nullable() }),
+  z.object({
+    type: z.literal('leaderboard'),
+    entries: z.array(AccountViewSchema).max(MAX_LEADERBOARD_ENTRIES),
+  }),
   z.object({ type: z.literal('roomState'), room: RoomViewSchema }),
   z.object({ type: z.literal('roomLeft') }),
   z.object({

@@ -20,10 +20,12 @@ export const START_BLOCKERS = [
   'EMPTY_TEAM',
   'MAP_MISSING',
   'MAP_INVALID',
+  'RANKED_NEEDS_ACCOUNT',
 ] as const;
 
 export type StartBlocker = (typeof START_BLOCKERS)[number];
 
+// Le score d'un joueur connecté à un compte; un invité n'en a pas.
 export interface RoomPlayerView {
   id: string;
   name: string;
@@ -31,6 +33,14 @@ export interface RoomPlayerView {
   ready: boolean;
   loadout: Loadout | null;
   loadoutValid: boolean;
+  rating: number | null;
+}
+
+export interface AccountView {
+  name: string;
+  rating: number;
+  wins: number;
+  losses: number;
 }
 
 export interface RoomView {
@@ -48,6 +58,10 @@ export type RoomSettingsPatch = Partial<RoomSettings>;
 
 export type ClientMessage =
   | { type: 'hello'; protocolVersion: number; name: string }
+  | { type: 'register'; name: string; password: string }
+  | { type: 'login'; name: string; password: string }
+  | { type: 'logout' }
+  | { type: 'getLeaderboard' }
   | { type: 'createRoom'; password?: string; settings?: RoomSettingsPatch }
   | { type: 'joinRoom'; code: string; password?: string }
   | { type: 'leaveRoom' }
@@ -82,6 +96,10 @@ export const SERVER_ERROR_CODES = [
   'INVALID_MAP',
   'MAP_NOT_FOUND',
   'MAP_STORE_FULL',
+  'NAME_TAKEN',
+  'BAD_CREDENTIALS',
+  'ALREADY_LOGGED_IN',
+  'NOT_LOGGED_IN',
   'SERVER_ERROR',
 ] as const;
 
@@ -89,6 +107,8 @@ export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 
 export type ServerMessage =
   | { type: 'welcome'; sessionId: string }
+  | { type: 'accountState'; account: AccountView | null }
+  | { type: 'leaderboard'; entries: AccountView[] }
   | { type: 'roomState'; room: RoomView }
   | { type: 'roomLeft' }
   | {

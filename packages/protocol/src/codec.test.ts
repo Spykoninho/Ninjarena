@@ -56,17 +56,38 @@ const ROOM_VIEW: RoomView = {
     bestOf: 3,
     roundDurationMs: 240_000,
     friendlyFire: false,
+    ranked: true,
   },
   map: { id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true },
   players: [
-    { id: 'c1', name: 'host', team: 0, ready: true, loadout: LOADOUT, loadoutValid: true },
-    { id: 'c2', name: 'guest', team: null, ready: false, loadout: null, loadoutValid: false },
+    {
+      id: 'c1',
+      name: 'host',
+      team: 0,
+      ready: true,
+      loadout: LOADOUT,
+      loadoutValid: true,
+      rating: 120,
+    },
+    {
+      id: 'c2',
+      name: 'guest',
+      team: null,
+      ready: false,
+      loadout: null,
+      loadoutValid: false,
+      rating: null,
+    },
   ],
   startBlockers: ['PLAYER_NOT_READY'],
 };
 
 const CLIENT_MESSAGES: ClientMessage[] = [
   { type: 'hello', protocolVersion: PROTOCOL_VERSION, name: 'ninja-a1b2' },
+  { type: 'register', name: 'kage', password: 'secret' },
+  { type: 'login', name: 'kage', password: 'secret' },
+  { type: 'logout' },
+  { type: 'getLeaderboard' },
   { type: 'createRoom', password: 'secret', settings: { teamCount: 4 } },
   { type: 'joinRoom', code: 'ab12cd', password: 'secret' },
   { type: 'leaveRoom' },
@@ -84,6 +105,9 @@ const CLIENT_MESSAGES: ClientMessage[] = [
 
 const SERVER_MESSAGES: ServerMessage[] = [
   { type: 'welcome', sessionId: 'session-1' },
+  { type: 'accountState', account: { name: 'kage', rating: 120, wins: 3, losses: 1 } },
+  { type: 'accountState', account: null },
+  { type: 'leaderboard', entries: [{ name: 'kage', rating: 120, wins: 3, losses: 1 }] },
   { type: 'roomState', room: ROOM_VIEW },
   { type: 'roomLeft' },
   {
@@ -146,6 +170,19 @@ describe('protocol codec', () => {
   it('rejects a createRoom whose settings patch violates the team count bounds', () => {
     expect(
       clientMessageCodec.decode(JSON.stringify({ type: 'createRoom', settings: { teamCount: 1 } })),
+    ).toBeNull();
+  });
+
+  it('rejects a register whose name is padded with spaces or whose password is too short', () => {
+    expect(
+      clientMessageCodec.decode(
+        JSON.stringify({ type: 'register', name: ' kage', password: 'secret' }),
+      ),
+    ).toBeNull();
+    expect(
+      clientMessageCodec.decode(
+        JSON.stringify({ type: 'register', name: 'kage', password: 'abc' }),
+      ),
     ).toBeNull();
   });
 
