@@ -240,6 +240,13 @@ class FakeHome implements HomeView {
     this.leaderboards.push(entries);
   }
 
+  readonly queues: { queued: boolean; size: number }[] = [];
+
+  setQueue(queued: boolean, size: number): void {
+    this.calls.push('setQueue');
+    this.queues.push({ queued, size });
+  }
+
   showError(message: string): void {
     this.calls.push('showError');
     this.errors.push(message);
@@ -610,6 +617,87 @@ describe('ClientApp map test run', () => {
     h.network.deliver({ type: 'error', code: 'INVALID_LOADOUT', message: 'nope' });
     expect(h.app.state.screen).toBe('lobby');
     expect(h.lobby.errors).toEqual(['Équipement refusé par le serveur']);
+  });
+});
+
+describe('ClientApp sandbox and ranked queue', () => {
+  const me = (overrides: Partial<RoomPlayerView>): RoomPlayerView => ({
+    id: 'c1',
+    name: 'kage',
+    team: 0,
+    ready: true,
+    loadout,
+    loadoutValid: true,
+    rating: null,
+    ...overrides,
+  });
+
+  it('opens a practice room from home, starts alone and comes back home on exit', async () => {
+    h.network.deliver({ type: 'welcome', sessionId: 'c1' });
+    h.app.createSandbox('kage');
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({
+      type: 'createRoom',
+      settings: { practice: true },
+    });
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', {
+        players: [me({ ready: false, loadout: null, loadoutValid: false })],
+      }),
+    });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setLoadout', loadout });
+    expect(h.app.state.screen).toBe('home');
+    expect(h.lobby.mounted).toBe(false);
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', { players: [me({ ready: false })] }),
+    });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setReady', ready: true });
+    h.network.deliver({ type: 'roomState', room: room('WAITING', { players: [me({})] }) });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'startMatch' });
+
+    h.network.deliver(matchStarted);
+    expect(h.app.state.screen).toBe('game');
+    const exit = h.game.exits.at(-1);
+    expect(exit?.label).toBe('Quitter le bac à sable');
+    exit?.run();
+    h.network.deliver({ type: 'roomLeft' });
+    expect(h.app.state.screen).toBe('home');
+    expect(h.home.mounted).toBe(true);
+    // Une salle rejointe ensuite reprend le chemin normal du salon.
+    h.network.deliver({ type: 'roomState', room: room('WAITING') });
+    expect(h.app.state.screen).toBe('lobby');
+  });
+
+  it('joins the queue, reflects its size on the home screen and lands in the found room', async () => {
+    h.network.deliver({ type: 'welcome', sessionId: 'c1' });
+    h.app.joinQueue('kage');
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'joinQueue' });
+    h.network.deliver({ type: 'queueState', queued: true, size: 3 });
+    expect(h.home.queues.at(-1)).toEqual({ queued: true, size: 3 });
+    expect(h.app.state.queue).toEqual({ queued: true, size: 3 });
+
+    h.app.leaveQueue();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'leaveQueue' });
+    h.network.deliver({ type: 'queueState', queued: false, size: 2 });
+    expect(h.home.queues.at(-1)).toEqual({ queued: false, size: 2 });
+
+    h.network.deliver({ type: 'queueState', queued: true, size: 1 });
+    h.network.deliver({ type: 'roomState', room: room('WAITING', { locked: true }) });
+    expect(h.app.state.queue).toEqual({ queued: false, size: 0 });
+    expect(h.app.state.screen).toBe('lobby');
+  });
+
+  it('sends the tournament settings a custom creation asks for', async () => {
+    h.network.deliver({ type: 'welcome', sessionId: 'c1' });
+    h.app.createRoom('kage', '', { tournament: true, tournamentSize: 8 });
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({
+      type: 'createRoom',
+      settings: { tournament: true, tournamentSize: 8 },
+    });
   });
 });
 

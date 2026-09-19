@@ -72,8 +72,17 @@ function app(): ClientApp {
 
 const home = new HomeScreen(
   {
-    createRoom: (name, password) => {
-      app().createRoom(name, password);
+    createRoom: (name, password, settings) => {
+      app().createRoom(name, password, settings);
+    },
+    createSandbox: (name) => {
+      app().createSandbox(name);
+    },
+    joinQueue: (name) => {
+      app().joinQueue(name);
+    },
+    leaveQueue: () => {
+      app().leaveQueue();
     },
     joinRoom: (name, code, password) => {
       app().joinRoom(name, code, password);

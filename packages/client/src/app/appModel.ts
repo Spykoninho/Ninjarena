@@ -4,8 +4,14 @@ import type { ClientConfig } from '../config/clientConfig';
 import type { ScreenId } from './screen';
 
 // Une salle ouverte depuis l'éditeur n'y ramène pas: l'appelant dit s'il attend un changement d'écran.
-// `test` est l'essai d'une carte: le salon reste invisible et la sortie du match ramène à l'éditeur.
-export type ReduceIntent = 'stay' | 'lobby' | 'test';
+// `test` est l'essai d'une carte et `sandbox` le bac à sable: le salon reste invisible et la sortie
+// du match ramène là d'où l'on vient, l'éditeur ou l'accueil.
+export type ReduceIntent = 'stay' | 'lobby' | 'test' | 'sandbox';
+
+export interface QueueState {
+  queued: boolean;
+  size: number;
+}
 
 export interface AppState {
   screen: ScreenId;
@@ -14,8 +20,11 @@ export interface AppState {
   maps: MapSummary[];
   account: AccountView | null;
   leaderboard: AccountView[];
+  queue: QueueState;
   status: string;
 }
+
+const NOT_QUEUED: QueueState = { queued: false, size: 0 };
 
 export function initialAppState(config: ClientConfig): AppState {
   return {
@@ -25,6 +34,7 @@ export function initialAppState(config: ClientConfig): AppState {
     maps: [],
     account: null,
     leaderboard: [],
+    queue: NOT_QUEUED,
     status: 'idle',
   };
 }
@@ -38,9 +48,17 @@ export function reduceServerMessage(
     case 'welcome':
       return { ...state, sessionId: message.sessionId, status: `Session ${message.sessionId}` };
     case 'roomState':
-      return { ...state, room: message.room, screen: screenWithRoom(state, message.room, intent) };
+      // Une salle reçue sort de la file: la partie trouvée est là.
+      return {
+        ...state,
+        room: message.room,
+        queue: NOT_QUEUED,
+        screen: screenWithRoom(state, message.room, intent),
+      };
     case 'roomLeft':
       return { ...state, room: null, screen: intent === 'test' ? 'editor' : 'home' };
+    case 'queueState':
+      return { ...state, queue: { queued: message.queued, size: message.size } };
     case 'matchStarted':
       return { ...state, screen: 'game' };
     case 'mapList':
@@ -65,13 +83,13 @@ export function screenFor(state: AppState): ScreenId {
 function screenWithRoom(state: AppState, room: RoomView, intent: ReduceIntent): ScreenId {
   switch (state.screen) {
     case 'home':
-      return 'lobby';
+      return intent === 'sandbox' ? 'home' : 'lobby';
     case 'editor':
       return intent === 'lobby' ? 'lobby' : 'editor';
     case 'game':
       // Le retour au salon attend que la salle repasse en attente: un match en cours garde l'écran.
       if (room.status !== 'WAITING') return 'game';
-      return intent === 'test' ? 'editor' : 'lobby';
+      return intent === 'test' ? 'editor' : intent === 'sandbox' ? 'home' : 'lobby';
     default:
       return state.screen;
   }

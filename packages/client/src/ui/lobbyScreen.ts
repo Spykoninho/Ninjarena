@@ -206,10 +206,12 @@ export class LobbyScreen implements Screen {
     this.statusLine.textContent = statusText(room);
     this.roster.update(room, sessionId);
     const host = isHost(room, sessionId);
-    const editable = host && room.status === 'WAITING';
-    this.settingsNote.textContent = host
-      ? 'Tu es l’hôte : ces réglages s’appliquent à toute la salle.'
-      : 'Seul l’hôte peut modifier les réglages de la partie.';
+    const editable = host && room.status === 'WAITING' && !room.locked;
+    this.settingsNote.textContent = room.locked
+      ? 'Partie trouvée par la file classée : les réglages sont fixés et la partie démarre dès que les deux joueurs sont prêts.'
+      : host
+        ? 'Tu es l’hôte : ces réglages s’appliquent à toute la salle.'
+        : 'Seul l’hôte peut modifier les réglages de la partie.';
     this.settingsForm.sync(settingsRows(room.settings, maps, this.rules), editable);
     this.stakes.hidden = !room.settings.ranked;
     if (room.settings.ranked) renderStakes(this.stakes, rankedStakes(room), sessionId);
@@ -272,7 +274,8 @@ export class LobbyScreen implements Screen {
     this.readyButton.textContent = ready ? 'Pas prêt' : 'Prêt';
     this.readyButton.classList.toggle('is-ready', ready);
     this.readyButton.disabled = local === null || !local.loadoutValid || !waiting;
-    this.startButton.hidden = !host;
+    // Une salle verrouillée part d'elle-même: le bouton de l'hôte n'a pas lieu d'être.
+    this.startButton.hidden = !host || room.locked;
     this.startButton.disabled = !canStart(room, this.sessionId);
   }
 

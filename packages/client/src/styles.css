@@ -2635,3 +2635,62 @@ body {
 .bracket-champion .bracket-match {
   border-color: #ffd166;
 }
+
+/* Choix du type de partie, tournoi et file classée sur l'accueil */
+
+.home-picker,
+.home-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-form-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ui-mute);
+}
+
+.home-sizes {
+  display: flex;
+  gap: 8px;
+}
+
+.home-size {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ui-edge);
+  color: var(--hud-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-size.is-picked {
+  background: rgba(117, 220, 228, 0.18);
+  border-color: var(--hud-chakra);
+}
+
+.home-queue-search {
+  margin: 0;
+  font-size: 13px;
+  animation: home-queue-pulse 1.6s ease-in-out infinite;
+}
+
+.home-queue-count {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ui-mute);
+}
+
+@keyframes home-queue-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}

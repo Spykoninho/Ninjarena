@@ -1,5 +1,5 @@
 import type { GameContent } from '@ninjarena/content';
-import type { Loadout, MapDocument, MapSummary } from '@ninjarena/core';
+import type { Loadout, MapDocument, MapSummary, RoomSettingsPatch } from '@ninjarena/core';
 import type {
   AccountView,
   ClientMessage,
@@ -45,6 +45,7 @@ export interface HomeView extends Screen {
   setStatus(status: string): void;
   setAccount(account: AccountView | null): void;
   setLeaderboard(entries: AccountView[]): void;
+  setQueue(queued: boolean, size: number): void;
   showError(message: string): void;
 }
 
@@ -79,11 +80,36 @@ export interface ClientAppDeps {
 }
 
 const DISCONNECTED = 'Déconnecté : le serveur a fermé la connexion';
-const EXIT_TEST_LABEL = 'Retour à l’éditeur';
 const EXIT_MATCH_LABEL = 'Quitter la partie';
 
-// Les étapes de l'essai d'une carte, franchies une fois chacune au fil des états de salle reçus.
-type TestStage = 'equip' | 'ready' | 'start' | 'started';
+// Une partie jouée seul: l'essai d'une carte depuis l'éditeur, ou le bac à sable depuis l'accueil.
+type SoloMode = 'test' | 'sandbox';
+
+// Les étapes d'une partie en solo, franchies une fois chacune au fil des états de salle reçus.
+type SoloStage = 'equip' | 'ready' | 'start' | 'started';
+
+interface SoloRun {
+  mode: SoloMode;
+  stage: SoloStage;
+}
+
+const SOLO_TEXTS: Record<
+  SoloMode,
+  { preparing: string; exit: string; ended: string; intent: ReduceIntent }
+> = {
+  test: {
+    preparing: 'Préparation de l’essai…',
+    exit: 'Retour à l’éditeur',
+    ended: 'Essai terminé',
+    intent: 'test',
+  },
+  sandbox: {
+    preparing: 'Préparation du bac à sable…',
+    exit: 'Quitter le bac à sable',
+    ended: 'Bac à sable terminé',
+    intent: 'sandbox',
+  },
+};
 
 export class ClientApp {
   private readonly deps: ClientAppDeps;
@@ -94,12 +120,13 @@ export class ClientApp {
   private renderedMaps: MapSummary[] | null = null;
   private renderedAccount: AccountView | null = null;
   private renderedLeaderboard: AccountView[] | null = null;
+  private renderedQueue: AppState['queue'] | null = null;
   private lastError: string | null = null;
   private connected = false;
   private connecting = false;
   private mapsRequested = false;
   private pendingTest = false;
-  private testStage: TestStage | null = null;
+  private solo: SoloRun | null = null;
 
   constructor(deps: ClientAppDeps) {
     this.deps = deps;
@@ -132,16 +159,42 @@ export class ClientApp {
     this.deps.game.dispose();
   }
 
-  createRoom(name: string, password: string): void {
+  createRoom(name: string, password: string, settings: RoomSettingsPatch = {}): void {
     void this.withSession(name, () => {
-      this.send({ type: 'createRoom', ...optionalPassword(password) });
+      this.intent = 'lobby';
+      this.send({
+        type: 'createRoom',
+        ...optionalPassword(password),
+        ...(Object.keys(settings).length === 0 ? {} : { settings }),
+      });
+    });
+  }
+
+  // Le bac à sable est une salle d'entraînement pilotée depuis l'accueil, sans passer par le salon.
+  createSandbox(name: string): void {
+    void this.withSession(name, () => {
+      this.beginSolo('sandbox');
+      this.send({ type: 'createRoom', settings: { practice: true } });
     });
   }
 
   joinRoom(name: string, code: string, password: string): void {
     void this.withSession(name, () => {
+      this.intent = 'lobby';
       this.send({ type: 'joinRoom', code, ...optionalPassword(password) });
     });
+  }
+
+  joinQueue(name: string): void {
+    void this.withSession(name, () => {
+      this.intent = 'lobby';
+      this.send({ type: 'joinQueue' });
+    });
+  }
+
+  leaveQueue(): void {
+    if (!this.connected) return;
+    this.send({ type: 'leaveQueue' });
   }
 
   login(name: string, password: string): void {
@@ -186,7 +239,7 @@ export class ClientApp {
   leaveEditor(): void {
     this.intent = 'lobby';
     this.pendingTest = false;
-    this.testStage = null;
+    this.solo = null;
     this.appState = { ...this.appState, screen: 'home' };
     this.render();
   }
@@ -244,8 +297,8 @@ export class ClientApp {
     if (leftGame && game.active) game.endMatch();
     this.appState = next;
     this.applyMessage(message);
-    // Un essai dont le match s'achève rend la salle: l'éditeur ne garde pas de salle derrière lui.
-    if (leftGame && this.testStage !== null && next.room !== null) this.send({ type: 'leaveRoom' });
+    // Une partie en solo dont le match s'achève rend la salle: rien ne reste ouvert derrière.
+    if (leftGame && this.solo !== null && next.room !== null) this.send({ type: 'leaveRoom' });
     if (message.type === 'error') this.showError(serverErrorText(message.code, message.message));
     else this.render();
   }
@@ -258,25 +311,21 @@ export class ClientApp {
         this.requestMaps();
         game.setRoomPlayers(message.room.players);
         game.setTournament(message.room.tournament, this.appState.sessionId ?? '');
-        if (this.testStage !== null) this.driveTest(message.room);
+        if (this.solo !== null) this.driveSolo(message.room);
         return;
       case 'roomLeft':
-        if (this.testStage !== null) this.endTest();
+        if (this.solo !== null) this.endSolo();
         return;
       case 'matchStarted':
         game.beginMatch(message, this.appState.room?.players ?? []);
         game.setTournament(this.appState.room?.tournament ?? null, this.appState.sessionId ?? '');
-        // Quitter en cours de match vaut abandon: la salle est rendue et l'accueil reprend.
-        if (this.testStage === null) {
-          this.intent = 'lobby';
-          game.setExitAction({
-            label: EXIT_MATCH_LABEL,
-            run: () => this.send({ type: 'leaveRoom' }),
-          });
-          return;
-        }
-        this.testStage = 'started';
-        game.setExitAction({ label: EXIT_TEST_LABEL, run: () => this.send({ type: 'leaveRoom' }) });
+        // Quitter en cours de match vaut abandon: la salle est rendue et l'on revient d'où l'on vient.
+        if (this.solo !== null) this.solo.stage = 'started';
+        else this.intent = 'lobby';
+        game.setExitAction({
+          label: this.solo === null ? EXIT_MATCH_LABEL : SOLO_TEXTS[this.solo.mode].exit,
+          run: () => this.send({ type: 'leaveRoom' }),
+        });
         return;
       case 'matchSummary':
         if (game.active) game.showSummary(message.summary);
@@ -293,69 +342,81 @@ export class ClientApp {
         if (!this.pendingTest) return;
         this.pendingTest = false;
         // L'essai se joue seul, sans salon: une salle d'entraînement se prépare derrière l'éditeur.
-        this.intent = 'test';
-        this.testStage = 'equip';
-        screens.editor.setStatus('Préparation de l’essai…');
+        this.beginSolo('test');
         this.send({ type: 'createRoom', settings: { mapId: message.id, practice: true } });
         return;
       case 'error':
         this.pendingTest = false;
-        if (this.testStage !== null && this.testStage !== 'started') this.abandonTest();
+        if (this.solo !== null && this.solo.stage !== 'started') this.abandonSolo();
         return;
       default:
         return;
     }
   }
 
+  private beginSolo(mode: SoloMode): void {
+    this.solo = { mode, stage: 'equip' };
+    this.intent = SOLO_TEXTS[mode].intent;
+    this.soloStatus(SOLO_TEXTS[mode].preparing);
+  }
+
   // Chaque état de salle fait franchir au plus une étape: équiper, se dire prêt, puis lancer.
-  private driveTest(room: RoomView): void {
-    if (room.status !== 'WAITING' || this.testStage === 'started') return;
-    // Une carte refusée ne se corrige pas depuis l'essai: inutile d'aller plus loin.
+  private driveSolo(room: RoomView): void {
+    const solo = this.solo;
+    if (solo === null || room.status !== 'WAITING' || solo.stage === 'started') return;
+    // Une carte refusée ne se corrige pas depuis la partie: inutile d'aller plus loin.
     if (room.startBlockers.includes('MAP_INVALID')) {
-      this.abandonTest();
+      this.abandonSolo();
       return;
     }
     const local = room.players.find((player) => player.id === this.appState.sessionId);
     if (local === undefined) return;
-    if (this.testStage === 'equip') {
+    if (solo.stage === 'equip') {
       const loadout = this.deps.screens.lobby.currentLoadout();
       if (loadout === null) {
-        this.abandonTest();
+        this.abandonSolo();
         return;
       }
-      this.testStage = 'ready';
+      solo.stage = 'ready';
       this.send({ type: 'setLoadout', loadout });
       return;
     }
     if (!local.loadoutValid) return;
-    if (this.testStage === 'ready') {
-      if (local.ready) this.testStage = 'start';
+    if (solo.stage === 'ready') {
+      if (local.ready) solo.stage = 'start';
       else this.send({ type: 'setReady', ready: true });
-      if (this.testStage !== 'start') return;
+      if (solo.stage !== 'start') return;
     }
     // La carte se charge en arrière-plan: l'absence provisoire de carte n'est pas un refus.
     const blocking = room.startBlockers.filter((blocker) => blocker !== 'MAP_MISSING');
     if (blocking.length > 0) {
-      this.abandonTest();
+      this.abandonSolo();
       return;
     }
     if (room.startBlockers.length === 0 && room.hostId === this.appState.sessionId) {
-      this.testStage = 'started';
+      solo.stage = 'started';
       this.send({ type: 'startMatch' });
     }
   }
 
-  // Un essai qui bute sur un refus montre le salon: le joueur y lit ce qui bloque.
-  private abandonTest(): void {
-    this.testStage = null;
+  // Une partie en solo qui bute sur un refus montre le salon: le joueur y lit ce qui bloque.
+  private abandonSolo(): void {
+    this.solo = null;
     this.intent = 'lobby';
     if (this.appState.room !== null) this.appState = { ...this.appState, screen: 'lobby' };
   }
 
-  private endTest(): void {
-    this.testStage = null;
-    this.intent = 'stay';
-    this.deps.screens.editor.setStatus('Essai terminé');
+  private endSolo(): void {
+    const solo = this.solo;
+    if (solo === null) return;
+    this.solo = null;
+    this.intent = solo.mode === 'test' ? 'stay' : 'lobby';
+    this.soloStatus(SOLO_TEXTS[solo.mode].ended, solo.mode);
+  }
+
+  private soloStatus(status: string, mode: SoloMode | undefined = this.solo?.mode): void {
+    if (mode === 'test') this.deps.screens.editor.setStatus(status);
+    else this.setStatus(status);
   }
 
   private requestMaps(): void {
@@ -370,15 +431,16 @@ export class ClientApp {
     this.connected = false;
     this.connecting = false;
     this.mapsRequested = false;
-    // Une coupure annule l'essai en vol: la sauvegarde suivante ne doit pas ouvrir de salle.
+    // Une coupure annule la partie en solo en vol: la sauvegarde suivante ne doit pas ouvrir de salle.
     this.pendingTest = false;
-    this.testStage = null;
+    this.solo = null;
     this.appState = {
       ...this.appState,
       screen: 'home',
       sessionId: null,
       room: null,
       account: null,
+      queue: { queued: false, size: 0 },
       status: DISCONNECTED,
     };
     this.showError(DISCONNECTED);
@@ -435,6 +497,10 @@ export class ClientApp {
     if (this.renderedLeaderboard !== this.appState.leaderboard) {
       this.renderedLeaderboard = this.appState.leaderboard;
       screens.home.setLeaderboard(this.appState.leaderboard);
+    }
+    if (this.renderedQueue !== this.appState.queue) {
+      this.renderedQueue = this.appState.queue;
+      screens.home.setQueue(this.appState.queue.queued, this.appState.queue.size);
     }
     if (target === 'lobby' && room !== null) {
       screens.lobby.update(room, this.appState.maps, this.appState.sessionId ?? '');

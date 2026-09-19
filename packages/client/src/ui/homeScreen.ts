@@ -1,10 +1,15 @@
+import type { RoomSettingsPatch, TournamentSize } from '@ninjarena/core';
+import { TOURNAMENT_SIZES } from '@ninjarena/core';
 import type { AccountView } from '@ninjarena/protocol';
 import type { Screen } from '../app/screen';
 import { isRoomCode } from '../lobby/lobbyModel';
 import { rankBadge, ratingText } from './rankBadge';
 
 export interface HomeActions {
-  createRoom(name: string, password: string): void;
+  createRoom(name: string, password: string, settings: RoomSettingsPatch): void;
+  createSandbox(name: string): void;
+  joinQueue(name: string): void;
+  leaveQueue(): void;
   joinRoom(name: string, code: string, password: string): void;
   login(name: string, password: string): void;
   register(name: string, password: string): void;
@@ -13,7 +18,12 @@ export interface HomeActions {
   openEditor(): void;
 }
 
-type HomeMode = 'menu' | 'create' | 'join' | 'login' | 'leaderboard';
+// `create` est le choix du type de partie; `custom` et `tournament` sont ses formulaires.
+type HomeMode =
+  'menu' | 'create' | 'custom' | 'tournament' | 'queue' | 'join' | 'login' | 'leaderboard';
+
+const NAME_MODES: HomeMode[] = ['create', 'custom', 'tournament', 'join'];
+const RANKED_NEEDS_ACCOUNT = 'Connecte-toi à un compte pour jouer en classé';
 
 interface MenuEntry {
   title: string;
@@ -30,9 +40,13 @@ export class HomeScreen implements Screen {
   private readonly root: HTMLElement;
   private readonly accountBar: HTMLElement;
   private readonly menu: HTMLElement;
+  private readonly picker: HTMLElement;
   private readonly identity: HTMLElement;
   private readonly nameInput: HTMLInputElement;
   private readonly createForm: HTMLFormElement;
+  private readonly tournamentForm: HTMLFormElement;
+  private readonly queuePanel: HTMLElement;
+  private readonly queueCount: HTMLElement;
   private readonly joinForm: HTMLFormElement;
   private readonly loginForm: HTMLFormElement;
   private readonly createPasswordInput: HTMLInputElement;
@@ -48,6 +62,7 @@ export class HomeScreen implements Screen {
   private readonly onKeyDown: (event: KeyboardEvent) => void;
   private mode: HomeMode = 'menu';
   private account: AccountView | null = null;
+  private tournamentSize: TournamentSize = 4;
 
   constructor(actions: HomeActions, initial: { name: string; roomCode: string }) {
     this.actions = actions;
@@ -94,13 +109,73 @@ export class HomeScreen implements Screen {
     this.nameInput.maxLength = NAME_MAX_LENGTH;
     this.nameInput.value = initial.name;
 
-    this.createForm = this.form('Créer une partie', () => this.onCreate());
+    this.picker = element('section', 'home-picker', this.root);
+    this.picker.hidden = true;
+    element('h2', 'home-form-title', this.picker).textContent = 'Quel genre de partie ?';
+    const kinds: MenuEntry[] = [
+      {
+        title: 'Bac à sable',
+        hint: 'Balade-toi seul sur la carte, sans chrono, pour essayer ton build',
+        onClick: () => this.onSandbox(),
+      },
+      {
+        title: 'Tournoi',
+        hint: '4 ou 8 joueurs tirés au sort dans un arbre, des duels à la suite',
+        onClick: () => this.setMode('tournament'),
+      },
+      {
+        title: 'Partie classée',
+        hint: 'File d’attente : un adversaire de ton niveau, ton score en jeu',
+        onClick: () => this.onRanked(),
+      },
+      {
+        title: 'Partie personnalisée',
+        hint: 'Ouvre une salle, choisis tous les réglages et partage son code',
+        onClick: () => this.setMode('custom'),
+      },
+    ];
+    const kindList = element('div', 'home-menu', this.picker);
+    for (const entry of kinds) kindList.appendChild(menuButton(entry));
+    const pickerActions = element('div', 'home-form-actions', this.picker);
+    pickerActions.appendChild(this.backButton());
+
+    this.createForm = this.form('Partie personnalisée', () => this.onCreate());
     this.createPasswordInput = field(
       this.createForm,
       'Mot de passe de la salle (facultatif)',
       'password',
     );
     this.createForm.appendChild(this.formActions(this.createForm, 'Créer'));
+
+    this.tournamentForm = this.form('Tournoi', () => this.onTournament());
+    element('p', 'home-form-hint', this.tournamentForm).textContent =
+      'Les joueurs rejoignent la salle par son code ; l’arbre se tire au sort au lancement et ceux qui ne jouent pas regardent le duel en cours.';
+    const sizes = element('div', 'home-sizes', this.tournamentForm);
+    for (const size of TOURNAMENT_SIZES) {
+      const choice = actionButton(`${size} joueurs`, 'home-size', () => {
+        this.tournamentSize = size;
+        for (const node of sizes.children) {
+          node.classList.toggle('is-picked', node === choice);
+        }
+      });
+      choice.classList.toggle('is-picked', size === this.tournamentSize);
+      sizes.appendChild(choice);
+    }
+    this.tournamentForm.appendChild(this.formActions(this.tournamentForm, 'Ouvrir le tournoi'));
+
+    this.queuePanel = element('section', 'home-queue', this.root);
+    this.queuePanel.hidden = true;
+    element('h2', 'home-form-title', this.queuePanel).textContent = 'Partie classée';
+    element('p', 'home-queue-search', this.queuePanel).textContent =
+      'Recherche d’un adversaire de ton niveau…';
+    this.queueCount = element('p', 'home-queue-count', this.queuePanel);
+    const queueActions = element('div', 'home-form-actions', this.queuePanel);
+    queueActions.appendChild(
+      actionButton('Annuler', 'home-back', () => {
+        this.actions.leaveQueue();
+        this.setMode('menu');
+      }),
+    );
 
     this.joinForm = this.form('Rejoindre une partie', () => this.onJoin());
     this.codeInput = field(this.joinForm, 'Code de la salle', 'text');
@@ -191,6 +266,14 @@ export class HomeScreen implements Screen {
     if (loggedIn && this.mode === 'login') this.setMode('menu');
   }
 
+  // La file se pilote depuis le serveur: l'écran suit son état plutôt que le clic.
+  setQueue(queued: boolean, size: number): void {
+    this.queueCount.textContent =
+      size <= 1 ? 'Tu es seul en file pour l’instant' : `${size} joueurs en file`;
+    if (queued && this.mode !== 'queue') this.setMode('queue');
+    else if (!queued && this.mode === 'queue') this.setMode('menu');
+  }
+
   setLeaderboard(entries: AccountView[]): void {
     this.leaderboardBody.replaceChildren();
     this.leaderboardEmpty.hidden = entries.length > 0;
@@ -234,7 +317,10 @@ export class HomeScreen implements Screen {
     this.menu.hidden = mode !== 'menu';
     this.accountBar.hidden = mode !== 'menu';
     this.identity.hidden = this.identityHidden();
-    this.createForm.hidden = mode !== 'create';
+    this.picker.hidden = mode !== 'create';
+    this.createForm.hidden = mode !== 'custom';
+    this.tournamentForm.hidden = mode !== 'tournament';
+    this.queuePanel.hidden = mode !== 'queue';
     this.joinForm.hidden = mode !== 'join';
     this.loginForm.hidden = mode !== 'login';
     this.leaderboard.hidden = mode !== 'leaderboard';
@@ -243,14 +329,13 @@ export class HomeScreen implements Screen {
 
   // Un compte impose son pseudo: le champ libre ne sert qu'aux invités.
   private identityHidden(): boolean {
-    const asksName = this.mode === 'create' || this.mode === 'join';
-    return !asksName || this.account !== null;
+    return !NAME_MODES.includes(this.mode) || this.account !== null;
   }
 
   private focus(): void {
     if (this.mode === 'join') {
       (this.codeInput.value.length > 0 ? this.joinPasswordInput : this.codeInput).focus();
-    } else if (this.mode === 'create') {
+    } else if (this.mode === 'custom') {
       (this.account === null ? this.nameInput : this.createPasswordInput).focus();
     } else if (this.mode === 'login') {
       this.accountNameInput.focus();
@@ -263,7 +348,31 @@ export class HomeScreen implements Screen {
 
   private onCreate(): void {
     this.errorList.replaceChildren();
-    this.actions.createRoom(this.playerName(), this.createPasswordInput.value);
+    this.actions.createRoom(this.playerName(), this.createPasswordInput.value, {});
+  }
+
+  private onTournament(): void {
+    this.errorList.replaceChildren();
+    this.actions.createRoom(this.playerName(), '', {
+      tournament: true,
+      tournamentSize: this.tournamentSize,
+    });
+  }
+
+  private onSandbox(): void {
+    this.errorList.replaceChildren();
+    this.actions.createSandbox(this.playerName());
+  }
+
+  // Sans compte la file refuserait: autant l'annoncer ici et ouvrir le formulaire de connexion.
+  private onRanked(): void {
+    if (this.account === null) {
+      this.setMode('login');
+      this.showError(RANKED_NEEDS_ACCOUNT);
+      return;
+    }
+    this.errorList.replaceChildren();
+    this.actions.joinQueue(this.playerName());
   }
 
   private onJoin(): void {
