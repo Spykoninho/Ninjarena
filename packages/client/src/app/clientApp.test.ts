@@ -28,6 +28,8 @@ const settings: RoomSettings = {
   friendlyFire: false,
   ranked: false,
   practice: false,
+  tournament: false,
+  tournamentSize: 4,
 };
 
 const loadout: Loadout = {
@@ -96,6 +98,7 @@ function room(status: RoomStatus, overrides: Partial<RoomView> = {}): RoomView {
 const matchStarted: MatchStartedMessage = {
   type: 'matchStarted',
   playerId: 'c1',
+  spectator: false,
   tickRate: 30,
   snapshotRate: 15,
   matchConfig,

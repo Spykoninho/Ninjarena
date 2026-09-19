@@ -23,6 +23,7 @@ import type { LoadoutPanel } from './loadoutPanel';
 import { LobbyRoster } from './lobbyRoster';
 import { createSettingsForm, renderBlockers, renderStakes } from './lobbySections';
 import type { SettingsForm } from './lobbySections';
+import { renderBracket } from './tournamentBracket';
 
 export interface LobbyActions {
   updateSettings(patch: RoomSettingsPatch): void;
@@ -33,12 +34,13 @@ export interface LobbyActions {
   leaveRoom(): void;
 }
 
-type LobbyTab = 'roster' | 'match' | 'loadout';
+type LobbyTab = 'roster' | 'match' | 'loadout' | 'tournament';
 
 const TABS: { id: LobbyTab; label: string }[] = [
   { id: 'roster', label: 'Salon' },
   { id: 'match', label: 'Réglages de la partie' },
   { id: 'loadout', label: 'Personnage' },
+  { id: 'tournament', label: 'Tournoi' },
 ];
 
 const SEND_DEBOUNCE_MS = 300;
@@ -60,6 +62,8 @@ export class LobbyScreen implements Screen {
   private readonly settingsForm: SettingsForm;
   private readonly settingsNote: HTMLElement;
   private readonly stakes: HTMLElement;
+  private readonly bracket: HTMLElement;
+  private readonly bracketNote: HTMLElement;
   private readonly blockerList: HTMLElement;
   private readonly readyButton: HTMLButtonElement;
   private readonly startButton: HTMLButtonElement;
@@ -133,6 +137,10 @@ export class LobbyScreen implements Screen {
     match.appendChild(this.settingsForm.root);
     this.stakes = element('section', 'lobby-stakes', match);
 
+    const tournament = this.page('tournament');
+    this.bracketNote = element('p', 'lobby-settings-note', tournament);
+    this.bracket = element('div', 'bracket', tournament);
+
     panel.mount(this.page('loadout'));
     panel.onChange((loadout) => {
       this.onLoadoutChanged(loadout);
@@ -205,6 +213,7 @@ export class LobbyScreen implements Screen {
     this.settingsForm.sync(settingsRows(room.settings, maps, this.rules), editable);
     this.stakes.hidden = !room.settings.ranked;
     if (room.settings.ranked) renderStakes(this.stakes, rankedStakes(room), sessionId);
+    this.syncTournament(room, sessionId);
     renderBlockers(this.blockerList, room);
     this.syncActions(room, local, host);
   }
@@ -220,6 +229,26 @@ export class LobbyScreen implements Screen {
       this.panel.setServerVerdict(false, message);
       this.showTab('loadout');
     }
+  }
+
+  // L'onglet n'existe que pour une salle de tournoi: l'arbre du dernier reste lisible après coup.
+  private syncTournament(room: RoomView, sessionId: string): void {
+    const shown = room.settings.tournament || room.tournament !== null;
+    const tab = this.tabs.get('tournament');
+    if (tab !== undefined) tab.hidden = !shown;
+    if (!shown) {
+      if (tab?.classList.contains('active')) this.showTab('roster');
+      return;
+    }
+    const view = room.tournament;
+    this.bracket.hidden = view === null;
+    this.bracketNote.textContent =
+      view === null
+        ? `L’arbre se tire au sort au lancement : ${room.settings.tournamentSize} joueurs, des duels à la suite, les autres regardent.`
+        : view.championId === null
+          ? 'Les duels s’enchaînent ; ceux qui ne jouent pas regardent le match en cours.'
+          : 'Le tournoi est terminé.';
+    if (view !== null) renderBracket(this.bracket, view, sessionId);
   }
 
   private page(tab: LobbyTab): HTMLElement {

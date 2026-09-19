@@ -17,6 +17,10 @@ export function computeStartBlockers(input: StartBlockerInput): StartBlocker[] {
   if (!solo && input.players.length < MIN_PLAYERS_TO_START) return ['NOT_ENOUGH_PLAYERS'];
 
   const blockers: StartBlocker[] = [];
+  // Un arbre à trous se jouerait par forfaits: le tournoi attend que chaque place soit prise.
+  if (input.settings.tournament && input.players.length < input.settings.tournamentSize) {
+    blockers.push('TOURNAMENT_NOT_FULL');
+  }
   if (input.players.some((player) => !player.ready)) blockers.push('PLAYER_NOT_READY');
   if (input.players.some((player) => player.loadout !== null && !player.loadoutValid)) {
     blockers.push('INVALID_LOADOUT');

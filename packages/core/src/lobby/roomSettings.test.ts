@@ -6,6 +6,7 @@ import {
   applySettingsPatch,
   buildPointRange,
   defaultRoomSettings,
+  matchFormatOf,
   roomMaxPlayers,
   toMatchConfig,
 } from './roomSettings';
@@ -23,6 +24,8 @@ describe('defaultRoomSettings', () => {
       friendlyFire: false,
       ranked: false,
       practice: false,
+      tournament: false,
+      tournamentSize: 4,
     });
   });
 });
@@ -48,6 +51,33 @@ describe('applySettingsPatch', () => {
       expect(toMatchConfig(applied.settings, DEFAULT_MATCH_TIMING).practice).toBe(true);
     }
     expect(toMatchConfig(defaults, DEFAULT_MATCH_TIMING).practice).toBe(false);
+  });
+
+  it('shapes a tournament room around its bracket and plays each match as a duel', () => {
+    const applied = applySettingsPatch(
+      defaults,
+      { tournament: true, tournamentSize: 8, mode: 'team', playersPerTeam: 3 },
+      TEST_RULES,
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.settings).toMatchObject({ mode: 'ffa', teamCount: 8, playersPerTeam: 1 });
+    expect(roomMaxPlayers(applied.settings)).toBe(8);
+    expect(matchFormatOf(applied.settings)).toEqual({
+      mode: 'ffa',
+      teamCount: 2,
+      playersPerTeam: 1,
+    });
+    expect(toMatchConfig(applied.settings, DEFAULT_MATCH_TIMING)).toMatchObject({
+      id: 'ffa-2x1',
+      teamCount: 2,
+    });
+    expect(applySettingsPatch(defaults, { tournament: true, ranked: true }, TEST_RULES).ok).toBe(
+      false,
+    );
+    expect(
+      applySettingsPatch(defaults, { tournament: true, tournamentSize: 6 }, TEST_RULES).ok,
+    ).toBe(false);
   });
 
   it('rejects a patch with an unknown field, an out-of-range value or too many players', () => {

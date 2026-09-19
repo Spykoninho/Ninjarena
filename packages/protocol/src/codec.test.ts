@@ -58,6 +58,8 @@ const ROOM_VIEW: RoomView = {
     friendlyFire: false,
     ranked: true,
     practice: false,
+    tournament: false,
+    tournamentSize: 4,
   },
   map: { id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true },
   players: [
@@ -115,6 +117,7 @@ const SERVER_MESSAGES: ServerMessage[] = [
   {
     type: 'matchStarted',
     playerId: 'c1',
+    spectator: false,
     tickRate: 60,
     snapshotRate: 30,
     matchConfig: DUEL,

@@ -26,6 +26,8 @@ export interface StartMatchOptions {
   map: MapDocument;
   settings: RoomSettings;
   players: readonly RoomPlayer[];
+  // Les spectateurs reçoivent le match sans y jouer: le reste du tournoi regarde le duel en cours.
+  spectators: readonly RoomPlayer[];
   characterId: string;
   tickRate: number;
   snapshotEveryTicks: number;
@@ -88,7 +90,8 @@ export function startRoomMatch(options: StartMatchOptions): RoomMatch {
     },
   });
   simulation.startMatch();
-  announce(seated, options, matchConfig);
+  announce(seated, false, options, matchConfig);
+  announce(options.spectators, true, options, matchConfig);
   return { simulation, host, participants: participantsOf(settings, seated), stats };
 }
 
@@ -126,14 +129,16 @@ export function inJoinOrder(players: readonly RoomPlayer[]): RoomPlayer[] {
 }
 
 function announce(
-  seated: readonly RoomPlayer[],
+  players: readonly RoomPlayer[],
+  spectator: boolean,
   options: StartMatchOptions,
   matchConfig: MatchConfig,
 ): void {
-  for (const player of seated) {
+  for (const player of players) {
     player.session.send({
       type: 'matchStarted',
       playerId: player.session.id,
+      spectator,
       tickRate: options.tickRate,
       snapshotRate: options.tickRate / options.snapshotEveryTicks,
       matchConfig,

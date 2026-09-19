@@ -22,6 +22,7 @@ export const START_BLOCKERS = [
   'MAP_MISSING',
   'MAP_INVALID',
   'RANKED_NEEDS_ACCOUNT',
+  'TOURNAMENT_NOT_FULL',
 ] as const;
 
 export type StartBlocker = (typeof START_BLOCKERS)[number];
@@ -153,8 +154,10 @@ export type ServerMessage =
   | { type: 'roomState'; room: RoomView }
   | { type: 'roomLeft' }
   | {
+      // Un spectateur reçoit le match sans y être: son `playerId` n'existe pas dans le monde.
       type: 'matchStarted';
       playerId: PlayerId;
+      spectator: boolean;
       tickRate: number;
       snapshotRate: number;
       matchConfig: MatchConfig;

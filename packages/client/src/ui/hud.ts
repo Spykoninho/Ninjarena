@@ -172,7 +172,7 @@ class MatchPanel {
     this.timer.set(view.roundTimer ?? '');
     setText(this.phase, PHASE_LABELS[view.matchPhase]);
     setText(this.status, view.status);
-    setText(this.spectate, view.spectating === null ? '' : `SPECTATEUR DE ${view.spectating}`);
+    setText(this.spectate, spectateLabel(view.spectating));
   }
 
   private updateScores(scores: Record<TeamId, number>): void {
@@ -586,6 +586,12 @@ class Slot {
     void this.frame.offsetWidth;
     this.frame.classList.add('is-flash');
   }
+}
+
+// Un spectateur sans cible (personne en vie encore) reste annoncé comme tel.
+function spectateLabel(spectating: string | null): string {
+  if (spectating === null) return '';
+  return spectating.length === 0 ? 'SPECTATEUR' : `SPECTATEUR DE ${spectating}`;
 }
 
 function remainingLabel(remainingMs: number): string {

@@ -16,6 +16,8 @@ const settings: RoomSettings = {
   friendlyFire: false,
   ranked: false,
   practice: false,
+  tournament: false,
+  tournamentSize: 4,
 };
 
 const matchConfig: MatchConfig = {
@@ -131,6 +133,7 @@ describe('reduceServerMessage', () => {
     const next = reduceServerMessage(state({ screen: 'lobby', room: room('STARTING') }), {
       type: 'matchStarted',
       playerId: 'session-1',
+      spectator: false,
       tickRate: 30,
       snapshotRate: 15,
       matchConfig,

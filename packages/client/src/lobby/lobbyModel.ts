@@ -12,6 +12,7 @@ import {
   MAX_TEAM_COUNT,
   MIN_ROUND_DURATION_MS,
   MIN_TEAM_COUNT,
+  TOURNAMENT_SIZES,
   buildPointRange,
   meanRating,
   ratingStakes,
@@ -64,6 +65,7 @@ const BLOCKER_TEXTS: Record<StartBlocker, string> = {
   MAP_MISSING: 'la carte choisie est introuvable',
   MAP_INVALID: 'la carte choisie ne convient pas à ces réglages',
   RANKED_NEEDS_ACCOUNT: 'une partie classée demande un compte à chaque joueur',
+  TOURNAMENT_NOT_FULL: 'le tournoi attend que toutes les places soient prises',
 };
 
 // Les refus arrivent déjà traduits: seul le mot-clé dit lesquels parlent de l'équipement.
@@ -160,7 +162,8 @@ export function roomLink(origin: string, pathname: string, code: string): string
 
 export function statusText(room: RoomView): string {
   const capacity = roomMaxPlayers(room.settings);
-  return `${ROOM_STATUS_TEXTS[room.status]} · ${room.players.length}/${capacity} joueurs`;
+  const kind = room.settings.tournament ? 'Tournoi · ' : '';
+  return `${kind}${ROOM_STATUS_TEXTS[room.status]} · ${room.players.length}/${capacity} joueurs`;
 }
 
 // Chaque contrôle du formulaire hôte n'envoie que sa propre clé, dans le type qu'elle attend.
@@ -179,6 +182,12 @@ export function settingsPatch(
       return typeof raw === 'boolean' ? { ranked: raw } : null;
     case 'practice':
       return typeof raw === 'boolean' ? { practice: raw } : null;
+    case 'tournament':
+      return typeof raw === 'boolean' ? { tournament: raw } : null;
+    case 'tournamentSize': {
+      const size = TOURNAMENT_SIZES.find((option) => `${option}` === String(raw));
+      return size === undefined ? null : { tournamentSize: size };
+    }
     case 'bestOf': {
       const bestOf = BEST_OF_OPTIONS.find((option) => `${option}` === String(raw));
       return bestOf === undefined ? null : { bestOf };
@@ -199,7 +208,24 @@ export function settingsRows(
   rules: StatRulesDefinition,
 ): SettingsRow[] {
   const points = buildPointRange(rules);
+  // Un tournoi fixe le format lui-même: ses duels remplacent le mode, les équipes et leur taille.
+  const tournament = settings.tournament;
   return [
+    {
+      key: 'tournament',
+      label: 'Tournoi (arbre à élimination directe, duels à la suite)',
+      kind: 'toggle',
+      value: settings.tournament,
+      hidden: false,
+    },
+    {
+      key: 'tournamentSize',
+      label: 'Joueurs du tournoi',
+      kind: 'select',
+      value: String(settings.tournamentSize),
+      options: TOURNAMENT_SIZES.map((size) => ({ value: `${size}`, label: `${size} joueurs` })),
+      hidden: !tournament,
+    },
     {
       key: 'mode',
       label: 'Mode',
@@ -209,7 +235,7 @@ export function settingsRows(
         { value: 'team', label: 'Équipes' },
         { value: 'ffa', label: 'Chacun pour soi' },
       ],
-      hidden: false,
+      hidden: tournament,
     },
     {
       key: 'mapId',
@@ -227,7 +253,7 @@ export function settingsRows(
       min: MIN_TEAM_COUNT,
       max: MAX_TEAM_COUNT,
       step: 1,
-      hidden: false,
+      hidden: tournament,
     },
     {
       key: 'playersPerTeam',
@@ -237,7 +263,7 @@ export function settingsRows(
       min: 1,
       max: MAX_PLAYERS_PER_TEAM,
       step: 1,
-      hidden: settings.mode === 'ffa',
+      hidden: tournament || settings.mode === 'ffa',
     },
     {
       key: 'buildPoints',
@@ -282,14 +308,14 @@ export function settingsRows(
       label: 'Partie classée',
       kind: 'toggle',
       value: settings.ranked,
-      hidden: false,
+      hidden: tournament,
     },
     {
       key: 'practice',
       label: 'Entraînement (départ seul, sans chrono)',
       kind: 'toggle',
       value: settings.practice,
-      hidden: false,
+      hidden: tournament,
     },
   ];
 }

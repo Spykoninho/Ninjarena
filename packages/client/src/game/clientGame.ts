@@ -74,6 +74,7 @@ export class ClientGame {
   private cameraPosition: Vec2 = { x: 0, y: 0 };
   private localRenderPosition: Vec2 = { x: 0, y: 0 };
   private isFfa = false;
+  private watching = false;
   private tickMs = 0;
   private seq = 0;
   private frameHandle: number | null = null;
@@ -173,6 +174,7 @@ export class ClientGame {
     });
     this.localPlayerId = message.playerId;
     this.isFfa = message.matchConfig.mode === 'ffa';
+    this.watching = message.spectator;
     this.tickMs = tickDurationMs({ tickRate: message.tickRate });
     this.accumulator = new FixedStepAccumulator(this.tickMs);
     this.clock = new ServerClock(this.tickMs);
@@ -265,7 +267,13 @@ export class ClientGame {
     const localPlayerId = this.localPlayerId;
     const cyclePressed = this.deps.inputState.pressedOnce.has(this.deps.bindings.spectateNext);
     if (localPlayerId === null) return;
-    this.spectator.update(this.latestSnapshot, localPlayerId, this.isFfa, cyclePressed);
+    this.spectator.update(
+      this.latestSnapshot,
+      localPlayerId,
+      this.isFfa,
+      cyclePressed,
+      this.watching,
+    );
   }
 
   private runTick(): readonly WorldEvent[] {
@@ -278,8 +286,11 @@ export class ClientGame {
     const screenPosition = this.deps.renderer.worldToScreen(this.localRenderPosition);
     const input = buildPlayerInput(this.deps.inputState, this.deps.bindings, screenPosition);
     this.seq += 1;
-    this.deps.network.send({ type: 'input', seq: this.seq, input });
-    this.buffer.push(this.seq, input);
+    // Un spectateur n'a personne à piloter: il ne pousse rien vers le serveur.
+    if (!this.watching) {
+      this.deps.network.send({ type: 'input', seq: this.seq, input });
+      this.buffer.push(this.seq, input);
+    }
     return simulation.step({ [localPlayerId]: input });
   }
 
@@ -348,7 +359,7 @@ export class ClientGame {
 
   private spectatingName(): string | null {
     const target = this.spectator.current;
-    if (target === null) return null;
+    if (target === null) return this.watching ? '' : null;
     return this.roomPlayers.find((player) => player.id === target)?.name ?? target;
   }
 

@@ -30,6 +30,15 @@ interface RoomOptions {
   snapshotEveryTicks?: number;
 }
 
+const TOURNAMENT_OF_FOUR: Partial<RoomSettings> = {
+  tournament: true,
+  tournamentSize: 4,
+  mode: 'ffa',
+  teamCount: 4,
+  playersPerTeam: 1,
+  bestOf: 1,
+};
+
 function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions = {}): Fixture {
   const repository = new InMemoryMapRepository();
   const matchResults: MatchResult[] = [];
@@ -47,6 +56,8 @@ function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions 
       matchResults.push(result);
       return result.settings.ranked ? [{ id: 'kage', before: 120, after: 131 }] : [];
     },
+    // Un tirage sans échange: l'arbre suit l'ordre d'arrivée, ce que les tests peuvent prédire.
+    randomInt: (max) => max - 1,
   });
   return { room, repository, matchResults };
 }
@@ -712,6 +723,149 @@ describe('Room match lifecycle', () => {
     expect(room.updateSettings(one.session, { bestOf: 5 })).toEqual({
       ok: false,
       error: { code: 'WRONG_STATUS', message: expect.any(String) },
+    });
+  });
+});
+
+describe('Room tournament', () => {
+  function seatFour(
+    room: Room,
+  ): Map<string, { connection: FakeConnection; session: ClientSession }> {
+    const seats = new Map<string, { connection: FakeConnection; session: ClientSession }>();
+    for (const id of ['c1', 'c2', 'c3', 'c4']) {
+      const seat = createSession(id);
+      expect(room.join(seat.session, undefined)).toEqual({ ok: true });
+      room.setLoadout(seat.session, loadoutOf());
+      room.setReady(seat.session, true);
+      seats.set(id, seat);
+    }
+    return seats;
+  }
+
+  function playCurrentMatch(room: Room, loserId: string): void {
+    tickUntil(room, () => room.match?.simulation.world.match.phase === 'IN_ROUND');
+    killPlayer(room, loserId);
+    tickUntil(room, () => room.status === 'FINISHED');
+    for (let i = 0; i < POST_MATCH_TICKS; i++) room.tick();
+  }
+
+  it('waits for every seat of the bracket before it starts', async () => {
+    const { room } = createRoom(TOURNAMENT_OF_FOUR);
+    await room.refreshMap();
+    const one = createSession('c1');
+    const two = createSession('c2');
+    for (const seat of [one, two]) {
+      room.join(seat.session, undefined);
+      room.setLoadout(seat.session, loadoutOf());
+      room.setReady(seat.session, true);
+    }
+    expect(room.startBlockers()).toEqual(['TOURNAMENT_NOT_FULL']);
+    expect(room.start(one.session)).toMatchObject({ ok: false, error: { code: 'CANNOT_START' } });
+  });
+
+  it('plays the bracket one duel at a time while the others watch, then crowns a champion', async () => {
+    const { room, matchResults } = createRoom(TOURNAMENT_OF_FOUR);
+    await room.refreshMap();
+    const seats = seatFour(room);
+    const c1 = seats.get('c1')!;
+    const c3 = seats.get('c3')!;
+    expect(room.startBlockers()).toEqual([]);
+    expect(room.start(c1.session)).toEqual({ ok: true });
+
+    // Premier duel: c1 contre c2, c3 et c4 spectateurs.
+    expect(lastRoomView(c1.connection).tournament).toMatchObject({
+      size: 4,
+      championId: null,
+      rounds: [
+        [
+          {
+            players: [
+              { id: 'c1', name: 'c1' },
+              { id: 'c2', name: 'c2' },
+            ],
+            status: 'live',
+          },
+          { players: [{ id: 'c3' }, { id: 'c4' }], status: 'pending' },
+        ],
+        [{ players: [null, null], status: 'pending' }],
+      ],
+    });
+    expect(messagesOfType(c1.connection, 'matchStarted').at(-1)).toMatchObject({
+      playerId: 'c1',
+      spectator: false,
+      matchConfig: { mode: 'ffa', teamCount: 2 },
+    });
+    expect(messagesOfType(c3.connection, 'matchStarted').at(-1)).toMatchObject({
+      playerId: 'c3',
+      spectator: true,
+    });
+    expect(c3.session.playerId).toBeNull();
+    tickUntil(room, () => room.status === 'IN_GAME');
+    expect(Object.keys(room.match!.simulation.world.players).sort()).toEqual(['c1', 'c2']);
+    expect(messagesOfType(c3.connection, 'snapshot').length).toBeGreaterThan(0);
+
+    playCurrentMatch(room, 'c2');
+    // Le second duel s'enchaîne sans repasser par le salon.
+    expect(room.status).toBe('STARTING');
+    expect(Object.keys(room.match!.simulation.world.players).sort()).toEqual(['c3', 'c4']);
+    expect(lastRoomView(c1.connection).tournament?.rounds[0]).toMatchObject([
+      { winnerId: 'c1', status: 'done' },
+      { status: 'live' },
+    ]);
+    expect(messagesOfType(c1.connection, 'matchStarted').at(-1)?.spectator).toBe(true);
+
+    tickUntil(room, () => room.status === 'IN_GAME');
+    playCurrentMatch(room, 'c3');
+    // La finale oppose les deux vainqueurs.
+    expect(Object.keys(room.match!.simulation.world.players).sort()).toEqual(['c1', 'c4']);
+    expect(lastRoomView(c1.connection).tournament?.rounds[1]?.[0]).toMatchObject({
+      players: [{ id: 'c1' }, { id: 'c4' }],
+      status: 'live',
+    });
+
+    tickUntil(room, () => room.status === 'IN_GAME');
+    playCurrentMatch(room, 'c1');
+    expect(room.status).toBe('WAITING');
+    expect(room.match).toBeNull();
+    expect(matchResults).toHaveLength(3);
+    expect(lastRoomView(c1.connection).tournament).toMatchObject({ championId: 'c4' });
+    expect(room.players.every((player) => !player.ready)).toBe(true);
+  });
+
+  it('walks a player over an opponent who left while waiting for their duel', async () => {
+    const { room } = createRoom(TOURNAMENT_OF_FOUR);
+    await room.refreshMap();
+    const seats = seatFour(room);
+    const c1 = seats.get('c1')!;
+    room.start(c1.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    room.leave(seats.get('c4')!.session);
+    expect(room.status).toBe('IN_GAME');
+    playCurrentMatch(room, 'c2');
+
+    // c3 n'a plus d'adversaire: la finale l'oppose directement à c1.
+    expect(Object.keys(room.match!.simulation.world.players).sort()).toEqual(['c1', 'c3']);
+    expect(lastRoomView(c1.connection).tournament?.rounds[0]?.[1]).toMatchObject({
+      players: [{ id: 'c3', name: 'c3' }, null],
+      winnerId: 'c3',
+      status: 'done',
+    });
+  });
+
+  it('gives the duel to the player still there when the other quits mid-match', async () => {
+    const { room } = createRoom(TOURNAMENT_OF_FOUR);
+    await room.refreshMap();
+    const seats = seatFour(room);
+    const c1 = seats.get('c1')!;
+    room.start(c1.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    room.leave(c1.session);
+    expect(room.status).toBe('FINISHED');
+    expect(lastRoomView(seats.get('c2')!.connection).tournament?.rounds[0]?.[0]).toMatchObject({
+      winnerId: 'c2',
+      status: 'done',
     });
   });
 });

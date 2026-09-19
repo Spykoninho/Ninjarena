@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { MatchConfig, StatRulesDefinition } from '../definitions';
 import { ATTRIBUTE_IDS, MatchConfigSchema } from '../definitions';
+import type { TournamentSize } from '../tournament/bracket';
+import { TOURNAMENT_SIZES } from '../tournament/bracket';
 
 export const BEST_OF_OPTIONS = [1, 3, 5, 7] as const;
 export const MAX_ROOM_PLAYERS = 16;
@@ -12,6 +14,9 @@ export const MAX_ROUND_DURATION_MS = 600_000;
 
 const DEFAULT_ROUND_DURATION_MS = 240_000;
 const DEFAULT_BEST_OF: (typeof BEST_OF_OPTIONS)[number] = 3;
+const DEFAULT_TOURNAMENT_SIZE: TournamentSize = 4;
+// Un match de tournoi est toujours un duel: deux joueurs, chacun pour soi.
+const TOURNAMENT_MATCH_TEAMS = 2;
 
 export interface RoomSettings {
   mode: 'ffa' | 'team';
@@ -24,9 +29,18 @@ export interface RoomSettings {
   friendlyFire: boolean;
   ranked: boolean;
   practice: boolean;
+  tournament: boolean;
+  tournamentSize: TournamentSize;
 }
 
 export type RoomSettingsPatch = Partial<RoomSettings>;
+
+// Le format d'un match: celui de la salle, sauf en tournoi où chaque match oppose deux joueurs.
+export interface MatchFormat {
+  mode: 'ffa' | 'team';
+  teamCount: number;
+  playersPerTeam: number;
+}
 
 export interface MatchTiming {
   countdownMs: number;
@@ -61,6 +75,8 @@ export function roomSettingsSchema(rules: StatRulesDefinition): z.ZodType<RoomSe
       friendlyFire: z.boolean(),
       ranked: z.boolean(),
       practice: z.boolean(),
+      tournament: z.boolean(),
+      tournamentSize: z.union(TOURNAMENT_SIZES.map((value) => z.literal(value))),
     })
     .refine((settings) => settings.mode === 'team' || settings.playersPerTeam === 1, {
       path: ['playersPerTeam'],
@@ -69,7 +85,17 @@ export function roomSettingsSchema(rules: StatRulesDefinition): z.ZodType<RoomSe
     .refine((settings) => !(settings.practice && settings.ranked), {
       path: ['ranked'],
       message: 'a practice room cannot be ranked',
-    });
+    })
+    .refine((settings) => !(settings.tournament && (settings.ranked || settings.practice)), {
+      path: ['tournament'],
+      message: 'a tournament is neither ranked nor a practice room',
+    })
+    .refine(
+      (settings) =>
+        !settings.tournament ||
+        (settings.mode === 'ffa' && settings.teamCount === settings.tournamentSize),
+      { path: ['tournament'], message: 'a tournament room holds exactly its bracket size' },
+    );
 }
 
 export function defaultRoomSettings(rules: StatRulesDefinition, mapId: string): RoomSettings {
@@ -84,11 +110,23 @@ export function defaultRoomSettings(rules: StatRulesDefinition, mapId: string): 
     friendlyFire: false,
     ranked: false,
     practice: false,
+    tournament: false,
+    tournamentSize: DEFAULT_TOURNAMENT_SIZE,
   };
 }
 
 export function roomMaxPlayers(settings: RoomSettings): number {
   return settings.teamCount * settings.playersPerTeam;
+}
+
+export function matchFormatOf(settings: RoomSettings): MatchFormat {
+  if (settings.tournament)
+    return { mode: 'ffa', teamCount: TOURNAMENT_MATCH_TEAMS, playersPerTeam: 1 };
+  return {
+    mode: settings.mode,
+    teamCount: settings.teamCount,
+    playersPerTeam: settings.playersPerTeam,
+  };
 }
 
 export function applySettingsPatch(
@@ -100,9 +138,7 @@ export function applySettingsPatch(
     return { ok: false, reason: 'patch must be an object' };
   }
   const merged: Record<string, unknown> = { ...current, ...(patch as Record<string, unknown>) };
-  // Le ffa n'a qu'un joueur par équipe, quel que soit ce que le patch a demandé.
-  const normalised = merged.mode === 'ffa' ? { ...merged, playersPerTeam: 1 } : merged;
-  const result = roomSettingsSchema(rules).safeParse(normalised);
+  const result = roomSettingsSchema(rules).safeParse(normalise(merged));
   if (!result.success) {
     const issue = result.error.issues[0];
     const reason =
@@ -120,12 +156,21 @@ export function applySettingsPatch(
   return { ok: true, settings: result.data };
 }
 
+// Le ffa n'a qu'un joueur par équipe et un tournoi est un ffa à la taille de son arbre.
+function normalise(merged: Record<string, unknown>): Record<string, unknown> {
+  if (merged.tournament === true) {
+    return { ...merged, mode: 'ffa', playersPerTeam: 1, teamCount: merged.tournamentSize };
+  }
+  return merged.mode === 'ffa' ? { ...merged, playersPerTeam: 1 } : merged;
+}
+
 export function toMatchConfig(settings: RoomSettings, timing: MatchTiming): MatchConfig {
+  const format = matchFormatOf(settings);
   return MatchConfigSchema.parse({
-    id: `${settings.mode}-${settings.teamCount}x${settings.playersPerTeam}`,
-    mode: settings.mode,
-    teamCount: settings.teamCount,
-    playersPerTeam: settings.playersPerTeam,
+    id: `${format.mode}-${format.teamCount}x${format.playersPerTeam}`,
+    mode: format.mode,
+    teamCount: format.teamCount,
+    playersPerTeam: format.playersPerTeam,
     roundsToWin: Math.floor(settings.bestOf / 2) + 1,
     roundDurationMs: settings.roundDurationMs,
     countdownMs: timing.countdownMs,

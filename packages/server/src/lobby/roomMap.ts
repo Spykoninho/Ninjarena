@@ -1,5 +1,5 @@
 import type { MapDocument, MapIssue, MapSummary, RoomSettings } from '@ninjarena/core';
-import { spawnIssues } from '@ninjarena/core';
+import { matchFormatOf, spawnIssues } from '@ninjarena/core';
 import type { MapLibrary } from '../maps/mapLibrary';
 
 // La carte se lit de façon asynchrone alors que la salle répond tout de suite: elle en garde un cache.
@@ -47,14 +47,10 @@ export class RoomMapCache {
       this.cachedIssues = [];
       return;
     }
-    const settings = this.settings();
+    // Un tournoi se joue en duels: la carte n'a besoin d'apparitions que pour deux joueurs.
     this.cachedIssues = [
       ...this.maps.issuesOf(document),
-      ...spawnIssues(document, {
-        mode: settings.mode,
-        teamCount: settings.teamCount,
-        playersPerTeam: settings.playersPerTeam,
-      }),
+      ...spawnIssues(document, matchFormatOf(this.settings())),
     ];
   }
 }

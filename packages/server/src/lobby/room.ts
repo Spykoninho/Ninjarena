@@ -1,6 +1,18 @@
+import { randomInt as cryptoRandomInt } from 'node:crypto';
 import type { GameContent } from '@ninjarena/content';
 import type { RatingChange, RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
-import { applySettingsPatch, roomMaxPlayers, teamsPresent, validateLoadout } from '@ninjarena/core';
+import {
+  applySettingsPatch,
+  createBracket,
+  currentMatch,
+  isTournamentOver,
+  openNextMatch,
+  resolveMatch,
+  roomMaxPlayers,
+  teamsPresent,
+  validateLoadout,
+  withdrawPlayer,
+} from '@ninjarena/core';
 import type {
   MatchSummary,
   RoomStatus,
@@ -16,6 +28,8 @@ import { RoomMapCache } from './roomMap';
 import type { RoomMatch } from './roomMatch';
 import { inJoinOrder, matchResultOf, startRoomMatch } from './roomMatch';
 import type { RoomPlayer } from './roomPlayer';
+import type { TournamentRecord } from './roomTournament';
+import { shuffleWith, tournamentViewOf } from './roomTournament';
 import { computeStartBlockers } from './startBlockers';
 
 export type RoomErrorCode =
@@ -46,6 +60,8 @@ export interface RoomDeps {
   characterId: string;
   // Le crochet rend les scores réglés pour que le bilan envoyé aux joueurs les montre.
   onMatchEnded?: (result: MatchResult) => readonly RatingChange[] | void;
+  // Le tirage de l'arbre du tournoi; injectable pour que les tests connaissent l'ordre.
+  randomInt?: (max: number) => number;
 }
 
 export class Room {
@@ -58,10 +74,12 @@ export class Room {
   private readonly postMatchTicks: number;
   private readonly characterId: string;
   private readonly onMatchEnded: ((result: MatchResult) => readonly RatingChange[] | void) | null;
+  private readonly randomInt: (max: number) => number;
   private readonly roster: RoomPlayer[] = [];
   private roomSettings: RoomSettings;
   private roomStatus: RoomStatus = 'WAITING';
   private activeMatch: RoomMatch | null = null;
+  private tournament: TournamentRecord | null = null;
   private ticksSinceEnd = 0;
   private nextJoinedAt = 1;
 
@@ -76,6 +94,7 @@ export class Room {
     this.postMatchTicks = deps.postMatchTicks;
     this.characterId = deps.characterId;
     this.onMatchEnded = deps.onMatchEnded ?? null;
+    this.randomInt = deps.randomInt ?? ((max) => cryptoRandomInt(max));
   }
 
   get status(): RoomStatus {
@@ -111,10 +130,9 @@ export class Room {
     return this.roster.find((player) => player.session === session);
   }
 
+  // Tout le monde reçoit les instantanés, y compris ceux qui regardent le match des autres.
   sessionsInMatch(): readonly ClientSession[] {
-    return this.roster
-      .filter((player) => player.session.playerId !== null)
-      .map((player) => player.session);
+    return this.roster.map((player) => player.session);
   }
 
   join(session: ClientSession, password: string | undefined): RoomResult {
@@ -154,6 +172,8 @@ export class Room {
     session.playerId = null;
     session.inputs.clear();
 
+    const bracket = this.tournament?.bracket;
+    if (bracket !== undefined && !isTournamentOver(bracket)) withdrawPlayer(bracket, session.id);
     const match = this.activeMatch;
     if (match !== null) {
       match.simulation.removePlayer(session.id);
@@ -178,6 +198,8 @@ export class Room {
 
     const mapChanged = applied.settings.mapId !== this.roomSettings.mapId;
     this.roomSettings = applied.settings;
+    // Un arbre affiché après un tournoi parle d'une salle qui n'existe plus dès qu'on la règle.
+    this.tournament = null;
     this.reassignTeams();
     this.revalidateLoadouts();
     if (mapChanged) this.scheduleRefresh();
@@ -247,14 +269,69 @@ export class Room {
     if (denied !== null) return denied;
     const blockers = this.startBlockers();
     if (blockers.length > 0) return fail('CANNOT_START', blockers.join(', '));
-    const map = this.mapCache.document;
-    if (map === null) return fail('CANNOT_START', 'MAP_MISSING');
+    if (this.mapCache.document === null) return fail('CANNOT_START', 'MAP_MISSING');
 
+    if (this.roomSettings.tournament) {
+      this.tournament = this.drawTournament();
+      if (!this.playNextTournamentMatch()) this.tournament = null;
+      return { ok: true };
+    }
+    this.tournament = null;
+    this.launch(this.roster);
+    return { ok: true };
+  }
+
+  tick(): void {
+    // La simulation tourne à vide après la fin: les clients gardent l'état final sous les yeux.
+    const counting = this.roomStatus === 'FINISHED';
+    this.activeMatch?.host.tick();
+    if (!counting) return;
+    this.ticksSinceEnd += 1;
+    if (this.ticksSinceEnd < this.postMatchTicks) return;
+    // Entre deux matches d'un tournoi la salle ne repasse pas par le salon: le suivant s'enchaîne.
+    if (this.tournament !== null && !isTournamentOver(this.tournament.bracket)) {
+      this.discardMatch();
+      if (this.playNextTournamentMatch()) return;
+    }
+    this.resetToLobby();
+  }
+
+  // Le tirage au sort place les joueurs dans l'arbre; leurs noms sont figés pour l'affichage.
+  private drawTournament(): TournamentRecord {
+    const ids = shuffleWith(
+      inJoinOrder(this.roster).map((player) => player.session.id),
+      this.randomInt,
+    );
+    const names = new Map(this.roster.map((player) => [player.session.id, player.session.name]));
+    return { bracket: createBracket(ids, this.roomSettings.tournamentSize), names };
+  }
+
+  // Ouvre le prochain match de l'arbre; les forfaits passent d'office et `false` signe la fin.
+  private playNextTournamentMatch(): boolean {
+    const record = this.tournament;
+    if (record === null) return false;
+    const ref = openNextMatch(record.bracket);
+    const match = currentMatch(record.bracket);
+    if (ref === null || match === null) return false;
+    const seated = this.roster.filter((player) => match.players.includes(player.session.id));
+    if (seated.length < 2) {
+      // Un joueur parti entre l'ouverture et le lancement: son adversaire passe par forfait.
+      resolveMatch(record.bracket, ref, seated[0]?.session.id ?? null);
+      return this.playNextTournamentMatch();
+    }
+    this.launch(seated);
+    return true;
+  }
+
+  private launch(players: readonly RoomPlayer[]): void {
+    const map = this.mapCache.document;
+    if (map === null) return;
     this.activeMatch = startRoomMatch({
       content: this.content,
       map,
       settings: this.roomSettings,
-      players: this.roster,
+      players,
+      spectators: this.roster.filter((player) => !players.includes(player)),
       characterId: this.characterId,
       tickRate: this.tickRate,
       snapshotEveryTicks: this.snapshotEveryTicks,
@@ -266,16 +343,6 @@ export class Room {
     this.roomStatus = 'STARTING';
     this.ticksSinceEnd = 0;
     this.broadcastState();
-    return { ok: true };
-  }
-
-  tick(): void {
-    // La simulation tourne à vide après la fin: les clients gardent l'état final sous les yeux.
-    const counting = this.roomStatus === 'FINISHED';
-    this.activeMatch?.host.tick();
-    if (!counting) return;
-    this.ticksSinceEnd += 1;
-    if (this.ticksSinceEnd >= this.postMatchTicks) this.resetToLobby();
   }
 
   // La salle se rediffuse une fois la carte lue: sa vue ne dépend pas de l'ordre des appels.
@@ -303,7 +370,7 @@ export class Room {
         rating: player.session.account?.rating ?? null,
       })),
       startBlockers: this.startBlockers(),
-      tournament: null,
+      tournament: this.tournament === null ? null : tournamentViewOf(this.tournament),
     };
   }
 
@@ -331,6 +398,9 @@ export class Room {
     const match = this.activeMatch;
     this.roomStatus = 'FINISHED';
     this.ticksSinceEnd = 0;
+    // En duel chacun est sa propre équipe: l'identifiant gagnant est celui du joueur.
+    const bracket = this.tournament?.bracket;
+    if (bracket?.current) resolveMatch(bracket, bracket.current, winnerTeamId);
     // Une fin hors tick d'instantané resterait invisible: l'état terminal part tout de suite.
     match?.host.flush();
     // Une salle vidée n'a plus de résultat à consigner.
@@ -374,15 +444,19 @@ export class Room {
     };
   }
 
-  private resetToLobby(): void {
+  private discardMatch(): void {
     this.activeMatch = null;
     this.ticksSinceEnd = 0;
-    this.roomStatus = 'WAITING';
     for (const player of this.roster) {
-      player.ready = false;
       player.session.playerId = null;
       player.session.inputs.clear();
     }
+  }
+
+  private resetToLobby(): void {
+    this.discardMatch();
+    this.roomStatus = 'WAITING';
+    for (const player of this.roster) player.ready = false;
     this.broadcastState();
   }
 

@@ -51,6 +51,8 @@ const settings: RoomSettings = {
   friendlyFire: false,
   ranked: false,
   practice: false,
+  tournament: false,
+  tournamentSize: 4,
 };
 
 const maps: MapSummary[] = [
@@ -244,6 +246,22 @@ describe('settingsRows', () => {
     expect(friendlyFire?.value).toBe(false);
   });
 
+  it('folds the format rows behind the tournament toggle and offers 4 or 8 seats', () => {
+    const rows = settingsRows({ ...settings, tournament: true }, maps, rules);
+    const hidden = rows.filter((row) => row.hidden).map((row) => row.key);
+    expect(hidden).toEqual(['mode', 'teamCount', 'playersPerTeam', 'ranked', 'practice']);
+    expect(rows.find((row) => row.key === 'tournamentSize')?.options).toEqual([
+      { value: '4', label: '4 joueurs' },
+      { value: '8', label: '8 joueurs' },
+    ]);
+    expect(
+      settingsRows(settings, maps, rules).find((row) => row.key === 'tournamentSize')?.hidden,
+    ).toBe(true);
+    expect(settingsPatch('tournament', true)).toEqual({ tournament: true });
+    expect(settingsPatch('tournamentSize', '8')).toEqual({ tournamentSize: 8 });
+    expect(settingsPatch('tournamentSize', '6')).toBeNull();
+  });
+
   it('offers the ranked toggle', () => {
     const rows = settingsRows({ ...settings, ranked: true }, maps, rules);
     expect(rows.find((row) => row.key === 'ranked')).toMatchObject({
@@ -290,6 +308,17 @@ describe('rankedStakes', () => {
 describe('statusText', () => {
   it('names the status and how full the room is', () => {
     expect(statusText(room())).toBe('En attente · 3/4 joueurs');
+  });
+
+  it('says a tournament room is one', () => {
+    const tournament = {
+      ...settings,
+      tournament: true,
+      mode: 'ffa' as const,
+      teamCount: 4,
+      playersPerTeam: 1,
+    };
+    expect(statusText(room({ settings: tournament }))).toBe('Tournoi · En attente · 3/4 joueurs');
   });
 
   it('says the match is over once the room reports FINISHED', () => {

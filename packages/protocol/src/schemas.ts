@@ -10,6 +10,7 @@ import {
   MAX_TEAM_COUNT,
   MIN_ROUND_DURATION_MS,
   MIN_TEAM_COUNT,
+  TOURNAMENT_SIZES,
 } from '@ninjarena/core';
 import type { RoomSettings, WorldEvent, WorldState } from '@ninjarena/core';
 import { z } from 'zod';
@@ -86,6 +87,8 @@ export const RoomSettingsPatchSchema = z.strictObject({
   friendlyFire: z.boolean().optional(),
   ranked: z.boolean().optional(),
   practice: z.boolean().optional(),
+  tournament: z.boolean().optional(),
+  tournamentSize: z.union(TOURNAMENT_SIZES.map((value) => z.literal(value))).optional(),
 });
 
 // Version pleine (tous les champs requis) pour l'état de salle diffusé sur le fil.
@@ -100,6 +103,8 @@ const RoomSettingsSchema: z.ZodType<RoomSettings> = z.strictObject({
   friendlyFire: z.boolean(),
   ranked: z.boolean(),
   practice: z.boolean(),
+  tournament: z.boolean(),
+  tournamentSize: z.union(TOURNAMENT_SIZES.map((value) => z.literal(value))),
 });
 
 // Un pseudo de compte est unique et lisible: ni vide ni fait d'espaces, contrairement au nom d'invité.
@@ -263,6 +268,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
   z.object({
     type: z.literal('matchStarted'),
     playerId: z.string().min(1),
+    spectator: z.boolean(),
     tickRate: z.number().positive(),
     snapshotRate: z.number().positive(),
     matchConfig: MatchConfigSchema,
