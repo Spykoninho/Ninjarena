@@ -1,6 +1,7 @@
 import type { GameContent } from '@ninjarena/content';
 import type { MapDocument, MatchConfig, RoomSettings } from '@ninjarena/core';
 import type {
+  AccountView,
   ClientMessage,
   RoomPlayerView,
   RoomStatus,
@@ -22,6 +23,7 @@ const settings: RoomSettings = {
   bestOf: 3,
   roundDurationMs: 240_000,
   friendlyFire: false,
+  ranked: false,
 };
 
 const matchConfig: MatchConfig = {
@@ -53,8 +55,16 @@ const mapDocument: MapDocument = {
 };
 
 const players: RoomPlayerView[] = [
-  { id: 'c1', name: 'kage', team: 0, ready: true, loadout: null, loadoutValid: true },
-  { id: 'c2', name: 'hanzo', team: 1, ready: true, loadout: null, loadoutValid: true },
+  { id: 'c1', name: 'kage', team: 0, ready: true, loadout: null, loadoutValid: true, rating: 100 },
+  {
+    id: 'c2',
+    name: 'hanzo',
+    team: 1,
+    ready: true,
+    loadout: null,
+    loadoutValid: true,
+    rating: null,
+  },
 ];
 
 function room(status: RoomStatus): RoomView {
@@ -167,6 +177,8 @@ class FakeGame implements ClientAppGame {
 
 class FakeHome implements HomeView {
   readonly calls: string[] = [];
+  readonly accounts: (AccountView | null)[] = [];
+  readonly leaderboards: AccountView[][] = [];
   errors: string[] = [];
   mounted = false;
 
@@ -183,6 +195,16 @@ class FakeHome implements HomeView {
 
   setStatus(): void {
     this.calls.push('setStatus');
+  }
+
+  setAccount(account: AccountView | null): void {
+    this.calls.push('setAccount');
+    this.accounts.push(account);
+  }
+
+  setLeaderboard(entries: AccountView[]): void {
+    this.calls.push('setLeaderboard');
+    this.leaderboards.push(entries);
   }
 
   showError(message: string): void {
@@ -290,7 +312,7 @@ beforeEach(async () => {
 
 describe('ClientApp.start', () => {
   it('introduces the session with the configured name', () => {
-    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 3, name: 'kage' }]);
+    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 4, name: 'kage' }]);
     expect(h.game.calls).toContain('init');
     expect(h.home.mounted).toBe(true);
   });
@@ -411,6 +433,53 @@ describe('ClientApp editor', () => {
     h.network.drop();
     h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
     expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
+  });
+});
+
+describe('ClientApp accounts', () => {
+  const account: AccountView = { name: 'Kage', rating: 115, wins: 1, losses: 0 };
+
+  it('sends the credentials and pushes the account to the home screen once', async () => {
+    h.app.register('Kage', 'shadow');
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'register', name: 'Kage', password: 'shadow' });
+    h.network.deliver({ type: 'accountState', account });
+    h.network.deliver({ type: 'mapList', maps: [] });
+    expect(h.home.accounts).toEqual([account]);
+    expect(h.app.state.account).toEqual(account);
+  });
+
+  it('keeps the account name over whatever a form asks for while logged in', async () => {
+    h.app.login('kage', 'shadow');
+    await flush();
+    h.network.deliver({ type: 'accountState', account });
+    const fresh = h.network.sent.length;
+    h.app.createRoom('someone-else', '');
+    await flush();
+    expect(h.network.sent.slice(fresh)).toEqual([{ type: 'createRoom' }]);
+  });
+
+  it('sends a logout and reflects the guest state, then forgets the account on a drop', async () => {
+    h.app.login('kage', 'shadow');
+    await flush();
+    h.network.deliver({ type: 'accountState', account });
+    h.app.logout();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'logout' });
+    h.network.deliver({ type: 'accountState', account: null });
+    expect(h.home.accounts.at(-1)).toBeNull();
+
+    h.network.deliver({ type: 'accountState', account });
+    h.network.drop();
+    expect(h.app.state.account).toBeNull();
+    expect(h.home.accounts.at(-1)).toBeNull();
+  });
+
+  it('asks for the leaderboard and hands the entries to the home screen', async () => {
+    h.app.openLeaderboard();
+    await flush();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'getLeaderboard' });
+    h.network.deliver({ type: 'leaderboard', entries: [account] });
+    expect(h.home.leaderboards.at(-1)).toEqual([account]);
   });
 });
 

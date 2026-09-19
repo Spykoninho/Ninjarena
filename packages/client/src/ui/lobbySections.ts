@@ -1,7 +1,8 @@
 import type { RoomSettings } from '@ninjarena/core';
 import type { RoomView } from '@ninjarena/protocol';
 import { blockerText } from '../lobby/lobbyModel';
-import type { SettingsRow } from '../lobby/lobbyModel';
+import type { SettingsRow, StakeRow } from '../lobby/lobbyModel';
+import { rankBadge, ratingText } from './rankBadge';
 
 type SettingsControl = HTMLSelectElement | HTMLInputElement;
 
@@ -35,6 +36,33 @@ export function renderBlockers(root: HTMLElement, room: RoomView): void {
   root.replaceChildren();
   for (const blocker of room.startBlockers) {
     element('li', 'lobby-blocker', root).textContent = blockerText(blocker);
+  }
+}
+
+// La mise de chacun se lit avant de lancer: ce que la victoire rapporte et ce que la défaite coûte.
+export function renderStakes(root: HTMLElement, rows: StakeRow[], sessionId: string): void {
+  root.replaceChildren();
+  element('h3', 'lobby-section-title', root).textContent = 'Mise de la partie classée';
+  const list = element('ul', 'lobby-stakes-list', root);
+  for (const row of rows) {
+    const item = element('li', 'lobby-stake', list);
+    if (row.id === sessionId) item.classList.add('is-local');
+    const who = element('span', 'lobby-stake-player', item);
+    element('span', 'lobby-stake-name', who).textContent = row.name;
+    if (row.rating === null) {
+      element('span', 'lobby-stake-guest', who).textContent = 'sans compte';
+      element('span', 'lobby-stake-values', item).textContent = '—';
+      continue;
+    }
+    who.appendChild(rankBadge(row.rating));
+    element('span', 'lobby-stake-rating', who).textContent = ratingText(row.rating);
+    const values = element('span', 'lobby-stake-values', item);
+    if (row.stakes === null) {
+      values.textContent = 'en attente d’un adversaire';
+      continue;
+    }
+    element('span', 'lobby-stake-win', values).textContent = `victoire +${row.stakes.win}`;
+    element('span', 'lobby-stake-loss', values).textContent = `défaite ${row.stakes.loss}`;
   }
 }
 

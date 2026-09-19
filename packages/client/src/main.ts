@@ -69,6 +69,18 @@ const home = new HomeScreen(
     joinRoom: (name, code, password) => {
       app().joinRoom(name, code, password);
     },
+    login: (name, password) => {
+      app().login(name, password);
+    },
+    register: (name, password) => {
+      app().register(name, password);
+    },
+    logout: () => {
+      app().logout();
+    },
+    openLeaderboard: () => {
+      app().openLeaderboard();
+    },
     openEditor: () => {
       app().openEditor();
     },

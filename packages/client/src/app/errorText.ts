@@ -21,6 +21,10 @@ const ERROR_TEXTS: Record<ServerErrorCode, string> = {
   INVALID_MAP: 'Carte refusée par le serveur',
   MAP_NOT_FOUND: 'Carte introuvable sur le serveur',
   MAP_STORE_FULL: 'Le serveur ne peut plus enregistrer de carte',
+  NAME_TAKEN: 'Ce pseudo est déjà pris',
+  BAD_CREDENTIALS: 'Pseudo ou mot de passe incorrect',
+  ALREADY_LOGGED_IN: 'Ce compte est déjà connecté',
+  NOT_LOGGED_IN: 'Connecte-toi à un compte pour jouer en classé',
   SERVER_ERROR: 'Erreur du serveur',
 };
 

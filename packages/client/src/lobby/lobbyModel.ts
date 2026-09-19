@@ -1,5 +1,6 @@
 import type {
   MapSummary,
+  RatingStakes,
   RoomSettings,
   RoomSettingsPatch,
   StatRulesDefinition,
@@ -12,6 +13,8 @@ import {
   MIN_ROUND_DURATION_MS,
   MIN_TEAM_COUNT,
   buildPointRange,
+  meanRating,
+  ratingStakes,
   roomMaxPlayers,
 } from '@ninjarena/core';
 import type { RoomPlayerView, RoomView, StartBlocker } from '@ninjarena/protocol';
@@ -24,6 +27,14 @@ export interface TeamGroup {
 }
 
 export type PlayerStatus = 'ready' | 'not-ready' | 'invalid';
+
+// Ce qu'un joueur risque dans la partie classée: rien sans compte, rien sans adversaire noté.
+export interface StakeRow {
+  id: string;
+  name: string;
+  rating: number | null;
+  stakes: RatingStakes | null;
+}
 
 export interface SelectOption {
   value: string;
@@ -52,6 +63,7 @@ const BLOCKER_TEXTS: Record<StartBlocker, string> = {
   EMPTY_TEAM: 'chaque équipe a besoin d’un joueur',
   MAP_MISSING: 'la carte choisie est introuvable',
   MAP_INVALID: 'la carte choisie ne convient pas à ces réglages',
+  RANKED_NEEDS_ACCOUNT: 'une partie classée demande un compte à chaque joueur',
 };
 
 // Les refus arrivent déjà traduits: seul le mot-clé dit lesquels parlent de l'équipement.
@@ -119,6 +131,29 @@ export function canStart(room: RoomView, sessionId: string): boolean {
   return isHost(room, sessionId) && room.status === 'WAITING' && room.startBlockers.length === 0;
 }
 
+// Chaque joueur est noté contre la moyenne de ses adversaires: en chacun pour soi, tous les autres.
+export function rankedStakes(room: RoomView): StakeRow[] {
+  return room.players.map((player) => {
+    if (player.rating === null) {
+      return { id: player.id, name: player.name, rating: null, stakes: null };
+    }
+    const opponents = room.players.flatMap((other) =>
+      other.id !== player.id &&
+      other.rating !== null &&
+      (room.settings.mode !== 'team' || other.team !== player.team)
+        ? [other.rating]
+        : [],
+    );
+    const opponentRating = meanRating(opponents);
+    return {
+      id: player.id,
+      name: player.name,
+      rating: player.rating,
+      stakes: opponentRating === null ? null : ratingStakes(player.rating, opponentRating),
+    };
+  });
+}
+
 export function roomLink(origin: string, pathname: string, code: string): string {
   return `${origin}${pathname}?room=${code}`;
 }
@@ -140,6 +175,8 @@ export function settingsPatch(
       return typeof raw === 'string' && raw.length > 0 ? { mapId: raw } : null;
     case 'friendlyFire':
       return typeof raw === 'boolean' ? { friendlyFire: raw } : null;
+    case 'ranked':
+      return typeof raw === 'boolean' ? { ranked: raw } : null;
     case 'bestOf': {
       const bestOf = BEST_OF_OPTIONS.find((option) => `${option}` === String(raw));
       return bestOf === undefined ? null : { bestOf };
@@ -236,6 +273,13 @@ export function settingsRows(
       label: 'Tir allié',
       kind: 'toggle',
       value: settings.friendlyFire,
+      hidden: false,
+    },
+    {
+      key: 'ranked',
+      label: 'Partie classée',
+      kind: 'toggle',
+      value: settings.ranked,
       hidden: false,
     },
   ];

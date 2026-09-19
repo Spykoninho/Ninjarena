@@ -14,6 +14,7 @@ const settings: RoomSettings = {
   bestOf: 3,
   roundDurationMs: 240_000,
   friendlyFire: false,
+  ranked: false,
 };
 
 const matchConfig: MatchConfig = {
@@ -68,6 +69,8 @@ describe('initialAppState', () => {
     expect(initial.sessionId).toBeNull();
     expect(initial.room).toBeNull();
     expect(initial.maps).toEqual([]);
+    expect(initial.account).toBeNull();
+    expect(initial.leaderboard).toEqual([]);
   });
 
   it('starts on the editor screen when the query asks for it', () => {
@@ -134,6 +137,26 @@ describe('reduceServerMessage', () => {
     );
     expect(next.maps).toEqual(maps);
     expect(next.screen).toBe('editor');
+  });
+
+  it('keeps the account the server reports and forgets it on logout', () => {
+    const account = { name: 'kage', rating: 115, wins: 1, losses: 0 };
+    const loggedIn = reduceServerMessage(state(), { type: 'accountState', account });
+    expect(loggedIn.account).toEqual(account);
+    expect(loggedIn.screen).toBe('home');
+    expect(
+      reduceServerMessage(loggedIn, { type: 'accountState', account: null }).account,
+    ).toBeNull();
+  });
+
+  it('keeps the leaderboard without leaving the current screen', () => {
+    const entries = [{ name: 'kage', rating: 115, wins: 1, losses: 0 }];
+    const next = reduceServerMessage(state({ screen: 'lobby', room: room('WAITING') }), {
+      type: 'leaderboard',
+      entries,
+    });
+    expect(next.leaderboard).toEqual(entries);
+    expect(next.screen).toBe('lobby');
   });
 
   it('shows a server error in the status without leaving the current screen', () => {

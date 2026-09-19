@@ -49,3 +49,4 @@ export * from './ui/loadoutPanel';
 export * from './ui/lobbyRoster';
 export * from './ui/lobbyScreen';
 export * from './ui/lobbySections';
+export * from './ui/rankBadge';

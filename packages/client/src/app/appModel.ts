@@ -1,5 +1,5 @@
 import type { MapSummary } from '@ninjarena/core';
-import type { RoomView, ServerMessage } from '@ninjarena/protocol';
+import type { AccountView, RoomView, ServerMessage } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
 import type { ScreenId } from './screen';
 
@@ -11,6 +11,8 @@ export interface AppState {
   sessionId: string | null;
   room: RoomView | null;
   maps: MapSummary[];
+  account: AccountView | null;
+  leaderboard: AccountView[];
   status: string;
 }
 
@@ -20,6 +22,8 @@ export function initialAppState(config: ClientConfig): AppState {
     sessionId: null,
     room: null,
     maps: [],
+    account: null,
+    leaderboard: [],
     status: 'idle',
   };
 }
@@ -40,6 +44,10 @@ export function reduceServerMessage(
       return { ...state, screen: 'game' };
     case 'mapList':
       return { ...state, maps: message.maps };
+    case 'accountState':
+      return { ...state, account: message.account };
+    case 'leaderboard':
+      return { ...state, leaderboard: message.entries };
     case 'error':
       return { ...state, status: message.message };
     default:

@@ -10,6 +10,7 @@ import {
   isLoadoutError,
   isRoomCode,
   playerStatus,
+  rankedStakes,
   roomLink,
   settingsPatch,
   settingsRows,
@@ -48,6 +49,7 @@ const settings: RoomSettings = {
   bestOf: 3,
   roundDurationMs: 240_000,
   friendlyFire: false,
+  ranked: false,
 };
 
 const maps: MapSummary[] = [
@@ -55,8 +57,8 @@ const maps: MapSummary[] = [
   { id: 'garden', name: 'Garden', width: 24, height: 24, builtin: false },
 ];
 
-function player(id: string, team: number | null): RoomPlayerView {
-  return { id, name: id, team, ready: false, loadout: null, loadoutValid: false };
+function player(id: string, team: number | null, rating: number | null = null): RoomPlayerView {
+  return { id, name: id, team, ready: false, loadout: null, loadoutValid: false, rating };
 }
 
 function room(overrides: Partial<RoomView> = {}): RoomView {
@@ -164,6 +166,9 @@ describe('blockerText', () => {
     expect(blockerText('EMPTY_TEAM')).toBe('chaque équipe a besoin d’un joueur');
     expect(blockerText('MAP_MISSING')).toBe('la carte choisie est introuvable');
     expect(blockerText('MAP_INVALID')).toBe('la carte choisie ne convient pas à ces réglages');
+    expect(blockerText('RANKED_NEEDS_ACCOUNT')).toBe(
+      'une partie classée demande un compte à chaque joueur',
+    );
   });
 });
 
@@ -236,6 +241,48 @@ describe('settingsRows', () => {
     expect(friendlyFire?.kind).toBe('toggle');
     expect(friendlyFire?.value).toBe(false);
   });
+
+  it('offers the ranked toggle', () => {
+    const rows = settingsRows({ ...settings, ranked: true }, maps, rules);
+    expect(rows.find((row) => row.key === 'ranked')).toMatchObject({
+      kind: 'toggle',
+      value: true,
+      hidden: false,
+    });
+  });
+});
+
+describe('rankedStakes', () => {
+  it('rates each player against the average of the other teams', () => {
+    const rows = rankedStakes(
+      room({
+        players: [player('c1', 0, 100), player('c2', 1, 100), player('c3', 1, 300)],
+      }),
+    );
+    expect(rows).toEqual([
+      { id: 'c1', name: 'c1', rating: 100, stakes: { win: 23, loss: -7 } },
+      { id: 'c2', name: 'c2', rating: 100, stakes: { win: 15, loss: -15 } },
+      { id: 'c3', name: 'c3', rating: 300, stakes: { win: 3, loss: -27 } },
+    ]);
+  });
+
+  it('treats everyone else as an opponent in free-for-all', () => {
+    const rows = rankedStakes(
+      room({
+        settings: { ...settings, mode: 'ffa', playersPerTeam: 1 },
+        players: [player('c1', null, 100), player('c2', null, 200), player('c3', null, 300)],
+      }),
+    );
+    expect(rows[0]?.stakes).toEqual({ win: 25, loss: -5 });
+  });
+
+  it('has no stake for a guest, and none while no rated opponent is seated', () => {
+    const rows = rankedStakes(room({ players: [player('c1', 0, 100), player('c2', 1)] }));
+    expect(rows).toEqual([
+      { id: 'c1', name: 'c1', rating: 100, stakes: null },
+      { id: 'c2', name: 'c2', rating: null, stakes: null },
+    ]);
+  });
 });
 
 describe('statusText', () => {
@@ -256,6 +303,7 @@ describe('settingsPatch', () => {
     expect(settingsPatch('roundDurationMs', '90000')).toEqual({ roundDurationMs: 90_000 });
     expect(settingsPatch('bestOf', '5')).toEqual({ bestOf: 5 });
     expect(settingsPatch('friendlyFire', true)).toEqual({ friendlyFire: true });
+    expect(settingsPatch('ranked', true)).toEqual({ ranked: true });
   });
 
   it('refuses a value the settings would never accept', () => {
@@ -263,6 +311,7 @@ describe('settingsPatch', () => {
     expect(settingsPatch('bestOf', '4')).toBeNull();
     expect(settingsPatch('mode', 'duel')).toBeNull();
     expect(settingsPatch('mapId', '')).toBeNull();
+    expect(settingsPatch('ranked', 'yes')).toBeNull();
   });
 });
 

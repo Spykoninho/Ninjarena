@@ -11,6 +11,7 @@ import {
   canStart,
   isHost,
   isLoadoutError,
+  rankedStakes,
   roomLink,
   settingsPatch,
   settingsRows,
@@ -19,7 +20,7 @@ import {
 import type { AbilityOption } from './loadoutModel';
 import type { LoadoutPanel } from './loadoutPanel';
 import { LobbyRoster } from './lobbyRoster';
-import { createSettingsForm, renderBlockers } from './lobbySections';
+import { createSettingsForm, renderBlockers, renderStakes } from './lobbySections';
 import type { SettingsForm } from './lobbySections';
 
 export interface LobbyActions {
@@ -57,6 +58,7 @@ export class LobbyScreen implements Screen {
   private readonly roster: LobbyRoster;
   private readonly settingsForm: SettingsForm;
   private readonly settingsNote: HTMLElement;
+  private readonly stakes: HTMLElement;
   private readonly blockerList: HTMLElement;
   private readonly readyButton: HTMLButtonElement;
   private readonly startButton: HTMLButtonElement;
@@ -127,6 +129,7 @@ export class LobbyScreen implements Screen {
       this.onSettingChanged(key, raw);
     });
     match.appendChild(this.settingsForm.root);
+    this.stakes = element('section', 'lobby-stakes', match);
 
     panel.mount(this.page('loadout'));
     panel.onChange((loadout) => {
@@ -191,6 +194,8 @@ export class LobbyScreen implements Screen {
       ? 'Tu es l’hôte : ces réglages s’appliquent à toute la salle.'
       : 'Seul l’hôte peut modifier les réglages de la partie.';
     this.settingsForm.sync(settingsRows(room.settings, maps, this.rules), editable);
+    this.stakes.hidden = !room.settings.ranked;
+    if (room.settings.ranked) renderStakes(this.stakes, rankedStakes(room), sessionId);
     renderBlockers(this.blockerList, room);
     this.syncActions(room, local, host);
   }

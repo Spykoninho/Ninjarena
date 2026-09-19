@@ -1,6 +1,12 @@
 import type { GameContent } from '@ninjarena/content';
 import type { MapDocument, MapSummary } from '@ninjarena/core';
-import type { ClientMessage, RoomPlayerView, RoomView, ServerMessage } from '@ninjarena/protocol';
+import type {
+  AccountView,
+  ClientMessage,
+  RoomPlayerView,
+  RoomView,
+  ServerMessage,
+} from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
 import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
@@ -31,6 +37,8 @@ export interface ClientAppGame {
 
 export interface HomeView extends Screen {
   setStatus(status: string): void;
+  setAccount(account: AccountView | null): void;
+  setLeaderboard(entries: AccountView[]): void;
   showError(message: string): void;
 }
 
@@ -72,6 +80,8 @@ export class ClientApp {
   private intent: ReduceIntent = 'lobby';
   private name: string;
   private renderedMaps: MapSummary[] | null = null;
+  private renderedAccount: AccountView | null = null;
+  private renderedLeaderboard: AccountView[] | null = null;
   private lastError: string | null = null;
   private connected = false;
   private connecting = false;
@@ -121,6 +131,29 @@ export class ClientApp {
     });
   }
 
+  login(name: string, password: string): void {
+    void this.withSession(name, () => {
+      this.send({ type: 'login', name, password });
+    });
+  }
+
+  register(name: string, password: string): void {
+    void this.withSession(name, () => {
+      this.send({ type: 'register', name, password });
+    });
+  }
+
+  logout(): void {
+    if (!this.connected) return;
+    this.send({ type: 'logout' });
+  }
+
+  openLeaderboard(): void {
+    void this.withSession(this.name, () => {
+      this.send({ type: 'getLeaderboard' });
+    });
+  }
+
   openEditor(): void {
     // L'éditeur ne veut pas être quitté par une salle qu'il n'a pas demandée.
     this.intent = 'stay';
@@ -146,7 +179,8 @@ export class ClientApp {
 
   private async withSession(name: string, action: () => void): Promise<void> {
     const trimmed = name.trim();
-    const renamed = trimmed.length > 0 && trimmed !== this.name;
+    // Un compte impose son pseudo: un formulaire ne renomme que l'invité.
+    const renamed = this.appState.account === null && trimmed.length > 0 && trimmed !== this.name;
     if (renamed) this.name = trimmed;
     const fresh = !this.connected;
     if (!(await this.connect())) return;
@@ -211,6 +245,10 @@ export class ClientApp {
         this.intent = 'lobby';
         game.beginMatch(message, this.appState.room?.players ?? []);
         return;
+      case 'accountState':
+        // Le compte impose son pseudo: le prochain `hello` et les salles l'utilisent.
+        if (message.account !== null) this.name = message.account.name;
+        return;
       case 'mapDocument':
         screens.editor.showDocument(message.document);
         return;
@@ -248,6 +286,7 @@ export class ClientApp {
       screen: 'home',
       sessionId: null,
       room: null,
+      account: null,
       status: DISCONNECTED,
     };
     this.showError(DISCONNECTED);
@@ -295,6 +334,15 @@ export class ClientApp {
     // Une erreur déjà listée ne se répète pas dans la ligne d'état.
     if (target === 'home') {
       screens.home.setStatus(this.appState.status === this.lastError ? '' : this.appState.status);
+    }
+    // Le compte et le classement ne sont repoussés qu'à leur changement: la liste se redessine entière.
+    if (this.renderedAccount !== this.appState.account) {
+      this.renderedAccount = this.appState.account;
+      screens.home.setAccount(this.appState.account);
+    }
+    if (this.renderedLeaderboard !== this.appState.leaderboard) {
+      this.renderedLeaderboard = this.appState.leaderboard;
+      screens.home.setLeaderboard(this.appState.leaderboard);
     }
     if (target === 'lobby' && room !== null) {
       screens.lobby.update(room, this.appState.maps, this.appState.sessionId ?? '');

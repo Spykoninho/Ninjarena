@@ -6,6 +6,7 @@ import { poseCanvas } from '../rendering/art/spriteArt';
 import { abilityIcon } from './abilityCards';
 import { teamPlateCanvas } from './hudGlyphs';
 import type { AbilityOption } from './loadoutModel';
+import { rankBadge } from './rankBadge';
 
 interface Figure {
   canvas: HTMLCanvasElement;
@@ -105,6 +106,7 @@ export class LobbyRoster {
     }
     const name = element('div', 'roster-name', card);
     element('span', 'roster-name-text', name).textContent = player.name;
+    if (player.rating !== null) name.appendChild(rankBadge(player.rating, 'roster-rank'));
     if (player.id === room.hostId) element('span', 'roster-host', name).textContent = 'HÔTE';
     if (player.id === sessionId) element('span', 'roster-you', name).textContent = 'TOI';
     const badge = element('div', `roster-status badge-${status}`, card);

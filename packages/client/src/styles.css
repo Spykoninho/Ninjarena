@@ -1331,6 +1331,131 @@ body {
   display: none;
 }
 
+/* Compte et classement */
+
+.home-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ui-edge);
+}
+
+.home-account-name {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.home-account-hint {
+  flex: 1;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ui-mute);
+}
+
+.home-account-action,
+.home-register {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ui-edge);
+  color: var(--hud-text);
+  font-size: 11px;
+}
+
+.home-account-action:hover,
+.home-register:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.home-form-hint {
+  margin: -4px 0 0;
+  font-size: 11px;
+  color: var(--ui-mute);
+}
+
+.home-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.home-leaderboard-table th,
+.home-leaderboard-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--ui-edge);
+}
+
+.home-leaderboard-table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-copper);
+}
+
+.home-leaderboard-position,
+.home-leaderboard-rating,
+.home-leaderboard-record {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-leaderboard-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.home-leaderboard-row.is-local {
+  background: rgba(117, 220, 228, 0.12);
+}
+
+.home-leaderboard-empty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ui-mute);
+}
+
+.home-leaderboard-empty[hidden] {
+  display: none;
+}
+
+/* Le palier se lit d'un coup d'oeil: une pastille au ton du métal, à côté du pseudo. */
+
+.rank-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-deep);
+  vertical-align: middle;
+}
+
+.rank-bronze {
+  background: #c8865a;
+}
+
+.rank-silver {
+  background: #c9d3d8;
+}
+
+.rank-gold {
+  background: #f2c94c;
+}
+
 /* Salon — plein écran: en-tête, onglets, page courante, pied avec les actions */
 
 .screen.lobby {
@@ -1702,6 +1827,71 @@ body {
 .lobby-setting-control:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.lobby-stakes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-edge);
+}
+
+.lobby-stakes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lobby-stake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid transparent;
+}
+
+.lobby-stake.is-local {
+  border-color: var(--hud-chakra);
+}
+
+.lobby-stake-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lobby-stake-name {
+  font-weight: 700;
+}
+
+.lobby-stake-guest,
+.lobby-stake-rating {
+  font-size: 11px;
+  color: var(--ui-mute);
+}
+
+.lobby-stake-values {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lobby-stake-win {
+  color: var(--hud-shield);
+}
+
+.lobby-stake-loss {
+  color: var(--ui-danger);
 }
 
 /* Personnage: la répartition des points à gauche, le kit et son étal de techniques à droite */
