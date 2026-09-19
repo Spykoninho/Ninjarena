@@ -1,9 +1,16 @@
 import type { RoomSettings, TeamId } from '@ninjarena/core';
 
+// Le score d'un compte est figé au coup d'envoi: c'est lui que le classement règle à la fin.
+export interface MatchResultAccount {
+  name: string;
+  rating: number;
+}
+
 export interface MatchResultPlayer {
   id: string;
   name: string;
   teamId: TeamId;
+  account: MatchResultAccount | null;
 }
 
 export interface MatchResult {

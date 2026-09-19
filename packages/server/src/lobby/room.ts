@@ -21,7 +21,8 @@ export type RoomErrorCode =
   | 'INVALID_SETTINGS'
   | 'INVALID_LOADOUT'
   | 'TEAM_FULL'
-  | 'CANNOT_START';
+  | 'CANNOT_START'
+  | 'NOT_LOGGED_IN';
 
 export type RoomError = { code: RoomErrorCode; message: string };
 
@@ -121,6 +122,9 @@ export class Room {
     }
     if (this.roster.length >= roomMaxPlayers(this.roomSettings)) {
       return fail('ROOM_FULL', 'the room is full');
+    }
+    if (this.roomSettings.ranked && session.account === null) {
+      return fail('NOT_LOGGED_IN', 'a ranked room needs an account');
     }
     this.roster.push({
       session,
@@ -289,6 +293,7 @@ export class Room {
         ready: player.ready,
         loadout: player.loadout,
         loadoutValid: player.loadoutValid,
+        rating: player.session.account?.rating ?? null,
       })),
       startBlockers: this.startBlockers(),
     };

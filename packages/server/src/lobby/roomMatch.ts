@@ -90,18 +90,25 @@ export function participantsOf(
   settings: RoomSettings,
   players: readonly RoomPlayer[],
 ): MatchResultPlayer[] {
-  return players.map((player) => ({
-    id: player.session.id,
-    name: player.session.name,
-    teamId: teamIdOf(settings, player),
-  }));
+  return players.map((player) => {
+    const account = player.session.account;
+    return {
+      id: player.session.id,
+      name: player.session.name,
+      teamId: teamIdOf(settings, player),
+      account: account === null ? null : { name: account.name, rating: account.rating },
+    };
+  });
 }
 
 export function matchResultOf(options: MatchResultOptions): MatchResult {
   return {
     roomCode: options.roomCode,
     settings: { ...options.settings },
-    players: options.players.map((player) => ({ ...player })),
+    players: options.players.map((player) => ({
+      ...player,
+      account: player.account === null ? null : { ...player.account },
+    })),
     winnerTeamId: options.winnerTeamId,
     scores: { ...options.scores },
     endedAt: options.endedAt,

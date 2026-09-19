@@ -1,5 +1,5 @@
 import type { PlayerId } from '@ninjarena/core';
-import type { ServerMessage } from '@ninjarena/protocol';
+import type { AccountView, ServerMessage } from '@ninjarena/protocol';
 import { serverMessageCodec } from '@ninjarena/protocol';
 import type { Room } from '../lobby/room';
 import type { Connection } from '../transport/types';
@@ -12,6 +12,7 @@ export class ClientSession {
   introduced = false;
   name: string;
   room: Room | null = null;
+  account: AccountView | null = null;
   playerId: PlayerId | null = null;
   invalidMessages = 0;
   closed = false;

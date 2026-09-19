@@ -5,12 +5,15 @@ import type { RoomSettings } from '@ninjarena/core';
 import { defaultRoomSettings, tickDurationMs } from '@ninjarena/core';
 import type { ClientMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec } from '@ninjarena/protocol';
+import { AccountService } from './accounts/accountService';
+import type { AccountResult } from './accounts/accountService';
 import type { ServerConfig } from './config/serverConfig';
 import type { RoomResult } from './lobby/room';
 import { Room } from './lobby/room';
 import { RoomManager } from './lobby/roomManager';
 import { MapLibrary } from './maps/mapLibrary';
 import { TickLoop } from './match/tickLoop';
+import type { AccountRepository } from './persistence/accountRepository';
 import type { MapRepository } from './persistence/mapRepository';
 import type { MatchResult, MatchResultRepository } from './persistence/matchResultRepository';
 import { ClientSession } from './session/clientSession';
@@ -22,6 +25,7 @@ export interface GameServerDeps {
   content: GameContent;
   results: MatchResultRepository;
   maps: MapRepository;
+  accounts: AccountRepository;
   log?: (line: string) => void;
   now?: () => number;
   schedule?: (callback: () => void, delayMs: number) => unknown;
@@ -51,6 +55,7 @@ export class GameServer {
   private readonly content: GameContent;
   private readonly results: MatchResultRepository;
   private readonly mapLibrary: MapLibrary;
+  private readonly accounts: AccountService;
   private readonly log: (line: string) => void;
   private readonly roomManager: RoomManager;
   private readonly now: () => number;
@@ -65,6 +70,7 @@ export class GameServer {
     this.content = deps.content;
     this.results = deps.results;
     this.log = deps.log ?? (() => {});
+    this.accounts = new AccountService({ repository: deps.accounts, log: this.log });
     this.mapLibrary = new MapLibrary({
       content: deps.content,
       repository: deps.maps,
@@ -122,6 +128,7 @@ export class GameServer {
       characterId: DEFAULT_CHARACTER_ID,
       onMatchEnded: (result) => {
         this.storeMatchResult(result);
+        if (result.settings.ranked) this.accounts.settle(result);
       },
     });
   }
@@ -156,6 +163,7 @@ export class GameServer {
     connection.onClose(() => {
       this.openConnections -= 1;
       this.roomManager.leave(session);
+      this.accounts.logout(session);
     });
   }
 
@@ -181,6 +189,16 @@ export class GameServer {
     switch (message.type) {
       case 'ping':
         session.send({ type: 'pong', sentAt: message.sentAt, serverTime: Date.now() });
+        return;
+      case 'register':
+      case 'login':
+        this.handleAccountAccess(session, message);
+        return;
+      case 'logout':
+        this.handleLogout(session);
+        return;
+      case 'getLeaderboard':
+        this.handleLeaderboard(session);
         return;
       case 'createRoom':
         this.handleCreateRoom(session, message);
@@ -229,10 +247,57 @@ export class GameServer {
       session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'already in a room' });
       return;
     }
-    // Un `hello` répété hors salle ne fait que renommer la session.
+    // Un `hello` répété hors salle ne fait que renommer la session; un compte garde son pseudo.
     session.introduced = true;
-    session.name = message.name;
+    if (session.account === null) session.name = message.name;
     session.send({ type: 'welcome', sessionId: session.id });
+  }
+
+  private handleAccountAccess(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'register' | 'login' }>,
+  ): void {
+    if (session.room !== null) {
+      session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'leave the room first' });
+      return;
+    }
+    const access: Promise<AccountResult> =
+      message.type === 'register'
+        ? this.accounts.register(session, message.name, message.password)
+        : this.accounts.login(session, message.name, message.password);
+    void access
+      .then((result) => {
+        if (!result.ok) {
+          session.send({ type: 'error', code: result.error.code, message: result.error.message });
+          return;
+        }
+        session.send({ type: 'accountState', account: result.account });
+      })
+      .catch((error: unknown) => {
+        this.log(`${message.type} failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({ type: 'error', code: 'SERVER_ERROR', message: 'accounts are unavailable' });
+      });
+  }
+
+  private handleLogout(session: ClientSession): void {
+    if (session.room !== null) {
+      session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'leave the room first' });
+      return;
+    }
+    this.accounts.logout(session);
+    session.send({ type: 'accountState', account: null });
+  }
+
+  private handleLeaderboard(session: ClientSession): void {
+    void this.accounts
+      .leaderboard()
+      .then((entries) => {
+        session.send({ type: 'leaderboard', entries });
+      })
+      .catch((error: unknown) => {
+        this.log(`getLeaderboard failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({ type: 'error', code: 'SERVER_ERROR', message: 'accounts are unavailable' });
+      });
   }
 
   private handleCreateRoom(

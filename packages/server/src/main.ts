@@ -1,5 +1,6 @@
 import { loadContent } from '@ninjarena/content';
 import { loadServerConfig } from './config/serverConfig';
+import { FileAccountRepository } from './persistence/fileAccountRepository';
 import { FileMapRepository } from './persistence/fileMapRepository';
 import { InMemoryMatchResultRepository } from './persistence/matchResultRepository';
 import { GameServer } from './server';
@@ -26,6 +27,7 @@ const start = async (): Promise<GameServer> => {
     content: loadContent(),
     results: new InMemoryMatchResultRepository(),
     maps: new FileMapRepository({ dir: config.mapsDir, log: logError }),
+    accounts: new FileAccountRepository({ file: config.accountsFile, log: logError }),
     log,
   });
   await server.start();

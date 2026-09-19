@@ -14,6 +14,7 @@ describe('loadServerConfig', () => {
       postMatchMs: 8000,
       mapsDir: 'data/maps',
       maxStoredMaps: 100,
+      accountsFile: 'data/accounts.json',
     });
   });
 
@@ -27,6 +28,7 @@ describe('loadServerConfig', () => {
         NINJARENA_POST_MATCH_MS: '0',
         NINJARENA_MAPS_DIR: '/tmp/maps',
         NINJARENA_MAX_STORED_MAPS: '5',
+        NINJARENA_ACCOUNTS_FILE: '/tmp/accounts.json',
       }),
     ).toMatchObject({
       host: '0.0.0.0',
@@ -36,6 +38,7 @@ describe('loadServerConfig', () => {
       postMatchMs: 0,
       mapsDir: '/tmp/maps',
       maxStoredMaps: 5,
+      accountsFile: '/tmp/accounts.json',
     });
   });
 

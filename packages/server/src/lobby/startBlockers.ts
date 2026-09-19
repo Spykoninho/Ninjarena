@@ -21,6 +21,9 @@ export function computeStartBlockers(input: StartBlockerInput): StartBlocker[] {
     blockers.push('INVALID_LOADOUT');
   }
   if (hasEmptyTeam(input.players, input.settings)) blockers.push('EMPTY_TEAM');
+  if (input.settings.ranked && input.players.some((player) => player.session.account === null)) {
+    blockers.push('RANKED_NEEDS_ACCOUNT');
+  }
   if (input.map === null) blockers.push('MAP_MISSING');
   else if (input.mapIssues.length > 0) blockers.push('MAP_INVALID');
   return blockers;

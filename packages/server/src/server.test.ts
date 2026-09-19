@@ -5,6 +5,7 @@ import { emptyBuild, migrateMapDocument, neutralInput, tickDurationMs } from '@n
 import type { ClientMessage, ServerMessage } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec, serverMessageCodec } from '@ninjarena/protocol';
 import { loadServerConfig } from './config/serverConfig';
+import { InMemoryAccountRepository } from './persistence/accountRepository';
 import type { MapRepository } from './persistence/mapRepository';
 import { InMemoryMapRepository } from './persistence/mapRepository';
 import { InMemoryMatchResultRepository } from './persistence/matchResultRepository';
@@ -83,6 +84,7 @@ const startServer = async (
     content: loadContent(),
     results: new InMemoryMatchResultRepository(),
     maps: maps ?? new InMemoryMapRepository(),
+    accounts: new InMemoryAccountRepository(),
     log: (line) => logs.push(line),
     ...(timers === undefined
       ? {}
@@ -121,6 +123,14 @@ const lastOf = <T extends ServerMessage['type']>(
 
 // `RoomManager.create` lance `refreshMap()` sans l'attendre: il faut vidanger une macro-tâche.
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+// Le hachage d'un mot de passe tourne hors de la boucle d'événements: on attend la réponse elle-même.
+const settled = async (connection: FakeConnection): Promise<void> => {
+  const before = connection.sent.length;
+  for (let attempt = 0; attempt < 200 && connection.sent.length === before; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+};
 
 const hello = (connection: FakeConnection, name: string): void => {
   connection.receive(
@@ -361,6 +371,112 @@ describe('GameServer dispatch', () => {
 
     guest.close();
     expect(server.rooms.count).toBe(0);
+  });
+
+  it('registers, logs out and logs back into an account, keeping its name over hello', async () => {
+    const { transport } = await startServer();
+    const connection = transport.accept('c1');
+    hello(connection, 'guest');
+
+    send(connection, { type: 'register', name: 'kage', password: 'shadow' });
+    await settled(connection);
+    expect(lastOf(connection, 'accountState')?.account).toEqual({
+      name: 'kage',
+      rating: 100,
+      wins: 0,
+      losses: 0,
+    });
+
+    hello(connection, 'someone-else');
+    send(connection, { type: 'createRoom' });
+    expect(lastOf(connection, 'roomState')?.room.players[0]?.name).toBe('kage');
+
+    send(connection, { type: 'logout' });
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'ALREADY_IN_ROOM' });
+    send(connection, { type: 'leaveRoom' });
+    send(connection, { type: 'logout' });
+    expect(lastOf(connection, 'accountState')?.account).toBeNull();
+
+    send(connection, { type: 'login', name: 'kage', password: 'nope' });
+    await settled(connection);
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'BAD_CREDENTIALS' });
+    send(connection, { type: 'login', name: 'kage', password: 'shadow' });
+    await settled(connection);
+    expect(lastOf(connection, 'accountState')?.account).toMatchObject({ name: 'kage' });
+  });
+
+  it('keeps guests out of a ranked room and blocks its start until everyone has an account', async () => {
+    const { transport } = await startServer();
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
+
+    send(host, { type: 'createRoom', settings: { ranked: true } });
+    expect(lastOf(host, 'error')).toMatchObject({ code: 'NOT_LOGGED_IN' });
+
+    send(host, { type: 'register', name: 'kage', password: 'shadow' });
+    await settled(host);
+    send(host, { type: 'createRoom', settings: { ranked: true } });
+    const code = codeOf(host);
+    await flush(); // laisse la salle charger sa carte avant de démarrer
+    expect(lastOf(host, 'roomState')?.room.players[0]?.rating).toBe(100);
+
+    send(guest, { type: 'joinRoom', code });
+    expect(lastOf(guest, 'error')).toMatchObject({ code: 'NOT_LOGGED_IN' });
+
+    send(host, { type: 'updateSettings', patch: { ranked: false } });
+    send(guest, { type: 'joinRoom', code });
+    send(host, { type: 'updateSettings', patch: { ranked: true } });
+    readyUp(host);
+    readyUp(guest);
+    expect(lastOf(host, 'roomState')?.room.startBlockers).toEqual(['RANKED_NEEDS_ACCOUNT']);
+    send(host, { type: 'startMatch' });
+    expect(lastOf(host, 'error')).toMatchObject({ code: 'CANNOT_START' });
+  });
+
+  it('settles the ratings of a ranked match on a forfeit and lists them on the leaderboard', async () => {
+    const timers = new VirtualTimers();
+    const { transport } = await startServer({ NINJARENA_TICK_RATE: '30' }, timers);
+    const host = transport.accept('c1');
+    const guest = transport.accept('c2');
+    hello(host, 'one');
+    hello(guest, 'two');
+    send(host, { type: 'register', name: 'kage', password: 'shadow' });
+    send(guest, { type: 'register', name: 'hanzo', password: 'shadow' });
+    await settled(host);
+    await settled(guest);
+
+    send(host, { type: 'createRoom', settings: { ranked: true } });
+    const code = codeOf(host);
+    await flush(); // laisse la salle charger sa carte avant de démarrer
+    send(guest, { type: 'joinRoom', code });
+    readyUp(host);
+    readyUp(guest);
+    send(host, { type: 'startMatch' });
+    const tickMs = tickDurationMs({ tickRate: 30 });
+    for (let i = 0; i < 400 && lastOf(host, 'roomState')?.room.status !== 'IN_GAME'; i++) {
+      timers.advance(tickMs);
+    }
+
+    guest.close();
+
+    expect(lastOf(host, 'roomState')?.room.status).toBe('FINISHED');
+    expect(lastOf(host, 'accountState')?.account).toEqual({
+      name: 'kage',
+      rating: 115,
+      wins: 1,
+      losses: 0,
+    });
+    expect(lastOf(host, 'roomState')?.room.players[0]?.rating).toBe(115);
+
+    await flush();
+    send(host, { type: 'getLeaderboard' });
+    await flush();
+    expect(lastOf(host, 'leaderboard')?.entries).toEqual([
+      { name: 'kage', rating: 115, wins: 1, losses: 0 },
+      { name: 'hanzo', rating: 85, wins: 0, losses: 1 },
+    ]);
   });
 
   it('drops input sent before a match starts and refuses ready once the game is running', async () => {

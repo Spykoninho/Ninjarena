@@ -13,7 +13,7 @@ export interface CreateRoomRequest {
 }
 
 export type CreateRoomError = {
-  code: 'TOO_MANY_ROOMS' | 'ALREADY_IN_ROOM' | 'INVALID_SETTINGS';
+  code: 'TOO_MANY_ROOMS' | 'ALREADY_IN_ROOM' | 'INVALID_SETTINGS' | 'NOT_LOGGED_IN';
   message: string;
 };
 
@@ -73,6 +73,12 @@ export class RoomManager {
     }
     const settings = this.settingsFor(request.settings, rules, defaultSettings);
     if (!settings.ok) return settings;
+    if (settings.settings.ranked && session.account === null) {
+      return {
+        ok: false,
+        error: { code: 'NOT_LOGGED_IN', message: 'a ranked room needs an account' },
+      };
+    }
 
     const code = this.freeCode();
     const passwordHash = request.password === undefined ? null : hashPassword(request.password);

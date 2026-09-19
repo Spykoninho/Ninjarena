@@ -11,6 +11,7 @@ export interface ServerConfig {
   postMatchMs: number;
   mapsDir: string;
   maxStoredMaps: number;
+  accountsFile: string;
 }
 
 // Un serveur de développement sans authentification n'écoute pas sur le réseau par défaut.
@@ -24,6 +25,7 @@ const DEFAULT_MAX_ROOMS = 64;
 const DEFAULT_POST_MATCH_MS = 8000;
 const DEFAULT_MAPS_DIR = 'data/maps';
 const DEFAULT_MAX_STORED_MAPS = 100;
+const DEFAULT_ACCOUNTS_FILE = 'data/accounts.json';
 const MAX_RATE = 240;
 const MAX_PORT = 65535;
 const MAX_INPUT_QUEUE_CAPACITY = 64;
@@ -43,6 +45,7 @@ const ServerConfigSchema = z.object({
   postMatchMs: z.coerce.number().int().min(0).max(MAX_POST_MATCH_MS),
   mapsDir: z.string().min(1),
   maxStoredMaps: z.coerce.number().int().min(0).max(MAX_STORED_MAPS_LIMIT),
+  accountsFile: z.string().min(1),
 });
 
 export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
@@ -57,6 +60,7 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
     postMatchMs: env.NINJARENA_POST_MATCH_MS ?? DEFAULT_POST_MATCH_MS,
     mapsDir: env.NINJARENA_MAPS_DIR ?? DEFAULT_MAPS_DIR,
     maxStoredMaps: env.NINJARENA_MAX_STORED_MAPS ?? DEFAULT_MAX_STORED_MAPS,
+    accountsFile: env.NINJARENA_ACCOUNTS_FILE ?? DEFAULT_ACCOUNTS_FILE,
   });
   if (parsed.success) return parsed.data;
   // Un démarrage raté doit tenir sur une ligne: le champ fautif, pas le rapport zod complet.

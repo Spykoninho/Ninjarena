@@ -418,6 +418,51 @@ describe('Room start blockers', () => {
   });
 });
 
+describe('Room ranked play', () => {
+  it('reports a guest in a ranked room and refuses a guest joining one', async () => {
+    const { room } = createRoom({ ranked: true });
+    await room.refreshMap();
+    const one = createSession('c1');
+    const two = createSession('c2');
+    one.session.account = { name: 'kage', rating: 120, wins: 2, losses: 0 };
+    expect(room.join(one.session, undefined)).toEqual({ ok: true });
+    expect(room.join(two.session, undefined)).toMatchObject({
+      ok: false,
+      error: { code: 'NOT_LOGGED_IN' },
+    });
+
+    two.session.account = { name: 'hanzo', rating: 100, wins: 0, losses: 0 };
+    expect(room.join(two.session, undefined)).toEqual({ ok: true });
+    for (const seat of [one, two]) {
+      room.setLoadout(seat.session, loadoutOf());
+      room.setReady(seat.session, true);
+    }
+    expect(room.startBlockers()).toEqual([]);
+    expect(lastRoomView(one.connection).players.map((player) => player.rating)).toEqual([120, 100]);
+
+    two.session.account = null;
+    expect(room.startBlockers()).toEqual(['RANKED_NEEDS_ACCOUNT']);
+  });
+
+  it('freezes each account and its rating in the match result at kick-off', async () => {
+    const { room, matchResults } = createRoom();
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    one.session.account = { name: 'kage', rating: 120, wins: 2, losses: 0 };
+    two.session.account = { name: 'hanzo', rating: 100, wins: 0, losses: 0 };
+    expect(room.updateSettings(one.session, { ranked: true })).toEqual({ ok: true });
+    expect(room.start(one.session)).toEqual({ ok: true });
+    one.session.account = { ...one.session.account, rating: 999 };
+
+    room.leave(two.session);
+
+    expect(matchResults[0]?.players).toEqual([
+      { id: 'c1', name: 'c1', teamId: 'team-0', account: { name: 'kage', rating: 120 } },
+      { id: 'c2', name: 'c2', teamId: 'team-1', account: { name: 'hanzo', rating: 100 } },
+    ]);
+  });
+});
+
 describe('Room match lifecycle', () => {
   it('refuses a start from a guest or with blockers left', async () => {
     const { room } = createRoom();
