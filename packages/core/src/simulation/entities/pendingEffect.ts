@@ -14,6 +14,7 @@ export interface PendingEffect {
   fireAt: Tick;
   source: EffectRef;
   radius: number | null;
+  triggerRadius: number;
   visual: Visual | null;
 }
 
@@ -34,6 +35,7 @@ export function schedulePending(
     fireAt: params.fireAt,
     source: { abilityId: params.source.abilityId, path: params.source.path },
     radius: params.radius,
+    triggerRadius: params.triggerRadius,
     visual: params.visual === null ? null : { ...params.visual },
   };
   ctx.world.pending[id] = pending;

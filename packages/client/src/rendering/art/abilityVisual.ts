@@ -7,7 +7,7 @@ export function abilityFamily(ability: AbilityDefinition): string {
   if (first?.type === 'dash') return 'dash';
   if (first?.type === 'delayedTrigger') return 'trap';
   if (first?.type === 'spawnEntity') return 'wall';
-  if (first?.type === 'area') return 'area';
+  if (first?.type === 'area') return first.triggerRadius > 0 ? 'trap' : 'area';
   if (ability.tags.includes('control')) return 'control';
   return first?.type ?? 'projectile';
 }

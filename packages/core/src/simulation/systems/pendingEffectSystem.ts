@@ -1,19 +1,28 @@
 import { applyAreaHit } from '../../abilities/effects/areaHit';
 import type { EffectContext } from '../../abilities/effects/executor';
-import { executeList } from '../../abilities/effects/executor';
+import { affectablePlayers, executeList } from '../../abilities/effects/executor';
+import { distance } from '../../math/vec2';
 import type { SimulationContext } from '../context';
 import type { PendingEffect } from '../entities/pendingEffect';
 
 export function pendingEffectSystem(ctx: SimulationContext): void {
   for (const pending of Object.values(ctx.world.pending)) {
-    if (pending.fireAt > ctx.now) continue;
-    fire(ctx, pending);
+    const context = contextOf(ctx, pending);
+    if (pending.fireAt > ctx.now && !tripped(context, pending)) continue;
+    fire(context, pending);
   }
 }
 
-function fire(ctx: SimulationContext, pending: PendingEffect): void {
-  const ability = ctx.abilities.get(pending.source.abilityId);
-  const context: EffectContext = {
+// Une mine part au passage: une cible qu'elle peut toucher entre dans son rayon de déclenchement.
+function tripped(context: EffectContext, pending: PendingEffect): boolean {
+  if (pending.triggerRadius <= 0) return false;
+  return affectablePlayers(context).some(
+    (player) => distance(pending.position, player.position) <= pending.triggerRadius,
+  );
+}
+
+function contextOf(ctx: SimulationContext, pending: PendingEffect): EffectContext {
+  return {
     ctx,
     casterId: pending.ownerId,
     teamId: pending.teamId,
@@ -21,6 +30,11 @@ function fire(ctx: SimulationContext, pending: PendingEffect): void {
     direction: { x: pending.direction.x, y: pending.direction.y },
     source: pending.source,
   };
+}
+
+function fire(context: EffectContext, pending: PendingEffect): void {
+  const ctx = context.ctx;
+  const ability = ctx.abilities.get(pending.source.abilityId);
   delete ctx.world.pending[pending.id];
   ctx.events.push({
     type: 'zoneTriggered',

@@ -26,6 +26,7 @@ export const areaHandler: EffectHandler<'area'> = (effect, context, path) => {
     fireAt: ctx.now + ctx.ticks(effect.delayMs),
     source: { abilityId: context.source.abilityId, path },
     radius,
+    triggerRadius: effect.triggerRadius,
     visual: effect.visual,
   });
 };

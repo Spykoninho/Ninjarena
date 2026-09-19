@@ -1,0 +1,26 @@
+{
+  "id": "explosive-mine",
+  "name": "Mine explosive",
+  "kind": "technique",
+  "description": "Pose une mine sous tes pieds. Elle explose dès qu'un ennemi passe dessus, ou d'elle-même au bout de 10 secondes, et blesse et repousse tout le monde autour.",
+  "cooldownMs": 9000,
+  "chakraCost": 30,
+  "startupMs": 250,
+  "recoveryMs": 200,
+  "telegraph": { "kind": "ground-mark", "color": "#e0563a", "size": 12 },
+  "tags": ["ground", "trap"],
+  "effects": [
+    {
+      "type": "area",
+      "origin": "caster",
+      "radius": 44,
+      "delayMs": 10000,
+      "triggerRadius": 14,
+      "visual": { "color": "#e0563a", "size": 44 },
+      "onHit": [
+        { "type": "damage", "amount": 38, "scaling": "technique" },
+        { "type": "knockback", "speed": 260, "durationMs": 120 }
+      ]
+    }
+  ]
+}

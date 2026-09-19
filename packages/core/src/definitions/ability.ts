@@ -57,6 +57,7 @@ export type Effect =
       type: 'area';
       radius: number;
       delayMs: number;
+      triggerRadius: number;
       origin: 'caster' | 'aim' | 'here';
       range: number;
       visual: Visual;
@@ -106,6 +107,8 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       type: z.literal('area'),
       radius: z.number().positive(),
       delayMs: z.number().nonnegative().default(0),
+      // Une zone armée part avant son délai dès qu'une cible passe à cette distance: une mine.
+      triggerRadius: z.number().nonnegative().default(0),
       origin: z.enum(['caster', 'aim', 'here']).default('here'),
       range: z.number().nonnegative().default(0),
       visual: VisualSchema,

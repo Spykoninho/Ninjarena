@@ -119,6 +119,9 @@ function describeEffect(effect: Effect): string {
     case 'projectile':
       return `tire un projectile${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
     case 'area':
+      if (effect.triggerRadius > 0) {
+        return `arme une mine${where(effect)} qui explose au passage d’un ennemi ou après ${seconds(effect.delayMs)} s sur ${tiles(effect.radius)} cases${onHit(effect.onHit)}`;
+      }
       return `${delay(effect.delayMs)}frappe une zone de ${tiles(effect.radius)} cases${where(effect)}${onHit(effect.onHit)}`;
     case 'dash':
       return `fonce sur ${tiles(effect.distance)} cases${contact(effect.onContact)}`;

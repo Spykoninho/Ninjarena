@@ -225,6 +225,26 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
     ],
   }),
   AbilityDefinitionSchema.parse({
+    id: 'mine',
+    name: 'Mine',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'area',
+        origin: 'caster',
+        radius: 40,
+        delayMs: 1000,
+        triggerRadius: 12,
+        visual: { color: '#e0563a', size: 40 },
+        onHit: [{ type: 'damage', amount: 25, scaling: 'technique' }],
+      },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
     id: 'boom',
     name: 'Boom',
     kind: 'technique',

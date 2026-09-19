@@ -24,6 +24,7 @@ describe('content', () => {
       'fireball',
       'seismic-slam',
       'earth-wall',
+      'explosive-mine',
     ]);
     for (const ability of content.abilities.all()) {
       if (ability.kind !== 'technique') continue;

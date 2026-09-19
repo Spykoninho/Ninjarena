@@ -218,3 +218,54 @@ describe('projectile explosion', () => {
     expect(bystander.health).toBe(95);
   });
 });
+
+describe('mine', () => {
+  const arm = () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+      techniqueIds: ['mine', 'seal', 'blink'],
+    });
+    const enemy = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 300, y: 200 },
+    });
+    sim.step({ a: press(2) });
+    expect(Object.values(sim.world.pending)[0]).toMatchObject({
+      position: { x: 200, y: 200 },
+      radius: 40,
+      triggerRadius: 12,
+    });
+    return { sim, enemy };
+  };
+
+  it('explodes as soon as an enemy steps onto it and hurts everyone in its blast', () => {
+    const { sim, enemy } = arm();
+    for (let i = 0; i < 5; i++) sim.step({});
+    expect(enemy.health).toBe(100);
+    // L'ennemi entre dans le rayon de déclenchement, bien avant l'échéance de la mine.
+    enemy.position = { x: 210, y: 200 };
+    const events = sim.step({});
+    expect(events.some((e) => e.type === 'zoneTriggered')).toBe(true);
+    expect(enemy.health).toBe(75);
+    expect(Object.keys(sim.world.pending)).toHaveLength(0);
+  });
+
+  it('ignores its owner and explodes by itself once the delay elapses', () => {
+    const { sim, enemy } = arm();
+    const owner = sim.world.players['a']!;
+    for (let i = 0; i < 59; i++) sim.step({});
+    expect(Object.keys(sim.world.pending)).toHaveLength(1);
+    expect(owner.health).toBe(100);
+    sim.step({});
+    expect(Object.keys(sim.world.pending)).toHaveLength(0);
+    // L'ennemi resté à 100 unités est hors de la zone de 40: la mine part dans le vide.
+    expect(enemy.health).toBe(100);
+  });
+});

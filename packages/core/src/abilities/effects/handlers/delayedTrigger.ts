@@ -11,6 +11,7 @@ export const delayedTriggerHandler: EffectHandler<'delayedTrigger'> = (effect, c
     fireAt: ctx.now + ctx.ticks(effect.delayMs),
     source: { abilityId: context.source.abilityId, path },
     radius: null,
+    triggerRadius: 0,
     visual: null,
   });
 };
