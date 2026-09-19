@@ -54,6 +54,7 @@ export interface HudView {
   teamId: TeamId | null;
   teamCode: number;
   skin: number;
+  watching: boolean;
 }
 
 const MS_PER_SECOND = 1000;
@@ -334,6 +335,7 @@ class CornerPanel {
 }
 
 class VitalsPanel {
+  private readonly panel: HTMLElement;
   private readonly portrait: HTMLCanvasElement;
   private readonly plate: HTMLCanvasElement;
   private readonly health: Gauge;
@@ -344,6 +346,7 @@ class VitalsPanel {
 
   constructor(root: HTMLElement) {
     const panel = element('div', 'hud-vitals hud-ink', root);
+    this.panel = panel;
     const frame = element('div', 'hud-portrait', panel);
     this.portrait = document.createElement('canvas');
     this.portrait.className = 'hud-portrait-art';
@@ -361,6 +364,7 @@ class VitalsPanel {
   }
 
   update(view: HudView, now: number): void {
+    if (this.panel.hidden !== view.watching) this.panel.hidden = view.watching;
     if (this.skin !== view.skin) {
       this.skin = view.skin;
       this.portrait.getContext('2d')?.drawImage(portraitCanvas(view.skin), 0, 0);

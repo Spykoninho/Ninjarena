@@ -63,6 +63,8 @@ export function buildHudView(input: HudViewInput): HudView {
     teamId: local?.teamId ?? null,
     teamCode: teamCode(local, input.match),
     skin: local === undefined ? 0 : skinIndex(local.id),
+    // Sans joueur local on regarde le match des autres: rien à piloter, rien à jauger.
+    watching: local === undefined,
   };
 }
 

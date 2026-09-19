@@ -63,6 +63,7 @@ export class HomeScreen implements Screen {
   private mode: HomeMode = 'menu';
   private account: AccountView | null = null;
   private tournamentSize: TournamentSize = 4;
+  private mountedOnce = false;
 
   constructor(actions: HomeActions, initial: { name: string; roomCode: string }) {
     this.actions = actions;
@@ -238,6 +239,9 @@ export class HomeScreen implements Screen {
   mount(root: HTMLElement): void {
     // Une erreur ne survit pas au remontage de l'écran: elle parlait de la session précédente.
     this.errorList.replaceChildren();
+    // Revenir d'une salle ramène au menu; le premier montage garde le formulaire qu'un lien a ouvert.
+    if (this.mountedOnce && this.mode !== 'queue') this.setMode('menu');
+    this.mountedOnce = true;
     root.appendChild(this.root);
     this.root.addEventListener('keydown', this.onKeyDown);
     this.focus();

@@ -87,6 +87,7 @@ function reviewHud(elapsedMs: number): HudView {
     chakra,
     maxChakra: 100,
     shield: health < 50 ? 18 : 0,
+    watching: false,
     abilities: [
       { name: 'Slash', family: 'melee', binding: 'LMB', chakraCost: 0, ...ready() },
       {
