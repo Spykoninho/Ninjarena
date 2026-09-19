@@ -2,6 +2,7 @@
   "id": "kunai-strike",
   "name": "Kunai Strike",
   "kind": "basic",
+  "description": "A quick kunai slash in front of you. Fast, free, and the bread and butter of close combat.",
   "cooldownMs": 350,
   "chakraCost": 0,
   "startupMs": 60,

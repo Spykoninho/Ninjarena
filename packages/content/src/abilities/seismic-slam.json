@@ -2,6 +2,7 @@
   "id": "seismic-slam",
   "name": "Seismic Slam",
   "kind": "technique",
+  "description": "Marks the ground at your aim; a moment later it erupts, damaging and briefly stunning everyone standing there.",
   "cooldownMs": 6000,
   "chakraCost": 30,
   "startupMs": 200,

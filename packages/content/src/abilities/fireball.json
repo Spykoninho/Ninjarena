@@ -2,6 +2,7 @@
   "id": "fireball",
   "name": "Fireball",
   "kind": "technique",
+  "description": "Launches a fireball that bursts on impact or at the end of its flight, burning and knocking back everyone nearby. Burns harder on grass.",
   "cooldownMs": 4000,
   "chakraCost": 25,
   "startupMs": 250,

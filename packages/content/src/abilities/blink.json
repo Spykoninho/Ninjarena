@@ -2,6 +2,7 @@
   "id": "blink",
   "name": "Blink",
   "kind": "technique",
+  "description": "Teleports you a good distance toward your aim, through anything in the way.",
   "cooldownMs": 5000,
   "chakraCost": 20,
   "startupMs": 100,

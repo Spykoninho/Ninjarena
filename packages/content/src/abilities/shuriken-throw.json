@@ -2,6 +2,7 @@
   "id": "shuriken-throw",
   "name": "Shuriken Throw",
   "kind": "basic",
+  "description": "Throws a shuriken in a straight line. Weaker than the kunai, but it hits from range.",
   "cooldownMs": 500,
   "chakraCost": 0,
   "startupMs": 80,

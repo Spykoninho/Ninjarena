@@ -2,6 +2,7 @@
   "id": "chakra-shield",
   "name": "Chakra Shield",
   "kind": "technique",
+  "description": "Wraps you in a chakra barrier that absorbs damage for a few seconds.",
   "cooldownMs": 9000,
   "chakraCost": 30,
   "startupMs": 150,

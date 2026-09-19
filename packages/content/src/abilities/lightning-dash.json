@@ -2,6 +2,7 @@
   "id": "lightning-dash",
   "name": "Lightning Dash",
   "kind": "technique",
+  "description": "A long charged dash: anyone you cross takes lightning damage and is slowed, more so in water.",
   "cooldownMs": 5000,
   "chakraCost": 30,
   "startupMs": 120,

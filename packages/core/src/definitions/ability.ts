@@ -170,6 +170,7 @@ export const AbilityDefinitionSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   kind: AbilityKindSchema,
+  description: z.string().min(1).optional(),
   cooldownMs: z.number().nonnegative(),
   chakraCost: z.number().nonnegative(),
   startupMs: z.number().nonnegative(),

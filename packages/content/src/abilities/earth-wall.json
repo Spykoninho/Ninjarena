@@ -2,6 +2,7 @@
   "id": "earth-wall",
   "name": "Earth Wall",
   "kind": "technique",
+  "description": "Raises a wall of earth in front of you that blocks movement and projectiles for a few seconds.",
   "cooldownMs": 8000,
   "chakraCost": 35,
   "startupMs": 300,

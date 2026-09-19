@@ -2,6 +2,7 @@
   "id": "paralysis-seal",
   "name": "Paralysis Seal",
   "kind": "technique",
+  "description": "Fires a seal that stuns the first target it hits and leaves it slowed.",
   "cooldownMs": 6000,
   "chakraCost": 30,
   "startupMs": 200,

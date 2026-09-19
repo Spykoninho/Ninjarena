@@ -2,6 +2,7 @@
   "id": "shadow-step",
   "name": "Shadow Step",
   "kind": "dash",
+  "description": "A short burst of speed in the direction you move. Cheap, and quick to come back.",
   "cooldownMs": 3000,
   "chakraCost": 10,
   "startupMs": 0,
