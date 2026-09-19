@@ -200,6 +200,11 @@ export class LobbyScreen implements Screen {
     this.syncActions(room, local, host);
   }
 
+  // L'essai d'une carte s'équipe sans passer par le salon: l'application lit l'équipement ici.
+  currentLoadout(): Loadout | null {
+    return this.loadout;
+  }
+
   showError(message: string): void {
     this.errorLine.textContent = message;
     if (isLoadoutError(message)) {

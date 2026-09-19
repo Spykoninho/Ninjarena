@@ -203,6 +203,19 @@ body {
   gap: 6px;
 }
 
+.hud-exit {
+  padding: 5px 8px;
+  pointer-events: auto;
+  color: var(--hud-text);
+  font: inherit;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.hud-exit:hover {
+  background: rgba(117, 220, 228, 0.18);
+}
+
 .hud-ping {
   display: flex;
   align-items: center;

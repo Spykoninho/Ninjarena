@@ -1,5 +1,6 @@
 import type { GameContent } from '@ninjarena/content';
-import type { MapDocument, MatchConfig, RoomSettings } from '@ninjarena/core';
+import type { Loadout, MapDocument, MatchConfig, RoomSettings } from '@ninjarena/core';
+import { emptyBuild } from '@ninjarena/core';
 import type {
   AccountView,
   ClientMessage,
@@ -11,6 +12,7 @@ import type {
 } from '@ninjarena/protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
+import type { HudExitAction } from '../ui/hud';
 import { loadClientConfig } from '../config/clientConfig';
 import { ClientApp } from './clientApp';
 import type { ClientAppGame, ClientAppNetwork, EditorView, HomeView, LobbyView } from './clientApp';
@@ -25,6 +27,13 @@ const settings: RoomSettings = {
   roundDurationMs: 240_000,
   friendlyFire: false,
   ranked: false,
+  practice: false,
+};
+
+const loadout: Loadout = {
+  build: emptyBuild(),
+  basicAttackId: 'kunai-strike',
+  techniqueIds: ['blink', 'chakra-shield', 'lightning-dash'],
 };
 
 const matchConfig: MatchConfig = {
@@ -38,6 +47,7 @@ const matchConfig: MatchConfig = {
   roundEndDelayMs: 3000,
   friendlyFire: false,
   buildPoints: 10,
+  practice: false,
 };
 
 const mapDocument: MapDocument = {
@@ -68,7 +78,7 @@ const players: RoomPlayerView[] = [
   },
 ];
 
-function room(status: RoomStatus): RoomView {
+function room(status: RoomStatus, overrides: Partial<RoomView> = {}): RoomView {
   return {
     code: 'AB7K2P',
     hasPassword: false,
@@ -78,6 +88,7 @@ function room(status: RoomStatus): RoomView {
     map: null,
     players,
     startBlockers: [],
+    ...overrides,
   };
 }
 
@@ -135,6 +146,7 @@ class FakeGame implements ClientAppGame {
   readonly begun: RoomPlayerView[][] = [];
   readonly snapshots: SnapshotMessage[] = [];
   readonly summaries: MatchSummary[] = [];
+  readonly exits: (HudExitAction | null)[] = [];
   roomPlayers: RoomPlayerView[] = [];
   active = false;
 
@@ -161,6 +173,11 @@ class FakeGame implements ClientAppGame {
   showSummary(summary: MatchSummary): void {
     this.calls.push('showSummary');
     this.summaries.push(summary);
+  }
+
+  setExitAction(action: HudExitAction | null): void {
+    this.calls.push('setExitAction');
+    this.exits.push(action);
   }
 
   setRoomPlayers(roomPlayers: RoomPlayerView[]): void {
@@ -224,6 +241,7 @@ class FakeLobby implements LobbyView {
   readonly calls: string[] = [];
   errors: string[] = [];
   mounted = false;
+  loadout: Loadout | null = loadout;
 
   mount(): void {
     this.calls.push('mount');
@@ -240,6 +258,10 @@ class FakeLobby implements LobbyView {
     this.calls.push('update');
   }
 
+  currentLoadout(): Loadout | null {
+    return this.loadout;
+  }
+
   showError(message: string): void {
     this.calls.push('showError');
     this.errors.push(message);
@@ -249,6 +271,7 @@ class FakeLobby implements LobbyView {
 class FakeEditor implements EditorView {
   readonly calls: string[] = [];
   readonly saved: string[] = [];
+  readonly statuses: string[] = [];
 
   mount(): void {
     this.calls.push('mount');
@@ -271,8 +294,9 @@ class FakeEditor implements EditorView {
     this.saved.push(id);
   }
 
-  setStatus(): void {
+  setStatus(status: string): void {
     this.calls.push('setStatus');
+    this.statuses.push(status);
   }
 
   showError(): void {
@@ -422,7 +446,7 @@ describe('ClientApp editor', () => {
     expect(h.app.state.screen).toBe('editor');
   });
 
-  it('opens a room on the saved map when a test run is pending', async () => {
+  it('opens a practice room on the saved map when a test run is pending', async () => {
     h.app.openEditor();
     h.app.testMap(mapDocument);
     await flush();
@@ -430,10 +454,10 @@ describe('ClientApp editor', () => {
     h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
     expect(h.network.sent.at(-1)).toEqual({
       type: 'createRoom',
-      settings: { mapId: 'dojo-a1b2' },
+      settings: { mapId: 'dojo-a1b2', practice: true },
     });
     h.network.deliver({ type: 'roomState', room: room('WAITING') });
-    expect(h.app.state.screen).toBe('lobby');
+    expect(h.app.state.screen).toBe('editor');
   });
 
   it('forgets a pending test run when the save is refused', async () => {
@@ -456,6 +480,115 @@ describe('ClientApp editor', () => {
     h.network.drop();
     h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
     expect(h.network.sent.filter((message) => message.type === 'createRoom')).toEqual([]);
+  });
+});
+
+// Le pilote de l'essai: un état de salle par étape, du salon invisible jusqu'au coup d'envoi.
+describe('ClientApp map test run', () => {
+  const me = (overrides: Partial<RoomPlayerView>): RoomPlayerView => ({
+    id: 'c1',
+    name: 'kage',
+    team: 0,
+    ready: false,
+    loadout: null,
+    loadoutValid: false,
+    rating: null,
+    ...overrides,
+  });
+
+  async function startTest(): Promise<void> {
+    h.network.deliver({ type: 'welcome', sessionId: 'c1' });
+    h.app.openEditor();
+    h.app.testMap(mapDocument);
+    await flush();
+    h.network.deliver({ type: 'mapSaved', id: 'dojo-a1b2' });
+  }
+
+  it('equips, readies up and starts alone without ever showing the lobby', async () => {
+    await startTest();
+    h.network.deliver({ type: 'roomState', room: room('WAITING', { players: [me({})] }) });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setLoadout', loadout });
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', {
+        players: [me({ loadout, loadoutValid: true })],
+        startBlockers: ['PLAYER_NOT_READY', 'MAP_MISSING'],
+      }),
+    });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setReady', ready: true });
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', {
+        players: [me({ loadout, loadoutValid: true, ready: true })],
+        startBlockers: ['MAP_MISSING'],
+      }),
+    });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setReady', ready: true });
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', { players: [me({ loadout, loadoutValid: true, ready: true })] }),
+    });
+    expect(h.network.sent.at(-1)).toEqual({ type: 'startMatch' });
+    expect(h.lobby.mounted).toBe(false);
+    expect(h.app.state.screen).toBe('editor');
+
+    h.network.deliver(matchStarted);
+    expect(h.app.state.screen).toBe('game');
+    expect(h.game.exits.at(-1)?.label).toBe('Retour à l’éditeur');
+  });
+
+  it('comes back to the editor, room released, when the exit action runs', async () => {
+    await startTest();
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', { players: [me({ loadout, loadoutValid: true, ready: true })] }),
+    });
+    h.network.deliver(matchStarted);
+    h.game.exits.at(-1)?.run();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'leaveRoom' });
+    h.network.deliver({ type: 'roomLeft' });
+    expect(h.app.state.screen).toBe('editor');
+    expect(h.app.state.room).toBeNull();
+    expect(h.game.active).toBe(false);
+    expect(h.editor.statuses.at(-1)).toBe('Essai terminé');
+    // L'éditeur redevient une simple fenêtre sur les salles: une salle non demandée ne l'emporte plus.
+    h.network.deliver({ type: 'roomState', room: room('WAITING') });
+    expect(h.app.state.screen).toBe('editor');
+  });
+
+  it('leaves the room by itself when a practice match ends on its own', async () => {
+    await startTest();
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', { players: [me({ loadout, loadoutValid: true, ready: true })] }),
+    });
+    h.network.deliver(matchStarted);
+    h.network.deliver({ type: 'roomState', room: room('WAITING') });
+    expect(h.app.state.screen).toBe('editor');
+    expect(h.network.sent.at(-1)).toEqual({ type: 'leaveRoom' });
+  });
+
+  it('falls back to the lobby when the room refuses to start or the server errors', async () => {
+    await startTest();
+    h.network.deliver({
+      type: 'roomState',
+      room: room('WAITING', {
+        players: [me({ loadout, loadoutValid: true, ready: true })],
+        startBlockers: ['MAP_INVALID'],
+      }),
+    });
+    expect(h.app.state.screen).toBe('lobby');
+    expect(h.lobby.mounted).toBe(true);
+    expect(h.network.sent.filter((message) => message.type === 'startMatch')).toEqual([]);
+
+    const again = harness();
+    await again.app.start();
+    h = again;
+    await startTest();
+    h.network.deliver({ type: 'roomState', room: room('WAITING', { players: [me({})] }) });
+    h.network.deliver({ type: 'error', code: 'INVALID_LOADOUT', message: 'nope' });
+    expect(h.app.state.screen).toBe('lobby');
+    expect(h.lobby.errors).toEqual(['Équipement refusé par le serveur']);
   });
 });
 

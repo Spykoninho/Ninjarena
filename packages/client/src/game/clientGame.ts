@@ -25,7 +25,7 @@ import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import { gameCursorStyle } from '../ui/gameCursor';
-import type { Hud } from '../ui/hud';
+import type { Hud, HudExitAction } from '../ui/hud';
 import { routeEvents } from './eventRouter';
 import { buildHudView } from './hudView';
 import { buildRenderFrame } from './renderFrame';
@@ -46,6 +46,7 @@ export type MatchStartedMessage = Extract<ServerMessage, { type: 'matchStarted' 
 export type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
 export type PongMessage = Extract<ServerMessage, { type: 'pong' }>;
 
+const EXIT_KEY = 'Escape';
 const MAX_FRAME_MS = 250;
 const MS_PER_SECOND = 1000;
 const PING_INTERVAL_MS = 1000;
@@ -77,6 +78,7 @@ export class ClientGame {
   private stopped = false;
   private status = '';
   private stage: HTMLElement | null = null;
+  private exitAction: HudExitAction | null = null;
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
@@ -102,6 +104,12 @@ export class ClientGame {
     this.updateHud();
   }
 
+  // Une sortie proposée pendant le match, comme le retour à l'éditeur après un essai de carte.
+  setExitAction(action: HudExitAction | null): void {
+    this.exitAction = action;
+    if (!this.stopped) this.deps.hud.setExitAction(action);
+  }
+
   showSummary(summary: MatchSummary): void {
     if (this.stopped || this.simulation === null) return;
     this.deps.hud.showSummary(summary, this.localPlayerId);
@@ -112,6 +120,7 @@ export class ClientGame {
     this.frameHandle = null;
     this.stopPing();
     if (!this.stopped) this.deps.hud.hideSummary();
+    this.setExitAction(null);
     this.setCursor(false);
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
     this.simulation = null;
@@ -218,6 +227,9 @@ export class ClientGame {
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
     this.updateSpectator();
+    if (this.exitAction !== null && this.deps.inputState.pressedOnce.has(EXIT_KEY)) {
+      this.exitAction.run();
+    }
     // Une pression ne vaut que pour l'image qui la lit: elle est consommée à la fin de celle-ci.
     this.deps.inputState.pressedOnce.clear();
     const offset = this.smoother.advance(elapsed);

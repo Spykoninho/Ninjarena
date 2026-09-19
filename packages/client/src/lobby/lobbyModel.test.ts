@@ -50,6 +50,7 @@ const settings: RoomSettings = {
   roundDurationMs: 240_000,
   friendlyFire: false,
   ranked: false,
+  practice: false,
 };
 
 const maps: MapSummary[] = [
@@ -304,6 +305,7 @@ describe('settingsPatch', () => {
     expect(settingsPatch('bestOf', '5')).toEqual({ bestOf: 5 });
     expect(settingsPatch('friendlyFire', true)).toEqual({ friendlyFire: true });
     expect(settingsPatch('ranked', true)).toEqual({ ranked: true });
+    expect(settingsPatch('practice', true)).toEqual({ practice: true });
   });
 
   it('refuses a value the settings would never accept', () => {

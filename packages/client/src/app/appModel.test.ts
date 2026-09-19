@@ -15,6 +15,7 @@ const settings: RoomSettings = {
   roundDurationMs: 240_000,
   friendlyFire: false,
   ranked: false,
+  practice: false,
 };
 
 const matchConfig: MatchConfig = {
@@ -28,6 +29,7 @@ const matchConfig: MatchConfig = {
   roundEndDelayMs: 3000,
   friendlyFire: false,
   buildPoints: 10,
+  practice: false,
 };
 
 const mapDocument: MapDocument = {
@@ -106,6 +108,14 @@ describe('reduceServerMessage', () => {
     expect(reduceServerMessage(playing, { type: 'roomState', room: room('WAITING') }).screen).toBe(
       'lobby',
     );
+  });
+
+  it('keeps the editor through a test room and comes back to it after the match', () => {
+    const message: ServerMessage = { type: 'roomState', room: room('WAITING') };
+    expect(reduceServerMessage(state({ screen: 'editor' }), message, 'test').screen).toBe('editor');
+    const playing = state({ screen: 'game', room: room('IN_GAME') });
+    expect(reduceServerMessage(playing, message, 'test').screen).toBe('editor');
+    expect(reduceServerMessage(playing, { type: 'roomLeft' }, 'test').screen).toBe('editor');
   });
 
   it('goes home when the room is left', () => {

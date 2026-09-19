@@ -177,6 +177,8 @@ export function settingsPatch(
       return typeof raw === 'boolean' ? { friendlyFire: raw } : null;
     case 'ranked':
       return typeof raw === 'boolean' ? { ranked: raw } : null;
+    case 'practice':
+      return typeof raw === 'boolean' ? { practice: raw } : null;
     case 'bestOf': {
       const bestOf = BEST_OF_OPTIONS.find((option) => `${option}` === String(raw));
       return bestOf === undefined ? null : { bestOf };
@@ -280,6 +282,13 @@ export function settingsRows(
       label: 'Partie classée',
       kind: 'toggle',
       value: settings.ranked,
+      hidden: false,
+    },
+    {
+      key: 'practice',
+      label: 'Entraînement (départ seul, sans chrono)',
+      kind: 'toggle',
+      value: settings.practice,
       hidden: false,
     },
   ];

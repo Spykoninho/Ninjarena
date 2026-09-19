@@ -4,7 +4,8 @@ import type { ClientConfig } from '../config/clientConfig';
 import type { ScreenId } from './screen';
 
 // Une salle ouverte depuis l'éditeur n'y ramène pas: l'appelant dit s'il attend un changement d'écran.
-export type ReduceIntent = 'stay' | 'lobby';
+// `test` est l'essai d'une carte: le salon reste invisible et la sortie du match ramène à l'éditeur.
+export type ReduceIntent = 'stay' | 'lobby' | 'test';
 
 export interface AppState {
   screen: ScreenId;
@@ -39,7 +40,7 @@ export function reduceServerMessage(
     case 'roomState':
       return { ...state, room: message.room, screen: screenWithRoom(state, message.room, intent) };
     case 'roomLeft':
-      return { ...state, room: null, screen: 'home' };
+      return { ...state, room: null, screen: intent === 'test' ? 'editor' : 'home' };
     case 'matchStarted':
       return { ...state, screen: 'game' };
     case 'mapList':
@@ -69,7 +70,8 @@ function screenWithRoom(state: AppState, room: RoomView, intent: ReduceIntent): 
       return intent === 'lobby' ? 'lobby' : 'editor';
     case 'game':
       // Le retour au salon attend que la salle repasse en attente: un match en cours garde l'écran.
-      return room.status === 'WAITING' ? 'lobby' : 'game';
+      if (room.status !== 'WAITING') return 'game';
+      return intent === 'test' ? 'editor' : 'lobby';
     default:
       return state.screen;
   }

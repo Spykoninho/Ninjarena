@@ -18,6 +18,11 @@ import { PixelText } from './pixelText';
 
 export type HudAbilityBlock = 'chakra' | 'control';
 
+export interface HudExitAction {
+  label: string;
+  run: () => void;
+}
+
 export interface HudAbilityView {
   name: string;
   family?: string;
@@ -98,6 +103,10 @@ export class Hud {
 
   showSummary(summary: MatchSummary, localPlayerId: string | null): void {
     this.summary.show(summary, localPlayerId);
+  }
+
+  setExitAction(action: HudExitAction | null): void {
+    this.corner.setExitAction(action);
   }
 
   hideSummary(): void {
@@ -238,14 +247,28 @@ class Banner {
 class CornerPanel {
   private readonly ping: HTMLElement;
   private readonly value = new PixelText({ scale: 2 });
+  private readonly exit: HTMLButtonElement;
+  private exitAction: HudExitAction | null = null;
 
   constructor(root: HTMLElement) {
     const corner = element('div', 'hud-corner', root);
+    this.exit = document.createElement('button');
+    this.exit.type = 'button';
+    this.exit.className = 'hud-exit hud-ink';
+    this.exit.hidden = true;
+    this.exit.addEventListener('click', () => this.exitAction?.run());
+    corner.appendChild(this.exit);
     this.ping = element('div', 'hud-ping hud-ink', corner);
     const unit = new PixelText({ scale: 2, color: P.edge });
     unit.set('MS');
     this.ping.append(this.value.canvas, unit.canvas);
     this.addSettings(corner);
+  }
+
+  setExitAction(action: HudExitAction | null): void {
+    this.exitAction = action;
+    this.exit.hidden = action === null;
+    if (action !== null) this.exit.textContent = action.label;
   }
 
   update(view: HudView): void {
