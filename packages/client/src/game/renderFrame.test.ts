@@ -79,6 +79,7 @@ const projectileOf = (
 const pendingOf = (id: string, ownerId: string, radius: number | null): PendingEffect => ({
   id,
   ownerId,
+  triggerRadius: 0,
   teamId: ownerId === 'me' ? 'team-0' : 'team-1',
   position: { x: 60, y: 70 },
   direction: { x: 1, y: 0 },

@@ -4,6 +4,7 @@ import { WebAudioSynth } from './audio/webAudioSynth';
 import { loadClientConfig, sameOriginServerUrl } from './config/clientConfig';
 import { ClientGame } from './game/clientGame';
 import { DEFAULT_BINDINGS } from './input/bindings';
+import { BindingsStore } from './input/bindingsStore';
 import { DomInputAdapter } from './input/domInputAdapter';
 import { isFullscreenShortcut, toggleFullscreen } from './input/fullscreen';
 import { createInputState } from './input/inputState';
@@ -13,6 +14,7 @@ import './styles.css';
 import { EditorScreen } from './ui/editorScreen';
 import { HomeScreen } from './ui/homeScreen';
 import { Hud } from './ui/hud';
+import { KeyBindingsPanel } from './ui/keyBindingsPanel';
 import {
   abilityOption,
   basicOptions,
@@ -45,15 +47,18 @@ window.addEventListener('keydown', (event) => {
   if (isFullscreenShortcut(event, DEFAULT_BINDINGS.fullscreen)) void toggleFullscreen();
 });
 
+// Les touches d'attaque se règlent en jeu et survivent au rechargement de la page.
+const bindings = new BindingsStore(localStorageOrNull());
+const keysPanel = new KeyBindingsPanel(bindings);
 const network = new NetworkClient();
 const game = new ClientGame({
   content,
   network,
   renderer: new PixiRenderer({ zoom: config.zoom }),
-  hud: new Hud(hudRoot),
+  hud: new Hud(hudRoot, keysPanel),
   audio: new WebAudioSynth(),
   inputState,
-  bindings: DEFAULT_BINDINGS,
+  bindings: bindings.current,
   interpolationDelayTicks: config.interpolationDelayTicks,
 });
 
@@ -105,8 +110,11 @@ const loadoutPanel = new LoadoutPanel(
   techniques,
   basics,
   dash,
-  slotBindings(DEFAULT_BINDINGS, rules.techniqueSlots),
+  slotBindings(bindings.current, rules.techniqueSlots),
 );
+bindings.subscribe((current) => {
+  loadoutPanel.setKeys(slotBindings(current, rules.techniqueSlots));
+});
 
 const lobby = new LobbyScreen(
   {
@@ -130,6 +138,7 @@ const lobby = new LobbyScreen(
     },
   },
   loadoutPanel,
+  keysPanel,
   rules,
   [...basics, dash, ...techniques],
 );
@@ -175,6 +184,14 @@ window.addEventListener('beforeunload', () => {
   input.detach();
   app().stop();
 });
+
+function localStorageOrNull(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 // Pas de `await` au niveau module: en build, les chunks Pixi importent celui-ci et un top-level await bloquerait leur chargement.
 app()

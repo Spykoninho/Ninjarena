@@ -20,6 +20,7 @@ import type {
   RoomPlayerView,
   RoomView,
   ServerMessage,
+  TournamentView,
 } from './messages';
 import { SERVER_ERROR_CODES, START_BLOCKERS } from './messages';
 
@@ -163,6 +164,28 @@ const MatchSummarySchema: z.ZodType<MatchSummary> = z.strictObject({
   ),
 });
 
+const TournamentPlayerViewSchema = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().min(1).max(MAX_PLAYER_NAME_LENGTH),
+});
+
+const TournamentViewSchema: z.ZodType<TournamentView> = z.strictObject({
+  size: z.number().int().min(2),
+  rounds: z.array(
+    z.array(
+      z.strictObject({
+        players: z.tuple([
+          TournamentPlayerViewSchema.nullable(),
+          TournamentPlayerViewSchema.nullable(),
+        ]),
+        winnerId: z.string().min(1).nullable(),
+        status: z.enum(['pending', 'live', 'done']),
+      }),
+    ),
+  ),
+  championId: z.string().min(1).nullable(),
+});
+
 const RoomViewSchema: z.ZodType<RoomView> = z.strictObject({
   code: z.string().regex(CODE_PATTERN),
   hasPassword: z.boolean(),
@@ -172,6 +195,7 @@ const RoomViewSchema: z.ZodType<RoomView> = z.strictObject({
   map: MapSummarySchema.nullable(),
   players: z.array(RoomPlayerViewSchema),
   startBlockers: z.array(z.enum(START_BLOCKERS)),
+  tournament: TournamentViewSchema.nullable(),
 });
 
 export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnion('type', [

@@ -72,6 +72,7 @@ function room(overrides: Partial<RoomView> = {}): RoomView {
     map: maps[0] ?? null,
     players: [player('c1', 0), player('c2', 1), player('c3', 0)],
     startBlockers: [],
+    tournament: null,
     ...overrides,
   };
 }

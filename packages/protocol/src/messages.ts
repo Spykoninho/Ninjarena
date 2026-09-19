@@ -63,6 +63,26 @@ export interface AccountView {
   losses: number;
 }
 
+// L'arbre du tournoi tel que la salle le diffuse: un joueur parti garde son nom dans la case.
+export interface TournamentPlayerView {
+  id: string;
+  name: string;
+}
+
+export type TournamentMatchStatus = 'pending' | 'live' | 'done';
+
+export interface TournamentMatchView {
+  players: [TournamentPlayerView | null, TournamentPlayerView | null];
+  winnerId: string | null;
+  status: TournamentMatchStatus;
+}
+
+export interface TournamentView {
+  size: number;
+  rounds: TournamentMatchView[][];
+  championId: string | null;
+}
+
 export interface RoomView {
   code: string;
   hasPassword: boolean;
@@ -72,6 +92,7 @@ export interface RoomView {
   map: MapSummary | null;
   players: RoomPlayerView[];
   startBlockers: StartBlocker[];
+  tournament: TournamentView | null;
 }
 
 export type RoomSettingsPatch = Partial<RoomSettings>;

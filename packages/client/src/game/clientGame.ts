@@ -9,7 +9,12 @@ import {
   sub,
   tickDurationMs,
 } from '@ninjarena/core';
-import type { MatchSummary, RoomPlayerView, ServerMessage } from '@ninjarena/protocol';
+import type {
+  MatchSummary,
+  RoomPlayerView,
+  ServerMessage,
+  TournamentView,
+} from '@ninjarena/protocol';
 import type { AudioPort } from '../audio/audioPort';
 import { feedbackView } from '../feedback/cues';
 import { FeedbackController } from '../feedback/feedbackController';
@@ -46,7 +51,7 @@ export type MatchStartedMessage = Extract<ServerMessage, { type: 'matchStarted' 
 export type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
 export type PongMessage = Extract<ServerMessage, { type: 'pong' }>;
 
-const EXIT_KEY = 'Escape';
+const PAUSE_KEY = 'Escape';
 const MAX_FRAME_MS = 250;
 const MS_PER_SECOND = 1000;
 const PING_INTERVAL_MS = 1000;
@@ -98,6 +103,10 @@ export class ClientGame {
     this.roomPlayers = players;
   }
 
+  setTournament(view: TournamentView | null, localId: string): void {
+    if (!this.stopped) this.deps.hud.setTournament(view, localId);
+  }
+
   setStatus(status: string): void {
     if (this.stopped) return;
     this.status = status;
@@ -119,7 +128,10 @@ export class ClientGame {
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     this.stopPing();
-    if (!this.stopped) this.deps.hud.hideSummary();
+    if (!this.stopped) {
+      this.deps.hud.hideSummary();
+      this.deps.hud.hidePause();
+    }
     this.setExitAction(null);
     this.setCursor(false);
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
@@ -227,9 +239,8 @@ export class ClientGame {
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
     this.updateSpectator();
-    if (this.exitAction !== null && this.deps.inputState.pressedOnce.has(EXIT_KEY)) {
-      this.exitAction.run();
-    }
+    // Échap ouvre le menu de pause: quitter, lire l'arbre du tournoi ou changer ses touches.
+    if (this.deps.inputState.pressedOnce.has(PAUSE_KEY)) this.deps.hud.togglePause();
     // Une pression ne vaut que pour l'image qui la lit: elle est consommée à la fin de celle-ci.
     this.deps.inputState.pressedOnce.clear();
     const offset = this.smoother.advance(elapsed);

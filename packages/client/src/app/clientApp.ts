@@ -7,6 +7,7 @@ import type {
   RoomPlayerView,
   RoomView,
   ServerMessage,
+  TournamentView,
 } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
@@ -34,6 +35,7 @@ export interface ClientAppGame {
   showSummary(summary: MatchSummary): void;
   setExitAction(action: HudExitAction | null): void;
   setRoomPlayers(players: RoomPlayerView[]): void;
+  setTournament(view: TournamentView | null, localId: string): void;
   setStatus(status: string): void;
   endMatch(): void;
   dispose(): void;
@@ -78,6 +80,7 @@ export interface ClientAppDeps {
 
 const DISCONNECTED = 'Déconnecté : le serveur a fermé la connexion';
 const EXIT_TEST_LABEL = 'Retour à l’éditeur';
+const EXIT_MATCH_LABEL = 'Quitter la partie';
 
 // Les étapes de l'essai d'une carte, franchies une fois chacune au fil des états de salle reçus.
 type TestStage = 'equip' | 'ready' | 'start' | 'started';
@@ -254,6 +257,7 @@ export class ClientApp {
         // Le formulaire de l'hôte a besoin des cartes: la liste est demandée dès la première salle.
         this.requestMaps();
         game.setRoomPlayers(message.room.players);
+        game.setTournament(message.room.tournament, this.appState.sessionId ?? '');
         if (this.testStage !== null) this.driveTest(message.room);
         return;
       case 'roomLeft':
@@ -261,8 +265,14 @@ export class ClientApp {
         return;
       case 'matchStarted':
         game.beginMatch(message, this.appState.room?.players ?? []);
+        game.setTournament(this.appState.room?.tournament ?? null, this.appState.sessionId ?? '');
+        // Quitter en cours de match vaut abandon: la salle est rendue et l'accueil reprend.
         if (this.testStage === null) {
           this.intent = 'lobby';
+          game.setExitAction({
+            label: EXIT_MATCH_LABEL,
+            run: () => this.send({ type: 'leaveRoom' }),
+          });
           return;
         }
         this.testStage = 'started';

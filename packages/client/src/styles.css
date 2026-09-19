@@ -2413,3 +2413,225 @@ body {
     height: 96px;
   }
 }
+
+/* Menu de pause: un panneau au centre, le tournoi ou les touches dépliés dessous. */
+
+.hud-pause {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 24, 32, 0.55);
+  pointer-events: auto;
+}
+
+.hud-pause-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 16px 20px 12px;
+  border-top: 2px solid var(--hud-copper);
+}
+
+.hud-pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.hud-pause-button {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hud-edge);
+  color: var(--hud-text);
+  font: inherit;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.hud-pause-button:hover,
+.hud-pause-button.is-active {
+  background: rgba(117, 220, 228, 0.18);
+}
+
+.hud-pause-button.is-exit {
+  border-color: var(--ui-danger);
+  color: var(--ui-danger);
+}
+
+.hud-pause-section {
+  width: 100%;
+}
+
+.hud-pause-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--hud-mute);
+}
+
+/* Réglage des touches */
+
+.keys {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.keys-title {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-copper);
+}
+
+.keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.keys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.keys-button,
+.keys-reset {
+  min-width: 120px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ui-edge);
+  color: var(--hud-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.keys-button:hover,
+.keys-reset:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.keys-button.is-listening {
+  border-color: var(--ui-copper);
+  color: var(--ui-copper);
+}
+
+.keys-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--ui-mute);
+}
+
+.keys-reset {
+  align-self: flex-start;
+}
+
+.lobby-keys {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ui-edge);
+}
+
+.lobby-keys-summary {
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-copper);
+}
+
+/* Arbre du tournoi: une colonne par tour, la finale à droite. */
+
+.bracket {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 8px 4px;
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 10px;
+  min-width: 120px;
+}
+
+.bracket-round-title {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--ui-copper);
+}
+
+.bracket-match {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ui-edge);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bracket-match.is-live {
+  border-color: var(--hud-chakra);
+  box-shadow: 0 0 0 1px rgba(117, 220, 228, 0.35);
+}
+
+.bracket-seat {
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bracket-seat + .bracket-seat {
+  border-top: 1px solid var(--ui-edge);
+}
+
+.bracket-seat.is-empty {
+  color: var(--ui-mute);
+}
+
+.bracket-seat.is-winner {
+  color: #ffd166;
+  font-weight: 700;
+}
+
+.bracket-seat.is-loser {
+  color: var(--ui-mute);
+  text-decoration: line-through;
+}
+
+.bracket-seat.is-local {
+  background: rgba(117, 220, 228, 0.12);
+}
+
+.bracket-live {
+  padding: 2px 8px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--hud-chakra);
+  border-top: 1px solid var(--ui-edge);
+}
+
+.bracket-champion .bracket-match {
+  border-color: #ffd166;
+}

@@ -303,6 +303,7 @@ export class Room {
         rating: player.session.account?.rating ?? null,
       })),
       startBlockers: this.startBlockers(),
+      tournament: null,
     };
   }
 

@@ -57,6 +57,7 @@ function room(status: RoomStatus): RoomView {
     map: null,
     players: [],
     startBlockers: [],
+    tournament: null,
   };
 }
 

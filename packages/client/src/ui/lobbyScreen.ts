@@ -17,6 +17,7 @@ import {
   settingsRows,
   statusText,
 } from '../lobby/lobbyModel';
+import type { KeyBindingsPanel } from './keyBindingsPanel';
 import type { AbilityOption } from './loadoutModel';
 import type { LoadoutPanel } from './loadoutPanel';
 import { LobbyRoster } from './lobbyRoster';
@@ -73,6 +74,7 @@ export class LobbyScreen implements Screen {
   constructor(
     actions: LobbyActions,
     panel: LoadoutPanel,
+    keys: KeyBindingsPanel,
     rules: StatRulesDefinition,
     options: AbilityOption[],
   ) {
@@ -134,6 +136,13 @@ export class LobbyScreen implements Screen {
     panel.mount(this.page('loadout'));
     panel.onChange((loadout) => {
       this.onLoadoutChanged(loadout);
+    });
+    // Les touches se changent d'ici aussi: le panneau est le même que celui du menu de pause.
+    const keysHolder = element('details', 'lobby-keys', this.page('loadout'));
+    element('summary', 'lobby-keys-summary', keysHolder).textContent = 'Modifier mes touches';
+    keysHolder.addEventListener('toggle', () => {
+      if ((keysHolder as HTMLDetailsElement).open) keys.mount(keysHolder);
+      else keys.unmount();
     });
 
     const footer = element('footer', 'lobby-footer', this.root);

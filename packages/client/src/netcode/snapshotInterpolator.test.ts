@@ -41,6 +41,7 @@ const projectileAt = (id: string, x: number): ProjectileState => ({
 const pendingAt = (id: string, x: number): PendingEffect => ({
   id,
   ownerId: 'a',
+  triggerRadius: 0,
   teamId: 'team-0',
   position: { x, y: 0 },
   direction: { x: 1, y: 0 },

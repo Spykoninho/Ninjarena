@@ -81,6 +81,7 @@ const ROOM_VIEW: RoomView = {
     },
   ],
   startBlockers: ['PLAYER_NOT_READY'],
+  tournament: null,
 };
 
 const CLIENT_MESSAGES: ClientMessage[] = [

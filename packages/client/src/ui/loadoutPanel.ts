@@ -26,6 +26,7 @@ interface Slot {
   root: HTMLElement;
   label: string;
   key: string;
+  keyLabel: HTMLElement;
   holder: HTMLElement;
   card: AbilityCard | null;
 }
@@ -46,7 +47,7 @@ export class LoadoutPanel {
   private readonly hints: Record<AttributeId, string>;
   private readonly techniques: AbilityOption[];
   private readonly basics: AbilityOption[];
-  private readonly keys: SlotBindings;
+  private keys: SlotBindings;
   private readonly root: HTMLElement;
   private readonly pointsLabel: HTMLElement;
   private readonly attributeRows: Partial<Record<AttributeId, AttributeRow>> = {};
@@ -140,6 +141,21 @@ export class LoadoutPanel {
     this.root.classList.toggle('is-invalid', !valid);
   }
 
+  // Les touches changent depuis les réglages: chaque emplacement et chaque carte réaffichent la leur.
+  setKeys(keys: SlotBindings): void {
+    this.keys = keys;
+    for (const slot of this.slots) {
+      slot.key = this.keyOf(slot.id);
+      slot.keyLabel.textContent = slot.key;
+      const option = slot.card?.option ?? null;
+      slot.card = null;
+      slot.holder.replaceChildren();
+      this.fillSlot(slot, option);
+    }
+    this.syncPicker();
+    if (this.state !== null) this.refreshNumbers(this.state);
+  }
+
   private buildAttributeRow(parent: HTMLElement, id: AttributeId): AttributeRow {
     const range = this.rules.attributes[id];
     const row = element('label', 'loadout-attribute', parent);
@@ -167,10 +183,11 @@ export class LoadoutPanel {
     root.disabled = id.kind === 'dash';
     const header = element('span', 'loadout-slot-header', root);
     element('span', 'loadout-slot-label', header).textContent = label;
-    element('span', 'loadout-slot-key', header).textContent = key;
+    const keyLabel = element('span', 'loadout-slot-key', header);
+    keyLabel.textContent = key;
     const holder = element('span', 'loadout-slot-holder', root);
     parent.appendChild(root);
-    const slot: Slot = { id, root, label, key, holder, card: null };
+    const slot: Slot = { id, root, label, key, keyLabel, holder, card: null };
     if (id.kind !== 'dash') {
       root.addEventListener('click', () => {
         this.selectSlot(id);
@@ -259,8 +276,12 @@ export class LoadoutPanel {
   }
 
   private activeKey(): string {
-    if (this.active.kind === 'technique') return this.keys.techniques[this.active.index] ?? '';
-    return this.active.kind === 'basic' ? this.keys.basic : this.keys.dash;
+    return this.keyOf(this.active);
+  }
+
+  private keyOf(id: SlotId): string {
+    if (id.kind === 'technique') return this.keys.techniques[id.index] ?? '';
+    return id.kind === 'basic' ? this.keys.basic : this.keys.dash;
   }
 
   private onAttributeChanged(

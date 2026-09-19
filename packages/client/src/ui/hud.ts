@@ -1,5 +1,5 @@
 import type { MatchPhase, TeamId } from '@ninjarena/core';
-import type { MatchSummary } from '@ninjarena/protocol';
+import type { MatchSummary, TournamentView } from '@ninjarena/protocol';
 import { toggleFullscreen } from '../input/fullscreen';
 import { P } from '../rendering/art/nativeArt';
 import { teamCodes } from '../rendering/art/presentation';
@@ -13,7 +13,9 @@ import {
   teamColor,
   teamPlateCanvas,
 } from './hudGlyphs';
+import type { KeyBindingsPanel } from './keyBindingsPanel';
 import { MatchSummaryPanel } from './matchSummaryPanel';
+import { PauseMenu } from './pauseMenu';
 import { PixelText } from './pixelText';
 
 export type HudAbilityBlock = 'chakra' | 'control';
@@ -89,8 +91,9 @@ export class Hud {
   private readonly vitals: VitalsPanel;
   private readonly abilities: AbilityBar;
   private readonly summary: MatchSummaryPanel;
+  private readonly pause: PauseMenu;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, keys: KeyBindingsPanel) {
     root.replaceChildren();
     root.classList.add('hud');
     this.match = new MatchPanel(root);
@@ -99,6 +102,7 @@ export class Hud {
     this.vitals = new VitalsPanel(root);
     this.abilities = new AbilityBar(root);
     this.summary = new MatchSummaryPanel(root);
+    this.pause = new PauseMenu(root, keys);
   }
 
   showSummary(summary: MatchSummary, localPlayerId: string | null): void {
@@ -107,6 +111,19 @@ export class Hud {
 
   setExitAction(action: HudExitAction | null): void {
     this.corner.setExitAction(action);
+    this.pause.setExitAction(action);
+  }
+
+  setTournament(view: TournamentView | null, localId: string): void {
+    this.pause.setTournament(view, localId);
+  }
+
+  togglePause(): void {
+    this.pause.toggle();
+  }
+
+  hidePause(): void {
+    this.pause.hide();
   }
 
   hideSummary(): void {

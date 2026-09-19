@@ -5,6 +5,8 @@ import type { PlayerView, RenderFrame } from './rendering/renderer';
 import { drawPoseSheet, showcasePlayers, showcaseProjectiles } from './poseReview';
 import './styles.css';
 import { Hud } from './ui/hud';
+import { KeyBindingsPanel } from './ui/keyBindingsPanel';
+import { BindingsStore } from './input/bindingsStore';
 import type { HudView } from './ui/hud';
 
 const stage = document.querySelector<HTMLElement>('#stage');
@@ -33,7 +35,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-v
 const sheet = document.querySelector<HTMLCanvasElement>('#sheet');
 if (sheet) drawPoseSheet(sheet);
 const hudRoot = document.querySelector<HTMLElement>('#hud');
-const hud = hudRoot === null ? null : new Hud(hudRoot);
+const hud =
+  hudRoot === null ? null : new Hud(hudRoot, new KeyBindingsPanel(new BindingsStore(null)));
 const started = performance.now();
 let previous = performance.now();
 let frameId = 0;

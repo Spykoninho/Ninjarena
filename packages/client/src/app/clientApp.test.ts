@@ -88,6 +88,7 @@ function room(status: RoomStatus, overrides: Partial<RoomView> = {}): RoomView {
     map: null,
     players,
     startBlockers: [],
+    tournament: null,
     ...overrides,
   };
 }
@@ -183,6 +184,10 @@ class FakeGame implements ClientAppGame {
   setRoomPlayers(roomPlayers: RoomPlayerView[]): void {
     this.calls.push('setRoomPlayers');
     this.roomPlayers = roomPlayers;
+  }
+
+  setTournament(): void {
+    this.calls.push('setTournament');
   }
 
   setStatus(): void {
@@ -401,6 +406,18 @@ describe('ClientApp message routing', () => {
     h.network.deliver(matchStarted);
     expect(h.game.begun).toEqual([players]);
     expect(h.app.state.screen).toBe('game');
+  });
+
+  it('offers to quit a running match, which leaves the room and comes back home', () => {
+    h.network.deliver({ type: 'roomState', room: room('STARTING') });
+    h.network.deliver(matchStarted);
+    const exit = h.game.exits.at(-1);
+    expect(exit?.label).toBe('Quitter la partie');
+    exit?.run();
+    expect(h.network.sent.at(-1)).toEqual({ type: 'leaveRoom' });
+    h.network.deliver({ type: 'roomLeft' });
+    expect(h.game.calls).toContain('endMatch');
+    expect(h.app.state.screen).toBe('home');
   });
 });
 
