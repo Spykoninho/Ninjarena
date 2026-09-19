@@ -128,7 +128,7 @@ export class GameServer {
       characterId: DEFAULT_CHARACTER_ID,
       onMatchEnded: (result) => {
         this.storeMatchResult(result);
-        if (result.settings.ranked) this.accounts.settle(result);
+        return result.settings.ranked ? this.accounts.settle(result) : [];
       },
     });
   }

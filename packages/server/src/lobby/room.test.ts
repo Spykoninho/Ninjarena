@@ -43,7 +43,10 @@ function createRoom(overrides: Partial<RoomSettings> = {}, options: RoomOptions 
     snapshotEveryTicks: options.snapshotEveryTicks ?? 1,
     postMatchTicks: POST_MATCH_TICKS,
     characterId: 'ninja',
-    onMatchEnded: (result) => matchResults.push(result),
+    onMatchEnded: (result) => {
+      matchResults.push(result);
+      return result.settings.ranked ? [{ id: 'kage', before: 120, after: 131 }] : [];
+    },
   });
   return { room, repository, matchResults };
 }
@@ -442,6 +445,74 @@ describe('Room ranked play', () => {
 
     two.session.account = null;
     expect(room.startBlockers()).toEqual(['RANKED_NEEDS_ACCOUNT']);
+  });
+
+  it('sends every player a summary with the stats tallied over the match', async () => {
+    const { room } = createRoom();
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    for (let round = 1; round <= 2; round++) {
+      tickUntil(room, () => room.match?.simulation.world.match.phase === 'IN_ROUND');
+      const world = room.match?.simulation.world;
+      const victim = world?.players[two.session.id];
+      if (world === undefined || victim === undefined) throw new Error('no match');
+      // Un coup fictif d'un joueur sur l'autre: la simulation n'est pas ce que ce test vérifie.
+      room.match?.stats.record([
+        {
+          type: 'damageDealt',
+          tick: world.tick,
+          targetId: two.session.id,
+          sourceId: one.session.id,
+          amount: 30,
+          remainingHealth: 0,
+          scaling: 'none',
+          position: victim.position,
+        },
+      ]);
+      killPlayer(room, two.session.id);
+      tickUntil(room, () => room.match?.simulation.world.match.phase !== 'IN_ROUND');
+    }
+
+    for (const seat of [one, two]) {
+      const summaries = messagesOfType(seat.connection, 'matchSummary');
+      expect(summaries).toHaveLength(1);
+      expect(summaries[0]?.summary).toMatchObject({
+        winnerTeamId: 'team-0',
+        scores: { 'team-0': 2 },
+        ranked: false,
+        players: [
+          { id: 'c1', teamId: 'team-0', damageDealt: 60, damageTaken: 0, rating: null },
+          { id: 'c2', teamId: 'team-1', damageDealt: 0, damageTaken: 60, rating: null },
+        ],
+      });
+    }
+  });
+
+  it('shows the settled rating next to each account in a ranked summary', async () => {
+    const { room } = createRoom();
+    await room.refreshMap();
+    const { one, two } = seatReadyPair(room);
+    one.session.account = { name: 'kage', rating: 120, wins: 2, losses: 0 };
+    room.updateSettings(one.session, { ranked: false });
+    two.session.account = { name: 'hanzo', rating: 100, wins: 0, losses: 0 };
+    room.updateSettings(one.session, { ranked: true });
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    room.leave(two.session);
+
+    const summary = messagesOfType(one.connection, 'matchSummary')[0]?.summary;
+    expect(summary).toMatchObject({
+      ranked: true,
+      winnerTeamId: 'team-0',
+      players: [
+        { name: 'c1', rating: { before: 120, after: 131 } },
+        { name: 'c2', rating: { before: 100, after: 100 } },
+      ],
+    });
   });
 
   it('freezes each account and its rating in the match result at kick-off', async () => {

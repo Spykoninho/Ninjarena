@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type {
   AccountView,
   ClientMessage,
+  MatchSummary,
   RoomPlayerView,
   RoomView,
   ServerMessage,
@@ -137,6 +138,29 @@ const RoomPlayerViewSchema: z.ZodType<RoomPlayerView> = z.strictObject({
   rating: z.number().int().nonnegative().nullable(),
 });
 
+const MatchSummarySchema: z.ZodType<MatchSummary> = z.strictObject({
+  winnerTeamId: z.string().min(1).nullable(),
+  scores: z.record(z.string(), z.number().int().nonnegative()),
+  ranked: z.boolean(),
+  players: z.array(
+    z.strictObject({
+      id: z.string().min(1),
+      name: z.string().min(1).max(MAX_PLAYER_NAME_LENGTH),
+      teamId: z.string().min(1),
+      damageDealt: z.number().nonnegative(),
+      damageTaken: z.number().nonnegative(),
+      kills: z.number().int().nonnegative(),
+      deaths: z.number().int().nonnegative(),
+      rating: z
+        .strictObject({
+          before: z.number().int().nonnegative(),
+          after: z.number().int().nonnegative(),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
 const RoomViewSchema: z.ZodType<RoomView> = z.strictObject({
   code: z.string().regex(CODE_PATTERN),
   hasPassword: z.boolean(),
@@ -225,6 +249,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
     world: WorldStateSchema,
     events: z.array(WorldEventSchema),
   }),
+  z.object({ type: z.literal('matchSummary'), summary: MatchSummarySchema }),
   z.object({ type: z.literal('mapList'), maps: z.array(MapSummarySchema) }),
   z.object({ type: z.literal('mapSaved'), id: z.string().min(1).max(MAX_MAP_STRING_LENGTH) }),
   z.object({ type: z.literal('mapDocument'), document: MapDocumentSchema }),

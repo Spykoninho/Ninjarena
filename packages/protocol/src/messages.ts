@@ -6,6 +6,7 @@ import type {
   PlayerId,
   PlayerInput,
   RoomSettings,
+  TeamId,
   Tick,
   WorldEvent,
   WorldState,
@@ -34,6 +35,25 @@ export interface RoomPlayerView {
   loadout: Loadout | null;
   loadoutValid: boolean;
   rating: number | null;
+}
+
+// Le bilan d'un joueur à la fin du match: ce qu'il a infligé, encaissé, et ce que ça lui a valu.
+export interface MatchSummaryPlayer {
+  id: string;
+  name: string;
+  teamId: TeamId;
+  damageDealt: number;
+  damageTaken: number;
+  kills: number;
+  deaths: number;
+  rating: { before: number; after: number } | null;
+}
+
+export interface MatchSummary {
+  winnerTeamId: TeamId | null;
+  scores: Record<TeamId, number>;
+  ranked: boolean;
+  players: MatchSummaryPlayer[];
 }
 
 export interface AccountView {
@@ -126,6 +146,7 @@ export type ServerMessage =
       world: WorldState;
       events: WorldEvent[];
     }
+  | { type: 'matchSummary'; summary: MatchSummary }
   | { type: 'mapList'; maps: MapSummary[] }
   | { type: 'mapSaved'; id: string }
   | { type: 'mapDocument'; document: MapDocument }

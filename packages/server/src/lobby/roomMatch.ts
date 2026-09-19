@@ -8,6 +8,7 @@ import {
   toMatchConfig,
 } from '@ninjarena/core';
 import { MatchHost } from '../match/matchHost';
+import { MatchStats } from '../match/matchStats';
 import type { MatchResult, MatchResultPlayer } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
 import type { RoomPlayer } from './roomPlayer';
@@ -17,6 +18,7 @@ export interface RoomMatch {
   host: MatchHost;
   // La liste des participants est figée au coup d'envoi: un départ ne la réécrit pas.
   participants: MatchResultPlayer[];
+  stats: MatchStats;
 }
 
 export interface StartMatchOptions {
@@ -75,15 +77,19 @@ export function startRoomMatch(options: StartMatchOptions): RoomMatch {
     seated.push(player);
   }
 
+  const stats = new MatchStats();
   const host = new MatchHost({
     simulation,
     sessions: options.sessions,
     snapshotEveryTicks: options.snapshotEveryTicks,
-    onEvents: options.onEvents,
+    onEvents: (events) => {
+      stats.record(events);
+      options.onEvents(events);
+    },
   });
   simulation.startMatch();
   announce(seated, options, matchConfig);
-  return { simulation, host, participants: participantsOf(settings, seated) };
+  return { simulation, host, participants: participantsOf(settings, seated), stats };
 }
 
 export function participantsOf(

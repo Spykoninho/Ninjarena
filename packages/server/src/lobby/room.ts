@@ -1,7 +1,13 @@
 import type { GameContent } from '@ninjarena/content';
-import type { RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
+import type { RatingChange, RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
 import { applySettingsPatch, roomMaxPlayers, teamsPresent, validateLoadout } from '@ninjarena/core';
-import type { RoomStatus, RoomView, StartBlocker } from '@ninjarena/protocol';
+import type {
+  MatchSummary,
+  RoomStatus,
+  RoomView,
+  ServerMessage,
+  StartBlocker,
+} from '@ninjarena/protocol';
 import type { MapLibrary } from '../maps/mapLibrary';
 import type { MatchResult } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
@@ -38,7 +44,8 @@ export interface RoomDeps {
   snapshotEveryTicks: number;
   postMatchTicks: number;
   characterId: string;
-  onMatchEnded?: (result: MatchResult) => void;
+  // Le crochet rend les scores réglés pour que le bilan envoyé aux joueurs les montre.
+  onMatchEnded?: (result: MatchResult) => readonly RatingChange[] | void;
 }
 
 export class Room {
@@ -50,7 +57,7 @@ export class Room {
   private readonly snapshotEveryTicks: number;
   private readonly postMatchTicks: number;
   private readonly characterId: string;
-  private readonly onMatchEnded: ((result: MatchResult) => void) | null;
+  private readonly onMatchEnded: ((result: MatchResult) => readonly RatingChange[] | void) | null;
   private readonly roster: RoomPlayer[] = [];
   private roomSettings: RoomSettings;
   private roomStatus: RoomStatus = 'WAITING';
@@ -300,7 +307,10 @@ export class Room {
   }
 
   broadcastState(): void {
-    const message = { type: 'roomState', room: this.view() } as const;
+    this.broadcast({ type: 'roomState', room: this.view() });
+  }
+
+  private broadcast(message: ServerMessage): void {
     for (const player of this.roster) player.session.send(message);
   }
 
@@ -324,18 +334,43 @@ export class Room {
     match?.host.flush();
     // Une salle vidée n'a plus de résultat à consigner.
     if (match !== null && this.roster.length > 0) {
-      this.onMatchEnded?.(
-        matchResultOf({
-          roomCode: this.code,
-          settings: this.roomSettings,
-          players: match.participants,
-          winnerTeamId,
-          scores: match.simulation.world.match.scores,
-          endedAt: Date.now(),
-        }),
-      );
+      const result = matchResultOf({
+        roomCode: this.code,
+        settings: this.roomSettings,
+        players: match.participants,
+        winnerTeamId,
+        scores: match.simulation.world.match.scores,
+        endedAt: Date.now(),
+      });
+      const changes = this.onMatchEnded?.(result) ?? [];
+      this.broadcast({ type: 'matchSummary', summary: this.summaryOf(match, result, changes) });
     }
     this.broadcastState();
+  }
+
+  private summaryOf(
+    match: RoomMatch,
+    result: MatchResult,
+    changes: readonly RatingChange[],
+  ): MatchSummary {
+    return {
+      winnerTeamId: result.winnerTeamId,
+      scores: { ...result.scores },
+      ranked: result.settings.ranked,
+      players: result.players.map((player) => {
+        const change = changes.find((entry) => entry.id === player.account?.name);
+        return {
+          id: player.id,
+          name: player.name,
+          teamId: player.teamId,
+          ...match.stats.statsOf(player.id),
+          rating:
+            player.account === null
+              ? null
+              : { before: player.account.rating, after: change?.after ?? player.account.rating },
+        };
+      }),
+    };
   }
 
   private resetToLobby(): void {

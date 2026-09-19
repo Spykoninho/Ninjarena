@@ -126,6 +126,36 @@ const SERVER_MESSAGES: ServerMessage[] = [
     events: [{ type: 'roundStarted', tick: 0, round: 1 }],
   },
   {
+    type: 'matchSummary',
+    summary: {
+      winnerTeamId: 'team-0',
+      scores: { 'team-0': 2, 'team-1': 1 },
+      ranked: true,
+      players: [
+        {
+          id: 'c1',
+          name: 'host',
+          teamId: 'team-0',
+          damageDealt: 142.5,
+          damageTaken: 60,
+          kills: 2,
+          deaths: 1,
+          rating: { before: 100, after: 115 },
+        },
+        {
+          id: 'c2',
+          name: 'guest',
+          teamId: 'team-1',
+          damageDealt: 60,
+          damageTaken: 142.5,
+          kills: 1,
+          deaths: 2,
+          rating: null,
+        },
+      ],
+    },
+  },
+  {
     type: 'mapList',
     maps: [{ id: 'arena', name: 'Arena', width: 16, height: 16, builtin: true }],
   },
