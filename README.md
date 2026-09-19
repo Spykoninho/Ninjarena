@@ -30,8 +30,11 @@ What works today:
 - a full-screen tile map editor: the map fills the window with wheel zoom and drag panning, a
   build drawer sorted by ground, walls, decor and spawns with in-game thumbnails, live validation
   (structural, spawn and reachability checks) with click-to-locate issues, save to the server,
-  export or import JSON, and jump straight into a test room with the map preselected — see
-  [docs/map-format.md](docs/map-format.md),
+  export or import JSON, and a one-click solo test run: **Tester** saves the map, opens a
+  practice room behind the editor, equips and starts alone, and **Retour à l'éditeur** (or
+  Escape) brings the map back exactly where it was — see [docs/map-format.md](docs/map-format.md),
+- a **practice** room setting (`Entraînement`): the host can start alone and the round has no
+  timer, for trying a build or a map without an opponent,
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
@@ -179,7 +182,11 @@ timer in the HUD. First team to win
 not ready, a few seconds after the last round ends.
 
 Add `?editor` (or pick **Éditeur de cartes** on the home menu) to open the map editor — see
-[docs/map-format.md](docs/map-format.md).
+[docs/map-format.md](docs/map-format.md). Its **Tester** button plays the map alone: the client
+saves it, opens a practice room without showing the lobby, equips the current loadout, readies up
+and starts; **Retour à l'éditeur** in the HUD (or Escape) leaves the room and lands back on the
+map. If the room refuses to start (an invalid map, a rejected loadout), the lobby appears instead
+so the reason can be read.
 
 To play over a LAN, both servers have to leave localhost: the game server binds where
 `NINJARENA_HOST` says, and Vite needs `--host` to serve the page to another machine.

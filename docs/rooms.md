@@ -82,7 +82,9 @@ in `packages/server/src/lobby/startBlockers.ts`) is recomputed on demand — it 
 `RoomView.startBlockers` (shown to every player) and the `startMatch` check — and is also what a
 client uses to grey out its Start button and explain why:
 
-- Fewer than two players in the room: `NOT_ENOUGH_PLAYERS`, and nothing else is even checked.
+- Fewer than two players in the room: `NOT_ENOUGH_PLAYERS`, and nothing else is even checked —
+  unless the room is a **practice** room (`settings.practice`), which starts alone and skips
+  `EMPTY_TEAM` as well.
 - Otherwise, any combination of: `PLAYER_NOT_READY` (someone hasn't readied up), `INVALID_LOADOUT`
   (someone has a loadout on file that the current settings reject), `EMPTY_TEAM` (team mode only:
   some team index below `teamCount` has no player — uneven teams are fine, an empty one is not),
@@ -127,6 +129,19 @@ nothing they send changes the outcome. When the count elapses, the room discards
 every player's `playerId`, sets `ready` back to `false`, and broadcasts `WAITING`; a client watching
 for that status change returns to the lobby on its own — there is no separate "return to lobby"
 message.
+
+## Practice rooms and map test runs
+
+`practice` is a room setting (never combined with `ranked`: the core schema refuses both at once)
+that lets the host start alone. It reaches the simulation as `MatchConfig.practice`, where a round
+opens with no `phaseEndsAt`, so it never ends on the timer; a lone team cannot be eliminated
+either, so the match lasts until the player leaves (a second player who joined can still be
+eliminated normally). The editor's **Tester** button relies on it: the client saves the map,
+creates a room with `{ mapId, practice: true }` and drives it from the `roomState` broadcasts
+without mounting the lobby — `setLoadout` with the panel's current loadout, `setReady`, then
+`startMatch` once `startBlockers` is empty (`MAP_MISSING` is waited out while the map loads; any
+other blocker, or a server error, shows the lobby instead). Leaving the match (`leaveRoom`, from
+the HUD's exit button or Escape) returns to the editor with the document intact.
 
 ## Accounts and ranked play
 

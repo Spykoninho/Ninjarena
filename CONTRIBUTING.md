@@ -147,6 +147,9 @@ the tests that pin the formulas.
   host picks in the lobby (bounds in `packages/core/src/lobby/roomSettings.ts`); `roundsToWin`
   is derived from the room's `bestOf`. `countdownMs` and `roundEndDelayMs` are not tunable per
   match — they are the fixed `DEFAULT_MATCH_TIMING` (3 seconds each) in the same file.
+- **Practice** — `practice` is the one room setting that reaches `MatchConfig` without
+  changing a number: it only disables the round timer, so a solo test run lasts until the player
+  leaves.
 - **The ranking** — the starting rating, the K factor, the spread and the tier thresholds are
   the constants at the top of `packages/core/src/ranking/rating.ts`; `rating.test.ts` pins the
   formula. Changing a threshold re-tiers every account on the next read, since a tier is derived
