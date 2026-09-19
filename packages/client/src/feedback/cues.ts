@@ -7,6 +7,9 @@ import type {
   WorldEvent,
 } from '@ninjarena/core';
 
+// Le chiffre de dégâts dit d'un coup d'oeil qui a frappé: mes coups, ceux que je prends, les autres.
+export type DamageTone = 'dealt' | 'taken' | 'other';
+
 // Une gerbe ancrée sur un joueur suit le corps dessiné, en retard sur le monde prédit.
 export type VisualCue =
   | { kind: 'portal'; position: Vec2; arriving: boolean }
@@ -16,8 +19,8 @@ export type VisualCue =
   | { kind: 'burst'; position: Vec2; color: string; count: number }
   | { kind: 'playerBurst'; playerId: PlayerId; color: string; count: number }
   | { kind: 'dashTrail'; playerId: PlayerId }
-  | { kind: 'damageNumber'; position: Vec2; amount: number }
-  | { kind: 'playerDamageNumber'; playerId: PlayerId; amount: number }
+  | { kind: 'damageNumber'; position: Vec2; amount: number; tone: DamageTone }
+  | { kind: 'playerDamageNumber'; playerId: PlayerId; amount: number; tone: DamageTone }
   | { kind: 'castFlash'; playerId: PlayerId; color: string };
 
 export interface FeedbackCue {
@@ -72,7 +75,12 @@ export function cuesForEvent(event: WorldEvent, view: FeedbackView): FeedbackCue
       return cue({
         visual: [
           { kind: 'hitFlash', playerId: event.targetId },
-          { kind: 'playerDamageNumber', playerId: event.targetId, amount: event.amount },
+          {
+            kind: 'playerDamageNumber',
+            playerId: event.targetId,
+            amount: event.amount,
+            tone: damageTone(event.targetId, event.sourceId, view),
+          },
         ],
         audio: 'hit',
         shake: involvesLocal(event.targetId, event.sourceId, view) ? HIT_SHAKE : 0,
@@ -180,6 +188,11 @@ function cue(partial: Partial<FeedbackCue>): FeedbackCue {
     shake: partial.shake ?? 0,
     hitStopMs: partial.hitStopMs ?? 0,
   };
+}
+
+function damageTone(targetId: PlayerId, sourceId: PlayerId | null, view: FeedbackView): DamageTone {
+  if (targetId === view.localPlayerId) return 'taken';
+  return sourceId === view.localPlayerId ? 'dealt' : 'other';
 }
 
 function involvesLocal(targetId: PlayerId, sourceId: PlayerId | null, view: FeedbackView): boolean {

@@ -28,7 +28,12 @@ describe('cuesForEvent', () => {
     const cue = cuesForEvent(damage({ targetId: 'me', sourceId: 'other' }), view);
     expect(kinds(cue.visual)).toEqual(['hitFlash', 'playerDamageNumber']);
     expect(cue.visual[0]).toEqual({ kind: 'hitFlash', playerId: 'me' });
-    expect(cue.visual[1]).toEqual({ kind: 'playerDamageNumber', playerId: 'me', amount: 12 });
+    expect(cue.visual[1]).toEqual({
+      kind: 'playerDamageNumber',
+      playerId: 'me',
+      amount: 12,
+      tone: 'taken',
+    });
     expect(cue.shake).toBeGreaterThan(0);
     expect(cue.audio).toBe('hit');
   });
@@ -37,6 +42,12 @@ describe('cuesForEvent', () => {
     const cue = cuesForEvent(damage({ targetId: 'other', sourceId: 'third' }), view);
     expect(kinds(cue.visual)).toEqual(['hitFlash', 'playerDamageNumber']);
     expect(cue.shake).toBe(0);
+    expect(cue.visual[1]).toMatchObject({ tone: 'other' });
+  });
+
+  it('tones the number of a hit the local player lands as dealt', () => {
+    const cue = cuesForEvent(damage({ targetId: 'other', sourceId: 'me' }), view);
+    expect(cue.visual[1]).toMatchObject({ kind: 'playerDamageNumber', tone: 'dealt' });
   });
 
   it('freezes on the local player physical hit only', () => {

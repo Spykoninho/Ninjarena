@@ -1,6 +1,7 @@
 import type { Vec2 } from '@ninjarena/core';
 import type { Texture } from 'pixi.js';
 import { Container, Graphics, Sprite, Text } from 'pixi.js';
+import type { DamageTone } from '../feedback/cues';
 import { P } from './art/nativeArt';
 
 const PARTICLE_SIZE = 0.5;
@@ -18,9 +19,17 @@ const RING_END_RATIO = 1;
 const AFTERIMAGE_LIFE_MS = 120;
 const AFTERIMAGE_ALPHA = 0.45;
 
-const NUMBER_LIFE_MS = 700;
-const NUMBER_RISE = 14;
-const NUMBER_OFFSET = -10;
+const NUMBER_LIFE_MS = 900;
+const NUMBER_RISE = 16;
+const NUMBER_OFFSET = -14;
+const NUMBER_POP_MS = 120;
+const NUMBER_POP_SCALE = 1.6;
+const NUMBER_SPREAD = 6;
+const NUMBER_COLORS: Record<DamageTone, number> = {
+  dealt: 0xffd166,
+  taken: 0xff7867,
+  other: 0xf5edcd,
+};
 
 const SLASH_LIFE_MS = 150;
 
@@ -133,12 +142,17 @@ export class EffectsLayer {
     this.afterimages.push({ node, ageMs: 0 });
   }
 
-  damageNumber(position: Vec2, amount: number): void {
+  // Le chiffre naît gros puis se pose: le coup se lit même au milieu d'une mêlée.
+  damageNumber(position: Vec2, amount: number, tone: DamageTone): void {
     if (this.numbers.length >= 24) return;
     const node = this.numberPool.pop() ?? newDamageText();
-    node.text = String(Math.round(amount));
+    node.text = damageLabel(amount);
+    node.style.fill = NUMBER_COLORS[tone];
     node.alpha = 1;
-    const origin = { x: position.x, y: position.y + NUMBER_OFFSET };
+    node.scale.set(NUMBER_POP_SCALE);
+    // Deux coups au même endroit ne se recouvrent pas: chaque chiffre s'écarte un peu au hasard.
+    const spread = (this.random() - 0.5) * 2 * NUMBER_SPREAD;
+    const origin = { x: position.x + spread, y: position.y + NUMBER_OFFSET };
     node.position.set(origin.x, origin.y);
     this.container.addChild(node);
     this.numbers.push({ node, origin, ageMs: 0 });
@@ -312,7 +326,9 @@ export class EffectsLayer {
         continue;
       }
       number.node.position.y = number.origin.y - NUMBER_RISE * ratio;
-      number.node.alpha = 1 - ratio * ratio;
+      number.node.alpha = 1 - ratio * ratio * ratio;
+      const pop = Math.min(1, number.ageMs / NUMBER_POP_MS);
+      number.node.scale.set(NUMBER_POP_SCALE - (NUMBER_POP_SCALE - 1) * pop);
     }
   }
 
@@ -352,14 +368,19 @@ function newDamageText(): Text {
     text: '',
     style: {
       fontFamily: 'monospace',
-      fontSize: 4.5,
+      fontSize: 8,
       fontWeight: 'bold',
-      fill: 0xfff2c4,
-      stroke: { color: 0x101014, width: 1 },
+      fill: 0xf5edcd,
+      stroke: { color: 0x101014, width: 2 },
     },
   });
   node.anchor.set(0.5, 1);
   return node;
+}
+
+// Un coup sous 10 points garde sa décimale: `3.5` et `4` ne sont pas le même coup.
+function damageLabel(amount: number): string {
+  return amount < 10 ? String(Math.round(amount * 10) / 10) : String(Math.round(amount));
 }
 
 function half(value: number): number {

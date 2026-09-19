@@ -139,7 +139,7 @@ export class PixiRenderer implements Renderer {
       case 'burst':
         return this.effectsLayer.burst(cue.position, cue.color, cue.count);
       case 'damageNumber':
-        return this.effectsLayer.damageNumber(cue.position, cue.amount);
+        return this.effectsLayer.damageNumber(cue.position, cue.amount, cue.tone);
       case 'playerImpact':
         return this.atPlayer(cue.playerId, (position) => {
           this.effectsLayer.impact(position, cue.color, cue.size);
@@ -150,7 +150,7 @@ export class PixiRenderer implements Renderer {
         });
       case 'playerDamageNumber':
         return this.atPlayer(cue.playerId, (position) => {
-          this.effectsLayer.damageNumber(position, cue.amount);
+          this.effectsLayer.damageNumber(position, cue.amount, cue.tone);
         });
     }
   }
