@@ -1,52 +1,114 @@
 import type { AttributeId, Loadout, StatRulesDefinition } from '@ninjarena/core';
 import { ATTRIBUTE_IDS } from '@ninjarena/core';
+import { abilityCard } from './abilityCards';
+import type { AbilityCard } from './abilityCards';
 import { loadoutErrors, pointsLeft, setAttribute, setTechnique, toLoadout } from './loadoutModel';
-import type { BasicOption, LoadoutState, TechniqueOption } from './loadoutModel';
-
-const MS_PER_SECOND = 1000;
+import type { AbilityOption, LoadoutState, SlotBindings } from './loadoutModel';
 
 interface AttributeRow {
   input: HTMLInputElement;
   valueLabel: HTMLElement;
 }
 
+// Un emplacement du kit: l'attaque de base, l'esquive imposée par le personnage, ou une technique.
+type SlotId = { kind: 'basic' } | { kind: 'dash' } | { kind: 'technique'; index: number };
+
+interface Slot {
+  id: SlotId;
+  root: HTMLElement;
+  label: string;
+  key: string;
+  holder: HTMLElement;
+  card: AbilityCard | null;
+}
+
+const ATTRIBUTE_LABELS: Record<AttributeId, string> = {
+  vitality: 'Vitality',
+  strength: 'Strength',
+  power: 'Power',
+  speed: 'Speed',
+  maxChakra: 'Chakra',
+  chakraRegen: 'Chakra regen',
+  defense: 'Defense',
+};
+
+const ATTRIBUTE_HINTS: Record<AttributeId, string> = {
+  vitality: 'More health',
+  strength: 'Stronger basic attacks',
+  power: 'Stronger techniques',
+  speed: 'Faster movement',
+  maxChakra: 'Bigger chakra pool',
+  chakraRegen: 'Faster chakra regen',
+  defense: 'Less damage taken',
+};
+
 export class LoadoutPanel {
   private readonly rules: StatRulesDefinition;
-  private readonly techniques: TechniqueOption[];
+  private readonly techniques: AbilityOption[];
+  private readonly basics: AbilityOption[];
+  private readonly keys: SlotBindings;
   private readonly root: HTMLElement;
   private readonly pointsLabel: HTMLElement;
   private readonly attributeRows: Partial<Record<AttributeId, AttributeRow>> = {};
-  private readonly basicSelect: HTMLSelectElement;
-  private readonly techniqueSelects: HTMLSelectElement[] = [];
+  private readonly slots: Slot[] = [];
+  private readonly pickerTitle: HTMLElement;
+  private readonly pickerGrid: HTMLElement;
+  private readonly pickerCards = new Map<string, AbilityCard>();
   private readonly errorList: HTMLElement;
   private readonly verdictLine: HTMLElement;
   private budget: number;
   private state: LoadoutState | null = null;
+  private active: SlotId = { kind: 'technique', index: 0 };
   private changeHandler: ((loadout: Loadout | null) => void) | null = null;
 
-  constructor(rules: StatRulesDefinition, techniques: TechniqueOption[], basics: BasicOption[]) {
+  constructor(
+    rules: StatRulesDefinition,
+    techniques: AbilityOption[],
+    basics: AbilityOption[],
+    dash: AbilityOption | null,
+    keys: SlotBindings,
+  ) {
     this.rules = rules;
     this.techniques = techniques;
+    this.basics = basics;
+    this.keys = keys;
     this.budget = rules.defaultPointBudget;
     this.root = document.createElement('div');
-    this.root.className = 'lobby-loadout';
-    element('h2', 'lobby-section-title', this.root).textContent = 'Loadout';
-    this.pointsLabel = element('div', 'loadout-points', this.root);
+    this.root.className = 'loadout';
 
-    const attributesRoot = element('div', 'loadout-attributes', this.root);
+    const build = element('section', 'loadout-build', this.root);
+    const buildHeader = element('div', 'loadout-section-header', build);
+    element('h2', 'lobby-section-title', buildHeader).textContent = 'Build';
+    this.pointsLabel = element('span', 'loadout-points', buildHeader);
+    const attributesRoot = element('div', 'loadout-attributes', build);
     for (const id of ATTRIBUTE_IDS) {
       this.attributeRows[id] = this.buildAttributeRow(attributesRoot, id);
     }
 
-    this.basicSelect = this.buildBasicSelect(this.root, basics);
-    const techniquesRoot = element('div', 'loadout-techniques', this.root);
-    for (let slot = 0; slot < rules.techniqueSlots; slot++) {
-      this.techniqueSelects.push(this.buildTechniqueSelect(techniquesRoot, slot));
+    const kit = element('section', 'loadout-kit', this.root);
+    const kitHeader = element('div', 'loadout-section-header', kit);
+    element('h2', 'lobby-section-title', kitHeader).textContent = 'Attacks';
+    element('span', 'loadout-hint', kitHeader).textContent =
+      'Pick a slot, then a technique. Hover a card to read what it does.';
+    const slotsRoot = element('div', 'loadout-slots', kit);
+    this.slots.push(this.buildSlot(slotsRoot, { kind: 'basic' }, 'Basic attack', keys.basic));
+    const dashSlot = this.buildSlot(slotsRoot, { kind: 'dash' }, 'Dash', keys.dash);
+    this.slots.push(dashSlot);
+    if (dash !== null) this.fillSlot(dashSlot, dash);
+    for (let index = 0; index < rules.techniqueSlots; index++) {
+      const key = keys.techniques[index] ?? '';
+      const id: SlotId = { kind: 'technique', index };
+      this.slots.push(this.buildSlot(slotsRoot, id, `Technique ${index + 1}`, key));
     }
 
-    this.errorList = element('ul', 'loadout-errors', this.root);
-    this.verdictLine = element('div', 'loadout-verdict', this.root);
+    const picker = element('div', 'loadout-picker', kit);
+    this.pickerTitle = element('h3', 'loadout-picker-title', picker);
+    this.pickerGrid = element('div', 'loadout-picker-grid', picker);
+
+    this.errorList = element('ul', 'loadout-errors', kit);
+    this.verdictLine = element('div', 'loadout-verdict', kit);
     this.verdictLine.setAttribute('aria-live', 'polite');
+    this.selectSlot(this.active);
   }
 
   mount(root: HTMLElement): void {
@@ -78,7 +140,8 @@ export class LoadoutPanel {
   private buildAttributeRow(parent: HTMLElement, id: AttributeId): AttributeRow {
     const range = this.rules.attributes[id];
     const row = element('label', 'loadout-attribute', parent);
-    element('span', 'loadout-attribute-name', row).textContent = capitalize(id);
+    row.title = ATTRIBUTE_HINTS[id];
+    element('span', 'loadout-attribute-name', row).textContent = ATTRIBUTE_LABELS[id];
     const input = document.createElement('input');
     input.type = 'range';
     input.min = String(range.min);
@@ -92,41 +155,63 @@ export class LoadoutPanel {
     return { input, valueLabel };
   }
 
-  private buildBasicSelect(parent: HTMLElement, basics: BasicOption[]): HTMLSelectElement {
-    const field = element('label', 'loadout-field', parent);
-    field.textContent = 'Basic attack';
-    const select = document.createElement('select');
-    select.className = 'loadout-basic';
-    for (const basic of basics) {
-      const entry = document.createElement('option');
-      entry.value = basic.id;
-      entry.textContent = basic.name;
-      select.appendChild(entry);
+  private buildSlot(parent: HTMLElement, id: SlotId, label: string, key: string): Slot {
+    const root = document.createElement('button');
+    root.type = 'button';
+    root.className = `loadout-slot loadout-slot-${id.kind}`;
+    root.disabled = id.kind === 'dash';
+    const header = element('span', 'loadout-slot-header', root);
+    element('span', 'loadout-slot-label', header).textContent = label;
+    element('span', 'loadout-slot-key', header).textContent = key;
+    const holder = element('span', 'loadout-slot-holder', root);
+    parent.appendChild(root);
+    const slot: Slot = { id, root, label, key, holder, card: null };
+    if (id.kind !== 'dash') {
+      root.addEventListener('click', () => {
+        this.selectSlot(id);
+      });
     }
-    field.appendChild(select);
-    select.addEventListener('change', () => {
-      this.onBasicChanged(select.value);
-    });
-    return select;
+    return slot;
   }
 
-  private buildTechniqueSelect(parent: HTMLElement, slot: number): HTMLSelectElement {
-    const field = element('label', 'loadout-field', parent);
-    field.textContent = `Technique ${slot + 1}`;
-    const select = document.createElement('select');
-    select.className = 'loadout-technique';
-    for (const option of this.techniques) {
-      const entry = document.createElement('option');
-      entry.value = option.id;
-      const cooldownSeconds = (option.cooldownMs / MS_PER_SECOND).toFixed(1);
-      entry.textContent = `${option.name} · ${option.chakraCost} chakra · ${cooldownSeconds}s`;
-      select.appendChild(entry);
+  private fillSlot(slot: Slot, option: AbilityOption | null): void {
+    if (slot.card?.root.dataset.id === option?.id) return;
+    slot.holder.replaceChildren();
+    slot.card = null;
+    if (option === null) {
+      element('span', 'loadout-slot-empty', slot.holder).textContent = 'Empty';
+      return;
     }
-    field.appendChild(select);
-    select.addEventListener('change', () => {
-      this.onTechniqueChanged(slot, select.value);
-    });
-    return select;
+    slot.card = abilityCard(option, slot.holder, slot.key, null);
+  }
+
+  private selectSlot(id: SlotId): void {
+    this.active = id;
+    for (const slot of this.slots) slot.root.classList.toggle('is-active', sameSlot(slot.id, id));
+    const basic = id.kind === 'basic';
+    this.pickerTitle.textContent = basic ? 'Basic attacks' : 'Techniques';
+    this.pickerGrid.replaceChildren();
+    this.pickerCards.clear();
+    for (const option of basic ? this.basics : this.techniques) {
+      const card = abilityCard(option, this.pickerGrid, '', () => {
+        this.onPicked(option.id);
+      });
+      this.pickerCards.set(option.id, card);
+    }
+    this.syncPicker();
+  }
+
+  private onPicked(id: string): void {
+    if (this.state === null) return;
+    if (this.active.kind === 'basic') {
+      this.state = { ...this.state, basicAttackId: id };
+    } else if (this.active.kind === 'technique') {
+      this.state = setTechnique(this.state, this.active.index, id, this.techniques);
+      this.selectSlot(nextSlot(this.active, this.rules.techniqueSlots));
+    }
+    this.syncControls(this.state);
+    this.refresh();
+    this.notify();
   }
 
   private syncControls(state: LoadoutState): void {
@@ -136,12 +221,40 @@ export class LoadoutPanel {
       row.input.value = String(state.build[id]);
       row.valueLabel.textContent = String(state.build[id]);
     }
-    this.basicSelect.value = state.basicAttackId ?? '';
-    for (let slot = 0; slot < this.techniqueSelects.length; slot++) {
-      const select = this.techniqueSelects[slot];
-      if (select === undefined) continue;
-      select.value = state.techniqueIds[slot] ?? '';
+    for (const slot of this.slots) {
+      if (slot.id.kind === 'basic') {
+        this.fillSlot(slot, this.basics.find((b) => b.id === state.basicAttackId) ?? null);
+      } else if (slot.id.kind === 'technique') {
+        const picked = state.techniqueIds[slot.id.index] ?? null;
+        this.fillSlot(slot, this.techniques.find((t) => t.id === picked) ?? null);
+      }
     }
+    this.syncPicker();
+  }
+
+  // Une carte choisie porte son emplacement et sa touche; les autres, la touche qu'elles prendraient.
+  private syncPicker(): void {
+    const state = this.state;
+    const activeKey = this.activeKey();
+    for (const [id, card] of this.pickerCards) {
+      const index = state === null ? -1 : state.techniqueIds.indexOf(id);
+      const pickedBasic = state !== null && state.basicAttackId === id;
+      const picked = this.active.kind === 'basic' ? pickedBasic : index !== -1;
+      card.root.classList.toggle('is-picked', picked);
+      const label = this.active.kind === 'basic' ? '' : String(index + 1);
+      card.slot.textContent = label;
+      card.slot.hidden = !picked || label.length === 0;
+      const key = picked ? (this.keys.techniques[index] ?? this.keys.basic) : activeKey;
+      card.key.textContent = picked ? key : '';
+      card.key.hidden = !picked;
+      card.tipKey.textContent = key;
+      card.tipKey.hidden = key.length === 0;
+    }
+  }
+
+  private activeKey(): string {
+    if (this.active.kind === 'technique') return this.keys.techniques[this.active.index] ?? '';
+    return this.active.kind === 'basic' ? this.keys.basic : this.keys.dash;
   }
 
   private onAttributeChanged(
@@ -154,21 +267,6 @@ export class LoadoutPanel {
     this.state = setAttribute(this.state, id, requested, this.rules, this.budget);
     input.value = String(this.state.build[id]);
     valueLabel.textContent = String(this.state.build[id]);
-    this.refresh();
-    this.notify();
-  }
-
-  private onBasicChanged(id: string): void {
-    if (this.state === null) return;
-    this.state = { ...this.state, basicAttackId: id };
-    this.refresh();
-    this.notify();
-  }
-
-  private onTechniqueChanged(slot: number, id: string): void {
-    if (this.state === null) return;
-    this.state = setTechnique(this.state, slot, id, this.techniques);
-    this.syncControls(this.state);
     this.refresh();
     this.notify();
   }
@@ -190,8 +288,15 @@ export class LoadoutPanel {
   }
 }
 
-function capitalize(id: string): string {
-  return id.charAt(0).toUpperCase() + id.slice(1);
+function sameSlot(a: SlotId, b: SlotId): boolean {
+  if (a.kind !== b.kind) return false;
+  return a.kind !== 'technique' || b.kind !== 'technique' || a.index === b.index;
+}
+
+// Après un choix, la sélection passe à la technique suivante: trois clics remplissent le kit.
+function nextSlot(current: SlotId, techniqueSlots: number): SlotId {
+  if (current.kind !== 'technique') return current;
+  return { kind: 'technique', index: (current.index + 1) % techniqueSlots };
 }
 
 function element(tag: string, className: string, parent: HTMLElement): HTMLElement {

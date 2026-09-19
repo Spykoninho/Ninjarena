@@ -2,6 +2,7 @@ import type { AbilityDefinition, StatRulesDefinition } from '@ninjarena/core';
 import { DefinitionCatalog } from '@ninjarena/core';
 import { describe, expect, it } from 'vitest';
 import { loadClientConfig } from '../config/clientConfig';
+import { DEFAULT_BINDINGS } from '../input/bindings';
 import {
   basicOptions,
   createLoadoutState,
@@ -9,10 +10,11 @@ import {
   pointsLeft,
   setAttribute,
   setTechnique,
+  slotBindings,
   techniqueOptions,
   toLoadout,
 } from './loadoutModel';
-import type { BasicOption, TechniqueOption } from './loadoutModel';
+import type { AbilityOption, BasicOption, TechniqueOption } from './loadoutModel';
 
 const rules: StatRulesDefinition = {
   defaultPointBudget: 10,
@@ -37,16 +39,20 @@ const rules: StatRulesDefinition = {
   techniqueSlots: 3,
 };
 
+function option(id: string, name: string, chakraCost: number, cooldownMs: number): AbilityOption {
+  return { id, name, family: 'projectile', chakraCost, cooldownMs, description: '', facts: '' };
+}
+
 const options: TechniqueOption[] = [
-  { id: 'blink', name: 'Blink', chakraCost: 20, cooldownMs: 5000 },
-  { id: 'chakra-shield', name: 'Chakra Shield', chakraCost: 30, cooldownMs: 9000 },
-  { id: 'lightning-dash', name: 'Lightning Dash', chakraCost: 30, cooldownMs: 5000 },
-  { id: 'fireball', name: 'Fireball', chakraCost: 25, cooldownMs: 4000 },
+  option('blink', 'Blink', 20, 5000),
+  option('chakra-shield', 'Chakra Shield', 30, 9000),
+  option('lightning-dash', 'Lightning Dash', 30, 5000),
+  option('fireball', 'Fireball', 25, 4000),
 ];
 
 const basics: BasicOption[] = [
-  { id: 'kunai-strike', name: 'Kunai Strike' },
-  { id: 'shuriken-throw', name: 'Shuriken Throw' },
+  option('kunai-strike', 'Kunai Strike', 0, 350),
+  option('shuriken-throw', 'Shuriken Throw', 0, 500),
 ];
 
 const budget = rules.defaultPointBudget;
@@ -185,9 +191,23 @@ describe('techniqueOptions', () => {
       ability('blink', 'Blink', 'technique'),
       ability('shadow-step', 'Shadow Step', 'dash'),
     ]);
+    expect(techniqueOptions(abilities).map((option) => option.id)).toEqual(['blink', 'fireball']);
+  });
+
+  it('carries the icon family, the description and the facts of each technique', () => {
+    const abilities = new DefinitionCatalog<AbilityDefinition>([
+      { ...ability('blink', 'Blink', 'technique'), description: 'Hop.' },
+    ]);
     expect(techniqueOptions(abilities)).toEqual([
-      { id: 'blink', name: 'Blink', chakraCost: 10, cooldownMs: 1000 },
-      { id: 'fireball', name: 'Fireball', chakraCost: 10, cooldownMs: 1000 },
+      {
+        id: 'blink',
+        name: 'Blink',
+        family: 'stun',
+        chakraCost: 10,
+        cooldownMs: 1000,
+        description: 'Hop.',
+        facts: '10 chakra · 1s cooldown',
+      },
     ]);
   });
 });
@@ -200,9 +220,23 @@ describe('basicOptions', () => {
       ability('kunai-strike', 'Kunai Strike', 'basic'),
       ability('shadow-step', 'Shadow Step', 'dash'),
     ]);
-    expect(basicOptions(abilities)).toEqual([
-      { id: 'kunai-strike', name: 'Kunai Strike' },
-      { id: 'shuriken-throw', name: 'Shuriken Throw' },
+    expect(basicOptions(abilities).map((option) => option.id)).toEqual([
+      'kunai-strike',
+      'shuriken-throw',
     ]);
+  });
+});
+
+describe('slotBindings', () => {
+  it('labels the basic attack, the dash and one key per technique slot', () => {
+    expect(slotBindings(DEFAULT_BINDINGS, 3)).toEqual({
+      basic: 'LMB',
+      dash: 'SPC',
+      techniques: ['RMB', 'E', 'R'],
+    });
+  });
+
+  it('numbers a technique slot that has no key bound', () => {
+    expect(slotBindings(DEFAULT_BINDINGS, 4).techniques).toEqual(['RMB', 'E', 'R', '6']);
   });
 });

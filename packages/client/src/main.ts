@@ -12,7 +12,13 @@ import './styles.css';
 import { EditorScreen } from './ui/editorScreen';
 import { HomeScreen } from './ui/homeScreen';
 import { Hud } from './ui/hud';
-import { basicOptions, createLoadoutState, techniqueOptions } from './ui/loadoutModel';
+import {
+  abilityOption,
+  basicOptions,
+  createLoadoutState,
+  slotBindings,
+  techniqueOptions,
+} from './ui/loadoutModel';
 import { LoadoutPanel } from './ui/loadoutPanel';
 import { LobbyScreen } from './ui/lobbyScreen';
 
@@ -24,6 +30,7 @@ if (stage === null || hudRoot === null || uiRoot === null) {
 }
 
 const DEFAULT_TILESET_ID = 'default';
+const DEFAULT_CHARACTER_ID = 'ninja';
 
 const config = loadClientConfig(
   window.location.search,
@@ -72,7 +79,17 @@ const home = new HomeScreen(
 const rules = content.statRules;
 const techniques = techniqueOptions(content.abilities);
 const basics = basicOptions(content.abilities);
-const loadoutPanel = new LoadoutPanel(rules, techniques, basics);
+// L'esquive n'est pas un choix: le salon la montre pour que la touche soit connue avant le combat.
+const dash = abilityOption(
+  content.abilities.get(content.characters.get(DEFAULT_CHARACTER_ID).dashId),
+);
+const loadoutPanel = new LoadoutPanel(
+  rules,
+  techniques,
+  basics,
+  dash,
+  slotBindings(DEFAULT_BINDINGS, rules.techniqueSlots),
+);
 
 const lobby = new LobbyScreen(
   {
@@ -97,6 +114,7 @@ const lobby = new LobbyScreen(
   },
   loadoutPanel,
   rules,
+  [...basics, dash, ...techniques],
 );
 
 // L'état initial n'est posé qu'une fois l'écran branché: il vaut premier changement de loadout.

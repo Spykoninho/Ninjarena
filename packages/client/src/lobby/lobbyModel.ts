@@ -23,6 +23,8 @@ export interface TeamGroup {
   capacity: number | null;
 }
 
+export type PlayerStatus = 'ready' | 'not-ready' | 'invalid';
+
 export interface SelectOption {
   value: string;
   label: string;
@@ -81,6 +83,27 @@ export function groupPlayers(room: RoomView): TeamGroup[] {
   return groups;
 }
 
+const STATUS_LABELS: Record<PlayerStatus, string> = {
+  ready: 'READY',
+  'not-ready': 'NOT READY',
+  invalid: 'NO LOADOUT',
+};
+
+// Un loadout refusé prime sur le reste: le joueur ne peut pas être prêt tant qu'il n'est pas corrigé.
+export function playerStatus(player: RoomPlayerView): PlayerStatus {
+  if (!player.loadoutValid) return 'invalid';
+  return player.ready ? 'ready' : 'not-ready';
+}
+
+export function statusLabel(status: PlayerStatus): string {
+  return STATUS_LABELS[status];
+}
+
+export function emptySeats(group: TeamGroup): number {
+  if (group.capacity === null) return 0;
+  return Math.max(0, group.capacity - group.players.length);
+}
+
 export function blockerText(blocker: StartBlocker): string {
   return BLOCKER_TEXTS[blocker];
 }
@@ -105,7 +128,7 @@ export function roomLink(origin: string, pathname: string, code: string): string
 export function statusText(room: RoomView): string {
   const status = room.status === 'FINISHED' ? 'Match over' : room.status;
   const capacity = roomMaxPlayers(room.settings);
-  return `Room ${room.code} · ${status} · ${room.players.length}/${capacity} players`;
+  return `${status} · ${room.players.length}/${capacity} players`;
 }
 
 // Chaque contrôle du formulaire hôte n'envoie que sa propre clé, dans le type qu'elle attend.

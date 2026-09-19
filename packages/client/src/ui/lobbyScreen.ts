@@ -16,8 +16,10 @@ import {
   settingsRows,
   statusText,
 } from '../lobby/lobbyModel';
+import type { AbilityOption } from './loadoutModel';
 import type { LoadoutPanel } from './loadoutPanel';
-import { createSettingsForm, renderBlockers, renderTeams } from './lobbySections';
+import { LobbyRoster } from './lobbyRoster';
+import { createSettingsForm, renderBlockers } from './lobbySections';
 import type { SettingsForm } from './lobbySections';
 
 export interface LobbyActions {
@@ -29,6 +31,14 @@ export interface LobbyActions {
   leaveRoom(): void;
 }
 
+type LobbyTab = 'roster' | 'match' | 'loadout';
+
+const TABS: { id: LobbyTab; label: string }[] = [
+  { id: 'roster', label: 'Lobby' },
+  { id: 'match', label: 'Match settings' },
+  { id: 'loadout', label: 'Character' },
+];
+
 const SEND_DEBOUNCE_MS = 300;
 const COPIED_LABEL_MS = 2000;
 const NO_BUDGET = -1;
@@ -38,11 +48,15 @@ export class LobbyScreen implements Screen {
   private readonly panel: LoadoutPanel;
   private readonly rules: StatRulesDefinition;
   private readonly root: HTMLElement;
+  private readonly codeLine: HTMLElement;
   private readonly statusLine: HTMLElement;
   private readonly copyButton: HTMLButtonElement;
   private readonly linkInput: HTMLInputElement;
-  private readonly teamsRoot: HTMLElement;
+  private readonly tabs = new Map<LobbyTab, HTMLButtonElement>();
+  private readonly pages = new Map<LobbyTab, HTMLElement>();
+  private readonly roster: LobbyRoster;
   private readonly settingsForm: SettingsForm;
+  private readonly settingsNote: HTMLElement;
   private readonly blockerList: HTMLElement;
   private readonly readyButton: HTMLButtonElement;
   private readonly startButton: HTMLButtonElement;
@@ -54,19 +68,32 @@ export class LobbyScreen implements Screen {
   private sendTimer: number | null = null;
   private copyTimer: number | null = null;
 
-  constructor(actions: LobbyActions, panel: LoadoutPanel, rules: StatRulesDefinition) {
+  constructor(
+    actions: LobbyActions,
+    panel: LoadoutPanel,
+    rules: StatRulesDefinition,
+    options: AbilityOption[],
+  ) {
     this.actions = actions;
     this.panel = panel;
     this.rules = rules;
     this.root = document.createElement('div');
     this.root.className = 'screen lobby';
 
-    const header = element('div', 'lobby-header', this.root);
-    this.statusLine = element('span', 'lobby-status', header);
-    this.copyButton = button('Copy link', 'lobby-copy', () => {
+    const header = element('header', 'lobby-header', this.root);
+    const title = element('div', 'lobby-title', header);
+    element('span', 'lobby-title-label', title).textContent = 'Room';
+    this.codeLine = element('span', 'lobby-code', title);
+    this.statusLine = element('span', 'lobby-status', title);
+    const headerActions = element('div', 'lobby-header-actions', header);
+    this.copyButton = button('Copy invite link', 'lobby-copy', headerActions, () => {
       this.onCopyLink();
     });
-    header.appendChild(this.copyButton);
+    button('Leave', 'lobby-leave', headerActions, () => {
+      this.run(() => {
+        actions.leaveRoom();
+      });
+    });
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
     this.linkInput.readOnly = true;
@@ -74,34 +101,53 @@ export class LobbyScreen implements Screen {
     this.linkInput.hidden = true;
     header.appendChild(this.linkInput);
 
-    this.teamsRoot = element('div', 'lobby-teams', this.root);
+    const nav = element('nav', 'lobby-tabs', this.root);
+    const body = element('div', 'lobby-body', this.root);
+    for (const tab of TABS) {
+      const node = button(tab.label, 'lobby-tab', nav, () => {
+        this.showTab(tab.id);
+      });
+      this.tabs.set(tab.id, node);
+      this.pages.set(tab.id, element('section', `lobby-page lobby-page-${tab.id}`, body));
+    }
+
+    this.roster = new LobbyRoster(
+      this.page('roster'),
+      new Map(options.map((option) => [option.id, option])),
+      (team) => {
+        this.run(() => {
+          this.actions.switchTeam(team);
+        });
+      },
+    );
+
+    const match = this.page('match');
+    this.settingsNote = element('p', 'lobby-settings-note', match);
     this.settingsForm = createSettingsForm((key, raw) => {
       this.onSettingChanged(key, raw);
     });
-    this.root.appendChild(this.settingsForm.root);
-    panel.mount(this.root);
+    match.appendChild(this.settingsForm.root);
+
+    panel.mount(this.page('loadout'));
     panel.onChange((loadout) => {
       this.onLoadoutChanged(loadout);
     });
 
-    this.blockerList = element('ul', 'lobby-blockers', this.root);
-    const actionsRow = element('div', 'lobby-actions', this.root);
-    this.readyButton = button('Ready', 'lobby-ready', () => {
+    const footer = element('footer', 'lobby-footer', this.root);
+    const notes = element('div', 'lobby-footer-notes', footer);
+    this.blockerList = element('ul', 'lobby-blockers', notes);
+    this.errorLine = element('div', 'lobby-errors', notes);
+    this.errorLine.setAttribute('aria-live', 'polite');
+    const actionsRow = element('div', 'lobby-actions', footer);
+    this.readyButton = button('Ready', 'lobby-ready', actionsRow, () => {
       this.onReadyClicked();
     });
-    this.startButton = button('Start', 'lobby-start', () => {
+    this.startButton = button('Start the match', 'lobby-start', actionsRow, () => {
       this.run(() => {
         actions.startMatch();
       });
     });
-    const leave = button('Leave', 'lobby-leave', () => {
-      this.run(() => {
-        actions.leaveRoom();
-      });
-    });
-    actionsRow.append(this.readyButton, this.startButton, leave);
-    this.errorLine = element('div', 'lobby-errors', this.root);
-    this.errorLine.setAttribute('aria-live', 'polite');
+    this.showTab('roster');
   }
 
   mount(root: HTMLElement): void {
@@ -110,10 +156,12 @@ export class LobbyScreen implements Screen {
     // Le budget est oublié pour que la première mise à jour renvoie le loadout à la nouvelle salle.
     this.budget = NO_BUDGET;
     root.appendChild(this.root);
+    this.roster.start();
   }
 
   unmount(): void {
     this.clearTimers();
+    this.roster.stop();
     this.room = null;
     this.root.remove();
   }
@@ -132,25 +180,38 @@ export class LobbyScreen implements Screen {
         local.loadoutValid,
         local.loadoutValid ? null : 'the server has not accepted this loadout',
       );
+      this.tabs.get('loadout')?.classList.toggle('has-alert', !local.loadoutValid);
     }
+    this.codeLine.textContent = room.code;
     this.statusLine.textContent = statusText(room);
-    renderTeams(this.teamsRoot, room, sessionId, (team) => {
-      this.run(() => {
-        this.actions.switchTeam(team);
-      });
-    });
+    this.roster.update(room, sessionId);
     const host = isHost(room, sessionId);
-    this.settingsForm.sync(
-      settingsRows(room.settings, maps, this.rules),
-      host && room.status === 'WAITING',
-    );
+    const editable = host && room.status === 'WAITING';
+    this.settingsNote.textContent = host
+      ? 'You are the host: these settings apply to everyone in the room.'
+      : 'Only the host can change the match settings.';
+    this.settingsForm.sync(settingsRows(room.settings, maps, this.rules), editable);
     renderBlockers(this.blockerList, room);
     this.syncActions(room, local, host);
   }
 
   showError(message: string): void {
     this.errorLine.textContent = message;
-    if (isLoadoutError(message)) this.panel.setServerVerdict(false, message);
+    if (isLoadoutError(message)) {
+      this.panel.setServerVerdict(false, message);
+      this.showTab('loadout');
+    }
+  }
+
+  private page(tab: LobbyTab): HTMLElement {
+    const page = this.pages.get(tab);
+    if (page === undefined) throw new Error(`unknown lobby tab ${tab}`);
+    return page;
+  }
+
+  private showTab(tab: LobbyTab): void {
+    for (const [id, node] of this.tabs) node.classList.toggle('active', id === tab);
+    for (const [id, page] of this.pages) page.hidden = id !== tab;
   }
 
   private localPlayer(): RoomPlayerView | null {
@@ -159,7 +220,9 @@ export class LobbyScreen implements Screen {
 
   private syncActions(room: RoomView, local: RoomPlayerView | null, host: boolean): void {
     const waiting = room.status === 'WAITING';
-    this.readyButton.textContent = local?.ready === true ? 'Not ready' : 'Ready';
+    const ready = local?.ready === true;
+    this.readyButton.textContent = ready ? 'Not ready' : 'Ready';
+    this.readyButton.classList.toggle('is-ready', ready);
     this.readyButton.disabled = local === null || !local.loadoutValid || !waiting;
     this.startButton.hidden = !host;
     this.startButton.disabled = !canStart(room, this.sessionId);
@@ -218,11 +281,11 @@ export class LobbyScreen implements Screen {
   }
 
   private confirmCopy(): void {
-    this.copyButton.textContent = 'Copied';
+    this.copyButton.textContent = 'Link copied';
     if (this.copyTimer !== null) window.clearTimeout(this.copyTimer);
     this.copyTimer = window.setTimeout(() => {
       this.copyTimer = null;
-      this.copyButton.textContent = 'Copy link';
+      this.copyButton.textContent = 'Copy invite link';
     }, COPIED_LABEL_MS);
   }
 
@@ -246,12 +309,18 @@ export class LobbyScreen implements Screen {
   }
 }
 
-function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
+function button(
+  label: string,
+  className: string,
+  parent: HTMLElement,
+  onClick: () => void,
+): HTMLButtonElement {
   const node = document.createElement('button');
   node.type = 'button';
   node.className = className;
   node.textContent = label;
   node.addEventListener('click', onClick);
+  parent.appendChild(node);
   return node;
 }
 

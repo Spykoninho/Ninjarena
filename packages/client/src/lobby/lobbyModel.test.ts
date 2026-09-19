@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 import {
   blockerText,
   canStart,
+  emptySeats,
   groupPlayers,
   isHost,
   isLoadoutError,
   isRoomCode,
+  playerStatus,
   roomLink,
   settingsPatch,
   settingsRows,
@@ -98,6 +100,24 @@ describe('groupPlayers', () => {
         capacity: null,
       },
     ]);
+  });
+});
+
+describe('emptySeats', () => {
+  it('counts the seats left in a capped team and none in free-for-all', () => {
+    const [first, second] = groupPlayers(room({ players: [player('a', 0)] }));
+    expect(first === undefined ? -1 : emptySeats(first)).toBe(1);
+    expect(second === undefined ? -1 : emptySeats(second)).toBe(2);
+    const ffa = groupPlayers(room({ settings: { ...settings, mode: 'ffa' } }));
+    expect(emptySeats(ffa[0] ?? { team: null, label: '', players: [], capacity: null })).toBe(0);
+  });
+});
+
+describe('playerStatus', () => {
+  it('reports an invalid loadout before readiness', () => {
+    expect(playerStatus(player('a', 0))).toBe('invalid');
+    expect(playerStatus({ ...player('a', 0), loadoutValid: true })).toBe('not-ready');
+    expect(playerStatus({ ...player('a', 0), loadoutValid: true, ready: true })).toBe('ready');
   });
 });
 
@@ -219,12 +239,12 @@ describe('settingsRows', () => {
 });
 
 describe('statusText', () => {
-  it('names the room, its status and how full it is', () => {
-    expect(statusText(room())).toBe('Room AB7K2P · WAITING · 3/4 players');
+  it('names the status and how full the room is', () => {
+    expect(statusText(room())).toBe('WAITING · 3/4 players');
   });
 
   it('says the match is over once the room reports FINISHED', () => {
-    expect(statusText(room({ status: 'FINISHED' }))).toBe('Room AB7K2P · Match over · 3/4 players');
+    expect(statusText(room({ status: 'FINISHED' }))).toBe('Match over · 3/4 players');
   });
 });
 

@@ -8,6 +8,10 @@ import type {
 } from '@ninjarena/core';
 import { ATTRIBUTE_IDS, buildPointsSpent, emptyBuild } from '@ninjarena/core';
 import type { ClientConfig } from '../config/clientConfig';
+import type { InputBindings } from '../input/bindings';
+import { bindingLabel } from '../input/bindings';
+import { abilityFamily } from '../rendering/art/abilityVisual';
+import { abilityFacts, describeAbility } from './abilityText';
 
 // L'état que le panneau du salon manipule: le nom vit sur l'écran d'accueil.
 export interface LoadoutState {
@@ -16,17 +20,28 @@ export interface LoadoutState {
   techniqueIds: (string | null)[];
 }
 
-export interface BasicOption {
+// Tout ce qu'une carte d'attaque affiche, calculé une fois à partir de la définition.
+export interface AbilityOption {
   id: string;
   name: string;
-}
-
-export interface TechniqueOption {
-  id: string;
-  name: string;
+  family: string;
   chakraCost: number;
   cooldownMs: number;
+  description: string;
+  facts: string;
 }
+
+export type BasicOption = AbilityOption;
+export type TechniqueOption = AbilityOption;
+
+// Les touches que le salon affiche sur les cartes: l'attaque de base, l'esquive, puis une par technique.
+export interface SlotBindings {
+  basic: string;
+  dash: string;
+  techniques: string[];
+}
+
+const FIXED_SLOTS = 2;
 
 export function createLoadoutState(
   config: ClientConfig,
@@ -124,23 +139,43 @@ export function loadoutErrors(
 export function techniqueOptions(
   abilities: DefinitionCatalog<AbilityDefinition>,
 ): TechniqueOption[] {
-  return abilities
-    .all()
-    .filter((ability) => ability.kind === 'technique')
-    .map((ability) => ({
-      id: ability.id,
-      name: ability.name,
-      chakraCost: ability.chakraCost,
-      cooldownMs: ability.cooldownMs,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return optionsOfKind(abilities, 'technique');
 }
 
 export function basicOptions(abilities: DefinitionCatalog<AbilityDefinition>): BasicOption[] {
+  return optionsOfKind(abilities, 'basic');
+}
+
+export function abilityOption(ability: AbilityDefinition): AbilityOption {
+  return {
+    id: ability.id,
+    name: ability.name,
+    family: abilityFamily(ability),
+    chakraCost: ability.chakraCost,
+    cooldownMs: ability.cooldownMs,
+    description: describeAbility(ability),
+    facts: abilityFacts(ability),
+  };
+}
+
+export function slotBindings(bindings: InputBindings, techniqueSlots: number): SlotBindings {
+  const [basic, dash, ...rest] = bindings.abilities;
+  const techniques: string[] = [];
+  for (let slot = 0; slot < techniqueSlots; slot++) {
+    const binding = rest[slot];
+    techniques.push(binding === undefined ? `${slot + FIXED_SLOTS + 1}` : bindingLabel(binding));
+  }
+  return { basic: bindingLabel(basic), dash: bindingLabel(dash), techniques };
+}
+
+function optionsOfKind(
+  abilities: DefinitionCatalog<AbilityDefinition>,
+  kind: AbilityDefinition['kind'],
+): AbilityOption[] {
   return abilities
     .all()
-    .filter((ability) => ability.kind === 'basic')
-    .map((ability) => ({ id: ability.id, name: ability.name }))
+    .filter((ability) => ability.kind === kind)
+    .map(abilityOption)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
