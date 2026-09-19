@@ -147,6 +147,10 @@ the tests that pin the formulas.
   host picks in the lobby (bounds in `packages/core/src/lobby/roomSettings.ts`); `roundsToWin`
   is derived from the room's `bestOf`. `countdownMs` and `roundEndDelayMs` are not tunable per
   match — they are the fixed `DEFAULT_MATCH_TIMING` (3 seconds each) in the same file.
+- **The ranking** — the starting rating, the K factor, the spread and the tier thresholds are
+  the constants at the top of `packages/core/src/ranking/rating.ts`; `rating.test.ts` pins the
+  formula. Changing a threshold re-tiers every account on the next read, since a tier is derived
+  from the rating rather than stored.
 
 Every one of these files is parsed by its zod schema at load, so an out-of-range or missing value
 fails immediately with the file name and the field, rather than shipping a silently broken number.

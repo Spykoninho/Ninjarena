@@ -2,7 +2,7 @@
 
 A top-down pixel-art PvP ninja arena with an authoritative server. Players create or join private
 rooms by a short code, configure the match in a host-editable lobby (mode, teams, map, best-of,
-round length, friendly fire), prepare a stat build and loadout validated live by the server, then
+round length, friendly fire, ranked or not), prepare a stat build and loadout validated live by the server, then
 fight in short rounds on a tile map: free movement with circle collisions, a five-slot loadout
 (basic attack, dash, three techniques) fuelled by chakra, telegraphed casts built from a
 data-driven effect tree, and an authoritative simulation that the browser predicts locally so the
@@ -41,6 +41,12 @@ What works today:
 - a spectator camera that follows a living teammate (or anyone alive in free-for-all) after death,
 - a match result kept in the room and shown for a configurable delay before everyone returns to
   the lobby, not ready, for a new round of settings,
+- accounts (a unique name and a password, stored salted and hashed on the server) with a rating
+  and a rank (Bronze, Argent, Or) shown next to the name; a room can be marked **ranked** in its
+  settings, which requires every player to be logged in, shows each player what a win earns and a
+  loss costs against the opposing side's average rating, and settles the ratings when the match
+  ends (a forfeit counts as a loss); a leaderboard page on the home menu lists every account by
+  rating — see [docs/rooms.md](docs/rooms.md#accounts-and-ranked-play),
 - content validated at load: abilities, a character, stat rules, a tileset, and maps (built-in and
   player-made, stored on the server).
 
@@ -48,8 +54,8 @@ What is deliberately missing or simplified:
 
 - hand-painted sprite sheets (every texture is generated at load from pixel recipes) and actual
   sound assets (the audio is procedural WebAudio tones, not recordings),
-- accounts, matchmaking, bots, ranked play, spectating a room already in progress, kicking a
-  player, editor undo/redo, and map thumbnails,
+- matchmaking, bots, spectating a room already in progress, kicking a player, editor undo/redo,
+  map thumbnails, and password recovery (an account is a name and a password, nothing else),
 - snapshot filtering: every session receives the same unfiltered `WorldState`, so an `INVISIBLE`
   status is a rendering hint the client honours, not a secret,
 - the netcode refinements listed in [Roadmap](#roadmap), including lag compensation.
@@ -149,11 +155,18 @@ The game's UI is in French. Open two browser tabs:
   partie** and type the code from the home menu) — the code prefills the join form and the second
   tab joins the same room.
 
+The home menu also carries the account bar: **Se connecter** opens a form where a name and a
+password either log into an existing account or, with **Créer un compte**, create one. A logged-in
+player keeps that name in every room and shows a rank badge next to it; **Classement** lists every
+account by rating. Playing as a guest (no account) is still fine for unranked rooms.
+
 Both tabs now show the lobby, split in three tabs. **Salon** is the stage: one column per team,
-each player drawn as their ninja with their name, a HÔTE badge, a PRÊT / PAS PRÊT pill and the
-icons of the attacks they picked; open seats carry a **Rejoindre cette équipe** button.
-**Réglages de la partie** holds the host-only form (mode, map, teams, players per team, build
-points, rounds, round duration, friendly fire). **Personnage** is where each player distributes
+each player drawn as their ninja with their name, a rank badge if they are logged in, a HÔTE badge,
+a PRÊT / PAS PRÊT pill and the icons of the attacks they picked; open seats carry a **Rejoindre
+cette équipe** button. **Réglages de la partie** holds the host-only form (mode, map, teams,
+players per team, build points, rounds, round duration, friendly fire, ranked); with **Partie
+classée** ticked, a table under the form shows every player's rating and what a win earns and a
+loss costs them. **Personnage** is where each player distributes
 the stat points and builds their kit: the five slots show the key each attack is bound to (basic
 attack, dash, then technique 1, 2 and 3), and picking a slot lists the techniques as cards — hover
 one to read what it does, its damage, chakra cost, cooldown and cast time. Press **Prêt** at the
@@ -214,18 +227,19 @@ docker build --target server -t ninjarena-server .
 The server reads its configuration from the environment at startup; every value is validated and
 an invalid one stops the process.
 
-| Variable                    | Default     | Meaning                                                                                                             |
-| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| `NINJARENA_HOST`            | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                                         |
-| `NINJARENA_PORT`            | `8080`      | WebSocket port (1-65535).                                                                                           |
-| `NINJARENA_TICK_RATE`       | `60`        | Simulation ticks per second (1-240).                                                                                |
-| `NINJARENA_SNAPSHOT_RATE`   | `30`        | Snapshots per second (1-240).                                                                                       |
-| `NINJARENA_INPUT_QUEUE`     | `8`         | Inputs buffered per player before the oldest are dropped (1-64).                                                    |
-| `NINJARENA_MAX_CONNECTIONS` | `32`        | Sockets accepted at once (1-1024); the next one is closed with `1013`.                                              |
-| `NINJARENA_MAX_ROOMS`       | `64`        | Rooms that can exist at once (1-1024); `createRoom` beyond that gets `TOO_MANY_ROOMS`.                              |
-| `NINJARENA_POST_MATCH_MS`   | `8000`      | How long a finished match's result stays up before the room returns to the lobby, in ms (0-600000).                 |
-| `NINJARENA_MAPS_DIR`        | `data/maps` | Directory holding player-saved maps, one JSON file per map. Created on first save; `data/` is git-ignored.          |
-| `NINJARENA_MAX_STORED_MAPS` | `100`       | Player-saved maps kept at once (0-10000); a new one beyond that gets `MAP_STORE_FULL` (overwriting one never does). |
+| Variable                    | Default              | Meaning                                                                                                             |
+| --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `NINJARENA_HOST`            | `127.0.0.1`          | Interface to bind. Use `0.0.0.0` to accept LAN connections.                                                         |
+| `NINJARENA_PORT`            | `8080`               | WebSocket port (1-65535).                                                                                           |
+| `NINJARENA_TICK_RATE`       | `60`                 | Simulation ticks per second (1-240).                                                                                |
+| `NINJARENA_SNAPSHOT_RATE`   | `30`                 | Snapshots per second (1-240).                                                                                       |
+| `NINJARENA_INPUT_QUEUE`     | `8`                  | Inputs buffered per player before the oldest are dropped (1-64).                                                    |
+| `NINJARENA_MAX_CONNECTIONS` | `32`                 | Sockets accepted at once (1-1024); the next one is closed with `1013`.                                              |
+| `NINJARENA_MAX_ROOMS`       | `64`                 | Rooms that can exist at once (1-1024); `createRoom` beyond that gets `TOO_MANY_ROOMS`.                              |
+| `NINJARENA_POST_MATCH_MS`   | `8000`               | How long a finished match's result stays up before the room returns to the lobby, in ms (0-600000).                 |
+| `NINJARENA_MAPS_DIR`        | `data/maps`          | Directory holding player-saved maps, one JSON file per map. Created on first save; `data/` is git-ignored.          |
+| `NINJARENA_MAX_STORED_MAPS` | `100`                | Player-saved maps kept at once (0-10000); a new one beyond that gets `MAP_STORE_FULL` (overwriting one never does). |
+| `NINJARENA_ACCOUNTS_FILE`   | `data/accounts.json` | JSON file holding every account (name, salted password hash, rating, wins, losses). Created on first registration.  |
 
 The client is configured through query parameters:
 
@@ -241,9 +255,10 @@ The client is configured through query parameters:
 | `delay`      | `6`                 | Interpolation delay for remote entities, in ticks (100 ms).                                                  |
 | `zoom`       | `3`                 | Maximum integer display zoom for the fixed 640×360 view; 2 art pixels per world unit.                        |
 
-The server also writes to `data/` (the `NINJARENA_MAPS_DIR` default): player-saved maps land there
-as one JSON file per map, created on first save. The whole directory is git-ignored — it is local,
-disposable state, not something to commit.
+The server also writes to `data/` (the `NINJARENA_MAPS_DIR` and `NINJARENA_ACCOUNTS_FILE`
+defaults): player-saved maps land there as one JSON file per map, created on first save, and the
+accounts in a single `accounts.json`, created on the first registration. The whole directory is
+git-ignored — it is local, disposable state, not something to commit.
 
 ## Development
 
@@ -266,10 +281,12 @@ Package layout:
 ```
 packages/
   core/       @ninjarena/core       math, time, definitions, collision, map, player, stats,
-                                    abilities (effects/handlers), combat, projectile, match, simulation
+                                    abilities (effects/handlers), combat, projectile, match,
+                                    ranking, simulation
   protocol/   @ninjarena/protocol   client and server messages, zod schemas, JSON codec
   content/    @ninjarena/content    abilities/, characters/, tilesets/, maps/, stat-rules.json
-  server/     @ninjarena/server     config, transport, session, lobby, maps, match host, persistence
+  server/     @ninjarena/server     config, transport, session, accounts, lobby, maps, match host,
+                                    persistence
   client/     @ninjarena/client     config, input, network, netcode, rendering, feedback, audio,
                                     app, lobby, editor, ui, game
 ```
@@ -385,8 +402,8 @@ Planned next, in no particular order:
   corrections are eased today; a large one still snaps),
 - painted sprite sheets and recorded audio, replacing the generated pixel recipes and procedural
   tones,
-- accounts (so a stored map can be owned rather than overwritable by anyone who knows its id),
-  matchmaking and ranked play, spectating a room already in progress,
+- map ownership (a stored map is still overwritable by anyone who knows its id, even though
+  accounts exist now), matchmaking, spectating a room already in progress,
 - a persistence backend behind `MatchResultRepository`,
 - more techniques, more characters, and bots.
 

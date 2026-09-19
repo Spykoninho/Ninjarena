@@ -42,22 +42,26 @@ match in progress, and no spectating from the lobby.
 Every message below requires a prior `hello` (`NOT_INTRODUCED` otherwise); the room-scoped ones
 also require the session to be in a room (`NOT_IN_ROOM` otherwise).
 
-| Message                               | Preconditions                                                                                                                        | Errors it can produce                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected.                                                          | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                       |
-| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`.                                                                                      | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`                            |
-| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches.                                               | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD` |
-| `leaveRoom`                           | In a room.                                                                                                                           | — (always succeeds; replies `roomLeft`)                                            |
-| `updateSettings { patch }`            | Host; status `WAITING`; patch produces valid settings that still fit the current roster.                                             | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                     |
-| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                         | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
-| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                            | `WRONG_STATUS`, `INVALID_LOADOUT`                                                  |
-| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                  | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                    |
-| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                     | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                         |
-| `listMaps`                            | Introduced.                                                                                                                          | `SERVER_ERROR`                                                                     |
-| `getMap { id }`                       | Introduced.                                                                                                                          | `MAP_NOT_FOUND`, `SERVER_ERROR`                                                    |
-| `saveMap { document }`                | Introduced.                                                                                                                          | `INVALID_MAP`, `MAP_STORE_FULL`, `SERVER_ERROR`                                    |
-| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME/FINISHED, until the room resets to WAITING). | — (silently ignored outside a match)                                               |
-| `ping { sentAt }`                     | Introduced.                                                                                                                          | —                                                                                  |
+| Message                               | Preconditions                                                                                                                        | Errors it can produce                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected. A logged-in session keeps its account name.              | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                                        |
+| `register { name, password }`         | Introduced; not in a room; not logged in; name free (case-insensitively).                                                            | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `NAME_TAKEN`, `SERVER_ERROR`                                |
+| `login { name, password }`            | Introduced; not in a room; not logged in; account exists, password matches, account not held by another live session.                | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `BAD_CREDENTIALS`, `SERVER_ERROR`                           |
+| `logout`                              | Introduced; not in a room.                                                                                                           | `ALREADY_IN_ROOM` (replies `accountState { account: null }` otherwise)                              |
+| `getLeaderboard`                      | Introduced.                                                                                                                          | `SERVER_ERROR` (replies `leaderboard { entries }`)                                                  |
+| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`; logged in if `settings.ranked`.                                                      | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`, `NOT_LOGGED_IN`                            |
+| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches; logged in if the room is ranked.              | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD`, `NOT_LOGGED_IN` |
+| `leaveRoom`                           | In a room.                                                                                                                           | — (always succeeds; replies `roomLeft`)                                                             |
+| `updateSettings { patch }`            | Host; status `WAITING`; patch produces valid settings that still fit the current roster.                                             | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                                      |
+| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                         | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
+| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                            | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
+| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                  | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                                     |
+| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                     | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                                          |
+| `listMaps`                            | Introduced.                                                                                                                          | `SERVER_ERROR`                                                                                      |
+| `getMap { id }`                       | Introduced.                                                                                                                          | `MAP_NOT_FOUND`, `SERVER_ERROR`                                                                     |
+| `saveMap { document }`                | Introduced.                                                                                                                          | `INVALID_MAP`, `MAP_STORE_FULL`, `SERVER_ERROR`                                                     |
+| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME/FINISHED, until the room resets to WAITING). | — (silently ignored outside a match)                                                                |
+| `ping { sentAt }`                     | Introduced.                                                                                                                          | —                                                                                                   |
 
 A `joinRoom` or `createRoom` from a session already in a room does not move it — `ALREADY_IN_ROOM`
 either way. Repeating `join`/`leave` from the same session is idempotent: `Room.join` is a no-op if
@@ -83,7 +87,9 @@ client uses to grey out its Start button and explain why:
   (someone has a loadout on file that the current settings reject), `EMPTY_TEAM` (team mode only:
   some team index below `teamCount` has no player — uneven teams are fine, an empty one is not),
   `MAP_MISSING` (the room's `mapId` did not resolve to a document), `MAP_INVALID` (the map resolved
-  but `validateMapDocument` plus `spawnIssues` for the current settings report at least one issue).
+  but `validateMapDocument` plus `spawnIssues` for the current settings report at least one issue),
+  `RANKED_NEEDS_ACCOUNT` (the room is ranked and at least one seated player is a guest — possible
+  when the host ticks `ranked` after guests joined, since a guest cannot join a ranked room).
 
 ## Host migration and empty rooms
 
@@ -118,6 +124,42 @@ every player's `playerId`, sets `ready` back to `false`, and broadcasts `WAITING
 for that status change returns to the lobby on its own — there is no separate "return to lobby"
 message.
 
+## Accounts and ranked play
+
+An account is a unique name (compared case-insensitively) and a password. `AccountService`
+(`packages/server/src/accounts/accountService.ts`) registers and logs sessions in against an
+`AccountRepository` — `FileAccountRepository` keeps every account in the JSON file named by
+`NINJARENA_ACCOUNTS_FILE`, rewritten atomically on every save. Passwords are salted and stretched
+with scrypt (`accountPassword.ts`) and never stored in the clear. A logged-in session carries an
+`AccountView { name, rating, wins, losses }`: its name replaces whatever `hello` said, and the
+`accountState` message reflects the view back on login, on logout (`null`) and whenever a ranked
+match changes it. One account is held by at most one live session at a time (`ALREADY_LOGGED_IN`
+otherwise), which also rules out playing ranked against oneself.
+
+`ranked` is a room setting like any other. A ranked room refuses guests at `joinRoom` and
+`createRoom` (`NOT_LOGGED_IN`) and will not start while a guest is seated
+(`RANKED_NEEDS_ACCOUNT`). `RoomPlayerView.rating` carries each player's current rating (`null` for
+a guest) so the lobby can show the rank badge and, in the settings tab, what every player stands to
+win or lose.
+
+The formula lives in `packages/core/src/ranking/rating.ts`, shared by the server and the client:
+an Elo update with K = 30 on a 200-point spread, floored at 0, starting at 100. Each player is
+rated against the **mean rating of the opposing side** — the other team in team mode, everyone
+else in free-for-all — so the same rule serves duels, 2v2s and a five-player brawl; the expected
+score is symmetric, so an underdog's win gains what the favourite's loss costs. Tiers are
+`bronze` (0–149), `silver` (150–299) and `gold` (300+), rendered as Bronze / Argent / Or.
+
+Ratings are settled from the `MatchResult`: `participantsOf` freezes each seated player's account
+name and rating at kick-off, so a settings change or a rating change elsewhere cannot alter what
+the match was played for. On `matchEnded` — including a forfeit, which goes through the same
+`finish()` — the server runs `settleRatings` when `settings.ranked` is set, updates the live
+sessions' `AccountView` synchronously (so the `roomState` broadcast that follows already shows the
+new ratings), sends each affected session an `accountState`, and persists the new rating, wins and
+losses in the background. A draw (`winnerTeamId: null`) moves equal players by nothing and counts
+neither a win nor a loss.
+
+`getLeaderboard` answers with the top 100 accounts by rating, then wins, then name.
+
 ## Settings → match config
 
 `toMatchConfig(settings, timing)` (`packages/core/src/lobby/roomSettings.ts`) is the only place a
@@ -129,6 +171,7 @@ roundsToWin: Math.floor(bestOf / 2) + 1        // best of 1/3/5/7 -> 1/2/3/4
 countdownMs, roundEndDelayMs: from MatchTiming  // fixed, not a room setting: 3000ms each
 buildPoints, roundDurationMs, friendlyFire: copied as-is
 mode, teamCount, playersPerTeam: copied as-is
+ranked: a lobby-only setting, not part of MatchConfig
 ```
 
 `applySettingsPatch` normalises free-for-all before validating: whatever `playersPerTeam` a patch
@@ -163,8 +206,6 @@ case-insensitively (`normalizeRoomCode` upper-cases both sides).
   place every session's outgoing snapshot is built; a per-session visibility filter (already
   informed client-side by `isVisibleTo` as a rendering hint) would slot in there without changing
   the `snapshot` message shape.
-- **Ranked.** `MatchResult` (`packages/server/src/persistence/matchResultRepository.ts`) already
-  carries `roomCode`, `settings` and a `players: { id, name, teamId }[]` list with everyone's team
-  at the final whistle, which is what a rating update needs. A matchmaking queue would be a second
-  producer of rooms next to `createRoom`, and a rating repository would sit next to
-  `MatchResultRepository` as another persistence port.
+- **Matchmaking.** A matchmaking queue would be a second producer of rooms next to `createRoom`;
+  with accounts and ratings in place, it could pair players by rating and create the room as
+  ranked.
