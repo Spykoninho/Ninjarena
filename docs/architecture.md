@@ -255,7 +255,10 @@ Two bricks do not resolve immediately:
   arrived — an area hits every affectable player within its radius at its position, applying
   terrain rules there; a trigger just executes its referenced effect list — deletes it, and emits
   `zoneTriggered`. This is what lets the client draw a filling telegraph on the ground for the
-  whole delay: the pending zone is already in the snapshot.
+  whole delay: the pending zone is already in the snapshot. An `area` with a `triggerRadius > 0`
+  is a **mine**: the same pending zone also fires early, on the tick a player it can affect (so
+  never its owner, and never an ally unless friendly fire is on) comes within that radius of its
+  centre — `explosive-mine` arms one under the caster for ten seconds.
 - **`spawnEntity` (wall)** creates an `ObstacleState` in `world.obstacles` instead: a convex quad
   built perpendicular to the caster's aim at `offset` units, and emits `obstacleSpawned`. It blocks
   players and projectiles of every team, including its owner — movement and projectile resolution

@@ -150,6 +150,15 @@ the tests that pin the formulas.
 - **Practice** — `practice` is the one room setting that reaches `MatchConfig` without
   changing a number: it only disables the round timer, so a solo test run lasts until the player
   leaves.
+- **Tournaments** — `tournamentSize` (4 or 8, `TOURNAMENT_SIZES` in
+  `packages/core/src/tournament/bracket.ts`) is the whole room; every duel of the bracket is played
+  with the room's `bestOf`, `roundDurationMs` and map, as a `ffa-2x1` match config
+  (`matchFormatOf`).
+- **The ranked queue** — the accepted rating gap (50 points, plus 10 per second waited) and the
+  pairing cadence are the constants at the top of `packages/server/src/matchmaking/matchmaker.ts`;
+  the duel a pair lands in is `QUEUE_ROOM_SETTINGS` in `packages/server/src/server.ts`.
+- **Mines** — an `area` with `triggerRadius` fires when an enemy comes that close, or at
+  `delayMs` otherwise; both are plain fields of the technique's file.
 - **The ranking** — the starting rating, the K factor, the spread and the tier thresholds are
   the constants at the top of `packages/core/src/ranking/rating.ts`; `rating.test.ts` pins the
   formula. Changing a threshold re-tiers every account on the next read, since a tier is derived

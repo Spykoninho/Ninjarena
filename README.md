@@ -22,7 +22,7 @@ What works today:
 
 - the full simulation: movement, collisions, seven-attribute stat builds, chakra, a recursive
   effect-tree ability system with telegraphs, projectiles, melee, dashes with contact effects,
-  teleports, delayed zones, spawned walls, shields, statuses, rounds and match,
+  teleports, delayed zones, proximity mines, spawned walls, shields, statuses, rounds and match,
 - private rooms joined by a 6-character code, with an optional password, a host-editable lobby
   (mode, teams, map, build points, best-of, round length, friendly fire), team switching, and a
   loadout panel the server validates on every change, reflected back as a per-player verdict,
@@ -34,7 +34,17 @@ What works today:
   practice room behind the editor, equips and starts alone, and **Retour à l'éditeur** (or
   Escape) brings the map back exactly where it was — see [docs/map-format.md](docs/map-format.md),
 - a **practice** room setting (`Entraînement`): the host can start alone and the round has no
-  timer, for trying a build or a map without an opponent,
+  timer, for trying a build or a map without an opponent; **Bac à sable** on the home menu opens
+  one and starts it without showing the lobby,
+- a **tournament** room setting: 4 or 8 players, drawn into a single-elimination bracket at kick-off,
+  play their duels one after the other while everyone else in the room watches the current one;
+  the bracket is a lobby tab and a page of the in-game Escape menu — see
+  [docs/rooms.md](docs/rooms.md#tournaments),
+- a **ranked queue** (`Partie classée` on the home menu): logged-in players are paired by rating,
+  with a gap that widens as they wait, into a locked ranked duel room that starts by itself once
+  both are ready — see [docs/rooms.md](docs/rooms.md#the-ranked-queue),
+- an in-game **Escape menu**: resume, quit the match, read the tournament bracket, and rebind the
+  five attack keys (kept in `localStorage`; the lobby's character tab shows the current ones),
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
@@ -57,7 +67,7 @@ What is deliberately missing or simplified:
 
 - hand-painted sprite sheets (every texture is generated at load from pixel recipes) and actual
   sound assets (the audio is procedural WebAudio tones, not recordings),
-- matchmaking, bots, spectating a room already in progress, kicking a player, editor undo/redo,
+- bots, spectating a room already in progress from outside it, kicking a player, editor undo/redo,
   map thumbnails, and password recovery (an account is a name and a password, nothing else),
 - snapshot filtering: every session receives the same unfiltered `WorldState`, so an `INVISIBLE`
   status is a rendering hint the client honours, not a secret,
@@ -151,28 +161,40 @@ side by side. Open two browser tabs:
 
 The game's UI is in French. Open two browser tabs:
 
-- <http://localhost:5173/?name=a>, pick **Créer une partie** and press **Créer**. The lobby
-  header shows the room code (for example `9VHJ3Z`) and a **Copier le lien d'invitation** button
-  that copies `?room=9VHJ3Z` appended to the current page.
+- <http://localhost:5173/?name=a>, pick **Créer une partie**, then **Partie personnalisée** and
+  press **Créer**. The lobby header shows the room code (for example `9VHJ3Z`) and a **Copier le
+  lien d'invitation** button that copies `?room=9VHJ3Z` appended to the current page.
 - <http://localhost:5173/?name=b&room=9VHJ3Z> (or paste the copied link, or pick **Rejoindre une
   partie** and type the code from the home menu) — the code prefills the join form and the second
   tab joins the same room.
+
+**Créer une partie** offers four kinds. **Bac à sable** opens a practice room and starts it alone,
+without a lobby, to walk around a map and try a build; Escape then **Quitter le bac à sable**
+comes back to the menu. **Tournoi** asks for 4 or 8 players and opens a room whose code the others
+join; once every seat is taken and everyone is ready, the host launches it and the bracket is
+drawn. **Partie classée** joins the ranked queue (an account is required): the home screen shows
+how many players are waiting, with **Annuler**, until the server pairs two close ratings into a
+locked ranked room that starts as soon as both are ready. **Partie personnalisée** is the plain
+room with every setting in the host's hands.
 
 The home menu also carries the account bar: **Se connecter** opens a form where a name and a
 password either log into an existing account or, with **Créer un compte**, create one. A logged-in
 player keeps that name in every room and shows a rank badge next to it; **Classement** lists every
 account by rating. Playing as a guest (no account) is still fine for unranked rooms.
 
-Both tabs now show the lobby, split in three tabs. **Salon** is the stage: one column per team,
+Both tabs now show the lobby, split in tabs. **Salon** is the stage: one column per team,
 each player drawn as their ninja with their name, a rank badge if they are logged in, a HÔTE badge,
 a PRÊT / PAS PRÊT pill and the icons of the attacks they picked; open seats carry a **Rejoindre
 cette équipe** button. **Réglages de la partie** holds the host-only form (mode, map, teams,
-players per team, build points, rounds, round duration, friendly fire, ranked); with **Partie
-classée** ticked, a table under the form shows every player's rating and what a win earns and a
-loss costs them. **Personnage** is where each player distributes
+players per team, build points, rounds, round duration, friendly fire, ranked, tournament); with
+**Partie classée** ticked, a table under the form shows every player's rating and what a win earns
+and a loss costs them, and with **Tournoi** ticked the format rows fold away behind the bracket
+size. **Personnage** is where each player distributes
 the stat points and builds their kit: the five slots show the key each attack is bound to (basic
-attack, dash, then technique 1, 2 and 3), and picking a slot lists the techniques as cards — hover
-one to read what it does, its damage, chakra cost, cooldown and cast time. Press **Prêt** at the
+attack, dash, then technique 1, 2 and 3 — **Modifier mes touches** under the kit rebinds them),
+and picking a slot lists the techniques as cards — hover
+one to read what it does, its damage, chakra cost, cooldown and cast time. A **Tournoi** tab
+appears in a tournament room and shows the bracket, live match highlighted. Press **Prêt** at the
 bottom — the server validates the loadout and reflects the verdict back before Prêt can be pressed
 with an invalid one. Once both are ready, the host's **Lancer la partie** button lights up (it is
 greyed out with the reason otherwise — see `startBlockers` in [docs/rooms.md](docs/rooms.md)).
@@ -184,9 +206,9 @@ not ready, a few seconds after the last round ends.
 Add `?editor` (or pick **Éditeur de cartes** on the home menu) to open the map editor — see
 [docs/map-format.md](docs/map-format.md). Its **Tester** button plays the map alone: the client
 saves it, opens a practice room without showing the lobby, equips the current loadout, readies up
-and starts; **Retour à l'éditeur** in the HUD (or Escape) leaves the room and lands back on the
-map. If the room refuses to start (an invalid map, a rejected loadout), the lobby appears instead
-so the reason can be read.
+and starts; **Retour à l'éditeur** in the HUD (or Escape, then the same button in the pause menu)
+leaves the room and lands back on the map. If the room refuses to start (an invalid map, a
+rejected loadout), the lobby appears instead so the reason can be read.
 
 To play over a LAN, both servers have to leave localhost: the game server binds where
 `NINJARENA_HOST` says, and Vite needs `--host` to serve the page to another machine.
@@ -390,14 +412,22 @@ are the same keys without any setting.
 | Slot 4 | R                    | Technique 3 (chosen at setup)  |
 | —      | Tab                  | Cycle the spectator target     |
 | —      | F                    | Toggle fullscreen              |
+| —      | Escape               | Pause menu                     |
+
+The five attack slots can be rebound from the pause menu (**Touches**) or the lobby's character
+tab: click a slot, press a key or a mouse button, and the new binding is saved in the browser; a
+key already used by another slot swaps places with it. Escape opens the pause menu in any match:
+**Reprendre**, **Tournoi** (the bracket, in a tournament room), **Touches**, and **Quitter la
+partie** — which leaves the room, forfeiting the match if it is still running.
 
 Every ninja shares the same basic attack (Kunai Strike, a free melee arc) and dash (Shadow Step,
 which walls still stop); the three technique slots are whatever the player picked on the setup
 panel, each with its own chakra cost, cooldown and telegraph. Chakra regenerates over time and
 gates everything but the basic attack; a technique whose cost is not available is rejected.
 Holding a button does not repeat the cast: only the press matters. Tab only does something once
-the local player is dead and the match is `IN_ROUND`: it cycles the camera through living
-teammates (or every living player in a free-for-all mode). F toggles fullscreen from any screen
+the local player is dead and the match is `IN_ROUND` — or from the start, for a tournament
+spectator: it cycles the camera through living teammates (or every living player in a free-for-all
+mode). F toggles fullscreen from any screen
 (except while typing in a field), and the HUD's gear menu has the same button; during a match the
 system pointer is replaced by a pixel reticle drawn at load like the rest of the art.
 
@@ -417,7 +447,8 @@ Planned next, in no particular order:
 - painted sprite sheets and recorded audio, replacing the generated pixel recipes and procedural
   tones,
 - map ownership (a stored map is still overwritable by anyone who knows its id, even though
-  accounts exist now), matchmaking, spectating a room already in progress,
+  accounts exist now), spectating a room already in progress from outside it, ranked queues for
+  team formats (the queue only makes duels today),
 - a persistence backend behind `MatchResultRepository`,
 - more techniques, more characters, and bots.
 

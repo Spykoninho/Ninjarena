@@ -42,26 +42,28 @@ match in progress, and no spectating from the lobby.
 Every message below requires a prior `hello` (`NOT_INTRODUCED` otherwise); the room-scoped ones
 also require the session to be in a room (`NOT_IN_ROOM` otherwise).
 
-| Message                               | Preconditions                                                                                                                        | Errors it can produce                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected. A logged-in session keeps its account name.              | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                                        |
-| `register { name, password }`         | Introduced; not in a room; not logged in; name free (case-insensitively).                                                            | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `NAME_TAKEN`, `SERVER_ERROR`                                |
-| `login { name, password }`            | Introduced; not in a room; not logged in; account exists, password matches, account not held by another live session.                | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `BAD_CREDENTIALS`, `SERVER_ERROR`                           |
-| `logout`                              | Introduced; not in a room.                                                                                                           | `ALREADY_IN_ROOM` (replies `accountState { account: null }` otherwise)                              |
-| `getLeaderboard`                      | Introduced.                                                                                                                          | `SERVER_ERROR` (replies `leaderboard { entries }`)                                                  |
-| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`; logged in if `settings.ranked`.                                                      | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`, `NOT_LOGGED_IN`                            |
-| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches; logged in if the room is ranked.              | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD`, `NOT_LOGGED_IN` |
-| `leaveRoom`                           | In a room.                                                                                                                           | — (always succeeds; replies `roomLeft`)                                                             |
-| `updateSettings { patch }`            | Host; status `WAITING`; patch produces valid settings that still fit the current roster.                                             | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                                      |
-| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                         | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
-| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                            | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
-| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                  | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                                     |
-| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                     | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                                          |
-| `listMaps`                            | Introduced.                                                                                                                          | `SERVER_ERROR`                                                                                      |
-| `getMap { id }`                       | Introduced.                                                                                                                          | `MAP_NOT_FOUND`, `SERVER_ERROR`                                                                     |
-| `saveMap { document }`                | Introduced.                                                                                                                          | `INVALID_MAP`, `MAP_STORE_FULL`, `SERVER_ERROR`                                                     |
-| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME/FINISHED, until the room resets to WAITING). | — (silently ignored outside a match)                                                                |
-| `ping { sentAt }`                     | Introduced.                                                                                                                          | —                                                                                                   |
+| Message                               | Preconditions                                                                                                                                    | Errors it can produce                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`     | Not in a room to take effect as a rename; wrong version is always rejected. A logged-in session keeps its account name.                          | `PROTOCOL_VERSION`, `ALREADY_IN_ROOM` (sent while in a room)                                        |
+| `register { name, password }`         | Introduced; not in a room; not logged in; name free (case-insensitively).                                                                        | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `NAME_TAKEN`, `SERVER_ERROR`                                |
+| `login { name, password }`            | Introduced; not in a room; not logged in; account exists, password matches, account not held by another live session.                            | `ALREADY_IN_ROOM`, `ALREADY_LOGGED_IN`, `BAD_CREDENTIALS`, `SERVER_ERROR`                           |
+| `logout`                              | Introduced; not in a room.                                                                                                                       | `ALREADY_IN_ROOM` (replies `accountState { account: null }` otherwise)                              |
+| `getLeaderboard`                      | Introduced.                                                                                                                                      | `SERVER_ERROR` (replies `leaderboard { entries }`)                                                  |
+| `createRoom { password?, settings? }` | Not already in a room; server under `maxRooms`; logged in if `settings.ranked`. Leaves the ranked queue.                                         | `ALREADY_IN_ROOM`, `TOO_MANY_ROOMS`, `INVALID_SETTINGS`, `NOT_LOGGED_IN`                            |
+| `joinRoom { code, password? }`        | Not already in a room; room exists; status `WAITING`; room not full; password matches; logged in if the room is ranked. Leaves the ranked queue. | `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_IN_GAME`, `ROOM_FULL`, `WRONG_PASSWORD`, `NOT_LOGGED_IN` |
+| `joinQueue`                           | Introduced; logged in; not in a room. Repeating it keeps the ticket's place.                                                                     | `NOT_LOGGED_IN`, `ALREADY_IN_ROOM` (replies `queueState { queued: true, size }`)                    |
+| `leaveQueue`                          | Introduced.                                                                                                                                      | — (always replies `queueState { queued: false, size }`)                                             |
+| `leaveRoom`                           | In a room.                                                                                                                                       | — (always succeeds; replies `roomLeft`)                                                             |
+| `updateSettings { patch }`            | Host; status `WAITING`; room not `locked`; patch produces valid settings that still fit the current roster.                                      | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                                      |
+| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                                     | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
+| `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                                        | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                   |
+| `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                              | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                                     |
+| `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                                 | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                                          |
+| `listMaps`                            | Introduced.                                                                                                                                      | `SERVER_ERROR`                                                                                      |
+| `getMap { id }`                       | Introduced.                                                                                                                                      | `MAP_NOT_FOUND`, `SERVER_ERROR`                                                                     |
+| `saveMap { document }`                | Introduced.                                                                                                                                      | `INVALID_MAP`, `MAP_STORE_FULL`, `SERVER_ERROR`                                                     |
+| `input { seq, input }`                | In a room; only has an effect while the session has a live `playerId` (STARTING/IN_GAME/FINISHED, until the room resets to WAITING).             | — (silently ignored outside a match)                                                                |
+| `ping { sentAt }`                     | Introduced.                                                                                                                                      | —                                                                                                   |
 
 A `joinRoom` or `createRoom` from a session already in a room does not move it — `ALREADY_IN_ROOM`
 either way. Repeating `join`/`leave` from the same session is idempotent: `Room.join` is a no-op if
@@ -91,7 +93,9 @@ client uses to grey out its Start button and explain why:
   `MAP_MISSING` (the room's `mapId` did not resolve to a document), `MAP_INVALID` (the map resolved
   but `validateMapDocument` plus `spawnIssues` for the current settings report at least one issue),
   `RANKED_NEEDS_ACCOUNT` (the room is ranked and at least one seated player is a guest — possible
-  when the host ticks `ranked` after guests joined, since a guest cannot join a ranked room).
+  when the host ticks `ranked` after guests joined, since a guest cannot join a ranked room),
+  `TOURNAMENT_NOT_FULL` (a tournament room with fewer players than `tournamentSize`: a bracket with
+  empty seats would be played by walkovers).
 
 ## Host migration and empty rooms
 
@@ -141,7 +145,55 @@ creates a room with `{ mapId, practice: true }` and drives it from the `roomStat
 without mounting the lobby — `setLoadout` with the panel's current loadout, `setReady`, then
 `startMatch` once `startBlockers` is empty (`MAP_MISSING` is waited out while the map loads; any
 other blocker, or a server error, shows the lobby instead). Leaving the match (`leaveRoom`, from
-the HUD's exit button or Escape) returns to the editor with the document intact.
+the HUD's exit button or the pause menu on Escape) returns to the editor with the document intact.
+The home menu's **Bac à sable** drives the very same run from a `createRoom { practice: true }`
+on the default map, the home screen staying up instead of the editor, and comes back to it on
+exit.
+
+## Tournaments
+
+`tournament` is a room setting (with `tournamentSize`, 4 or 8) that `applySettingsPatch` normalises
+like free-for-all: the room becomes `mode: 'ffa'`, one player per team, `teamCount =
+tournamentSize`, so the room holds exactly the bracket. It is neither ranked nor a practice room.
+Every match of a tournament is a duel: `matchFormatOf(settings)` yields `ffa-2x1` for
+`toMatchConfig` and for the spawn check, whatever the room's own size.
+
+On `startMatch` the room draws the bracket (`createBracket` in `packages/core/src/tournament/`,
+seats shuffled with the injected `randomInt`, names frozen for display) and opens its first match.
+Only the two players of the current match are added to the simulation and get `matchStarted` with
+`spectator: false`; every other player in the room gets `matchStarted { spectator: true,
+playerId: <their own id> }` — a player id that does not exist in the world — and receives the
+same snapshots, since `sessionsInMatch()` is now the whole roster. The client draws the match, lets
+Tab cycle the camera through the fighters from the countdown on, and sends no inputs.
+
+When a duel ends (`matchEnded`, or a forfeit through the same `finish()`), the winner's team id —
+their session id, in free-for-all — is fed into the bracket (`resolveMatch`), the result and the
+summary go out as for any match, and after `postMatchTicks` the room opens the **next** match
+straight away instead of returning to the lobby: `discardMatch()` clears the seated players'
+`playerId` and inputs, `ready` stays as it was, and a new `matchStarted` reaches everyone. A
+player who leaves is withdrawn from every match they have not played yet (`withdrawPlayer`); a
+match left with one player is a walkover resolved on the spot when its turn comes, and a match
+left with none passes an empty seat forward. Once the final is played (or walked over) the room
+goes back to `WAITING` as usual, everyone not ready; the finished bracket stays in
+`RoomView.tournament` until the settings change or the next start, so the lobby can still show it.
+
+`RoomView.tournament` is `{ size, rounds: TournamentMatchView[][], championId }`, one array per
+round from the first to the final, each match `{ players: [seat, seat], winnerId, status:
+'pending' | 'live' | 'done' }` with a seat `{ id, name }` or `null`.
+
+## The ranked queue
+
+`joinQueue` puts a logged-in session in the `Matchmaker` (`packages/server/src/matchmaking/`), a
+second producer of rooms next to `createRoom`. Every queued session receives `queueState { queued:
+true, size }` each time the queue changes size. Once a second, on the server's tick loop, the
+tickets are sorted by rating and adjacent pairs whose gap is at most `50 + 10 × seconds waited`
+(by the one who has waited longer) are matched. A pair leaves the queue and lands in a room created
+with `QUEUE_ROOM_SETTINGS` (`ranked`, teams, 2 × 1, best of 3, the default map) and `locked: true`:
+the first of the two is the host in name only, `updateSettings` is refused with `WRONG_STATUS`,
+and `Room.tick()` starts the match by itself as soon as `startBlockers()` is empty — which is what
+`RoomManager.tick` now ticking every room, match or not, is for. Both players get `queueState {
+queued: false }` then the `roomState` of their room. Leaving the queue (`leaveQueue`), opening or
+joining a room, logging out or disconnecting drops the ticket silently.
 
 ## Accounts and ranked play
 
@@ -185,17 +237,18 @@ neither a win nor a loss.
 `RoomSettings` becomes a `MatchConfig`:
 
 ```ts
-id: `${mode}-${teamCount}x${playersPerTeam}`
+id: `${mode}-${teamCount}x${playersPerTeam}`   // from matchFormatOf: ffa-2x1 for a tournament duel
 roundsToWin: Math.floor(bestOf / 2) + 1        // best of 1/3/5/7 -> 1/2/3/4
 countdownMs, roundEndDelayMs: from MatchTiming  // fixed, not a room setting: 3000ms each
 buildPoints, roundDurationMs, friendlyFire: copied as-is
-mode, teamCount, playersPerTeam: copied as-is
-ranked: a lobby-only setting, not part of MatchConfig
+mode, teamCount, playersPerTeam: copied as-is, except in a tournament (a duel)
+ranked, tournament, tournamentSize: lobby-only settings, not part of MatchConfig
 ```
 
 `applySettingsPatch` normalises free-for-all before validating: whatever `playersPerTeam` a patch
 requests, `mode: 'ffa'` forces it back to `1`, so a free-for-all room is always exactly "one player,
-one team" even mid-edit. A patch that would make `teamCount × playersPerTeam` exceed
+one team" even mid-edit; `tournament: true` goes further and also sets `mode: 'ffa'` and
+`teamCount: tournamentSize`. A patch that would make `teamCount × playersPerTeam` exceed
 `MAX_ROOM_PLAYERS` (16) or drop the cap below the current roster size is rejected with
 `INVALID_SETTINGS` before anything changes; changing `mapId` schedules an async reload rather than
 blocking the reply, and changing any other field revalidates every stored loadout in place
@@ -225,6 +278,5 @@ case-insensitively (`normalizeRoomCode` upper-cases both sides).
   place every session's outgoing snapshot is built; a per-session visibility filter (already
   informed client-side by `isVisibleTo` as a rendering hint) would slot in there without changing
   the `snapshot` message shape.
-- **Matchmaking.** A matchmaking queue would be a second producer of rooms next to `createRoom`;
-  with accounts and ratings in place, it could pair players by rating and create the room as
-  ranked.
+- **Matchmaking for team formats.** The `Matchmaker` only makes duels; pairing four or more
+  tickets into a `2 × 2` room would reuse the same locked, self-starting room.
