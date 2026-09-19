@@ -85,6 +85,7 @@ const dash = abilityOption(
 );
 const loadoutPanel = new LoadoutPanel(
   rules,
+  content.characters.get(DEFAULT_CHARACTER_ID).baseStats,
   techniques,
   basics,
   dash,

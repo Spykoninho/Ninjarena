@@ -11,7 +11,8 @@ import type { ClientConfig } from '../config/clientConfig';
 import type { InputBindings } from '../input/bindings';
 import { bindingLabel } from '../input/bindings';
 import { abilityFamily } from '../rendering/art/abilityVisual';
-import { abilityFacts, describeAbility } from './abilityText';
+import { abilityFacts, damageProfile, describeAbility } from './abilityText';
+import type { DamageEntry } from './abilityText';
 
 // L'état que le panneau du salon manipule: le nom vit sur l'écran d'accueil.
 export interface LoadoutState {
@@ -29,6 +30,7 @@ export interface AbilityOption {
   cooldownMs: number;
   description: string;
   facts: string;
+  damage: DamageEntry[];
 }
 
 export type BasicOption = AbilityOption;
@@ -155,6 +157,7 @@ export function abilityOption(ability: AbilityDefinition): AbilityOption {
     cooldownMs: ability.cooldownMs,
     description: describeAbility(ability),
     facts: abilityFacts(ability),
+    damage: damageProfile(ability),
   };
 }
 

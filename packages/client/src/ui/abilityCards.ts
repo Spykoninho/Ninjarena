@@ -1,4 +1,6 @@
 import { iconCanvas } from '../rendering/art/spriteArt';
+import { BASE_MULTIPLIERS, damageDetail, damageTotal } from './abilityText';
+import type { DamageMultipliers } from './abilityText';
 import type { AbilityOption } from './loadoutModel';
 
 const ICON_SIZE = 24;
@@ -9,6 +11,10 @@ export interface AbilityCard {
   key: HTMLElement;
   slot: HTMLElement;
   tipKey: HTMLElement;
+  meta: HTMLElement;
+  hit: HTMLElement;
+  damage: HTMLElement;
+  option: AbilityOption;
 }
 
 // Les icônes sont dessinées une fois par famille puis recopiées: chaque carte a son propre canvas.
@@ -44,14 +50,33 @@ export function abilityCard(
   const slot = element('span', 'ability-card-slot', frame);
   slot.hidden = true;
   element('div', 'ability-card-name', root).textContent = option.name;
-  element('div', 'ability-card-meta', root).textContent = meta(option);
-  const tipKey = abilityTip(option, key, root);
+  const hit = element('div', 'ability-card-hit', root);
+  const meta = element('div', 'ability-card-meta', root);
+  const { tipKey, damage } = abilityTip(option, key, root);
   parent.appendChild(root);
-  return { root, key: keyBadge, slot, tipKey };
+  const card: AbilityCard = { root, key: keyBadge, slot, tipKey, meta, hit, damage, option };
+  updateCardNumbers(card, BASE_MULTIPLIERS);
+  return card;
+}
+
+// Les dégâts affichés suivent la répartition: la carte se relit à chaque point déplacé.
+export function updateCardNumbers(card: AbilityCard, multipliers: DamageMultipliers): void {
+  const { option } = card;
+  const total = damageTotal(option.damage, multipliers);
+  const cooldown = `${Math.round(option.cooldownMs / 100) / 10} s`;
+  card.hit.textContent = option.damage.length > 0 ? `${total} dégâts` : '—';
+  card.meta.textContent =
+    option.chakraCost > 0 ? `${option.chakraCost} chakra · ${cooldown}` : cooldown;
+  const detail = damageDetail(option.damage, multipliers);
+  card.damage.textContent = detail.length > 0 ? `Dégâts : ${detail}` : 'Ne fait pas de dégâts';
 }
 
 // La bulle est un enfant de la carte: le survol et le focus clavier la révèlent sans script.
-function abilityTip(option: AbilityOption, key: string, parent: HTMLElement): HTMLElement {
+function abilityTip(
+  option: AbilityOption,
+  key: string,
+  parent: HTMLElement,
+): { tipKey: HTMLElement; damage: HTMLElement } {
   const tip = element('div', 'ability-tip', parent);
   tip.setAttribute('role', 'tooltip');
   const title = element('div', 'ability-tip-title', tip);
@@ -60,8 +85,9 @@ function abilityTip(option: AbilityOption, key: string, parent: HTMLElement): HT
   tipKey.textContent = key;
   tipKey.hidden = key.length === 0;
   element('div', 'ability-tip-text', tip).textContent = option.description;
+  const damage = element('div', 'ability-tip-damage', tip);
   element('div', 'ability-tip-facts', tip).textContent = option.facts;
-  return tipKey;
+  return { tipKey, damage };
 }
 
 function clickable(onClick: () => void): HTMLButtonElement {
@@ -69,11 +95,6 @@ function clickable(onClick: () => void): HTMLButtonElement {
   button.type = 'button';
   button.addEventListener('click', onClick);
   return button;
-}
-
-function meta(option: AbilityOption): string {
-  const cooldown = `${Math.round(option.cooldownMs / 100) / 10}s`;
-  return option.chakraCost > 0 ? `${option.chakraCost} chakra · ${cooldown}` : cooldown;
 }
 
 function element(tag: string, className: string, parent: HTMLElement): HTMLElement {

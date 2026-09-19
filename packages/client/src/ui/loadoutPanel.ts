@@ -1,13 +1,21 @@
-import type { AttributeId, Loadout, StatRulesDefinition } from '@ninjarena/core';
-import { ATTRIBUTE_IDS } from '@ninjarena/core';
-import { abilityCard } from './abilityCards';
+import type {
+  AttributeId,
+  CharacterBaseStats,
+  Loadout,
+  StatRulesDefinition,
+} from '@ninjarena/core';
+import { ATTRIBUTE_IDS, computeStats } from '@ninjarena/core';
+import { abilityCard, updateCardNumbers } from './abilityCards';
 import type { AbilityCard } from './abilityCards';
+import type { DamageMultipliers } from './abilityText';
+import { attributeEffects, attributeHints } from './buildText';
 import { loadoutErrors, pointsLeft, setAttribute, setTechnique, toLoadout } from './loadoutModel';
 import type { AbilityOption, LoadoutState, SlotBindings } from './loadoutModel';
 
 interface AttributeRow {
   input: HTMLInputElement;
   valueLabel: HTMLElement;
+  effect: HTMLElement;
 }
 
 // Un emplacement du kit: l'attaque de base, l'esquive imposée par le personnage, ou une technique.
@@ -32,18 +40,10 @@ const ATTRIBUTE_LABELS: Record<AttributeId, string> = {
   defense: 'Défense',
 };
 
-const ATTRIBUTE_HINTS: Record<AttributeId, string> = {
-  vitality: 'Plus de points de vie',
-  strength: 'Attaques de base plus fortes',
-  power: 'Techniques plus fortes',
-  speed: 'Déplacement plus rapide',
-  maxChakra: 'Plus de chakra',
-  chakraRegen: 'Chakra régénéré plus vite',
-  defense: 'Moins de dégâts subis',
-};
-
 export class LoadoutPanel {
   private readonly rules: StatRulesDefinition;
+  private readonly base: CharacterBaseStats;
+  private readonly hints: Record<AttributeId, string>;
   private readonly techniques: AbilityOption[];
   private readonly basics: AbilityOption[];
   private readonly keys: SlotBindings;
@@ -63,12 +63,15 @@ export class LoadoutPanel {
 
   constructor(
     rules: StatRulesDefinition,
+    base: CharacterBaseStats,
     techniques: AbilityOption[],
     basics: AbilityOption[],
     dash: AbilityOption | null,
     keys: SlotBindings,
   ) {
     this.rules = rules;
+    this.base = base;
+    this.hints = attributeHints(rules);
     this.techniques = techniques;
     this.basics = basics;
     this.keys = keys;
@@ -140,8 +143,9 @@ export class LoadoutPanel {
   private buildAttributeRow(parent: HTMLElement, id: AttributeId): AttributeRow {
     const range = this.rules.attributes[id];
     const row = element('label', 'loadout-attribute', parent);
-    row.title = ATTRIBUTE_HINTS[id];
-    element('span', 'loadout-attribute-name', row).textContent = ATTRIBUTE_LABELS[id];
+    const head = element('span', 'loadout-attribute-head', row);
+    element('span', 'loadout-attribute-name', head).textContent = ATTRIBUTE_LABELS[id];
+    element('span', 'loadout-attribute-hint', head).textContent = this.hints[id];
     const input = document.createElement('input');
     input.type = 'range';
     input.min = String(range.min);
@@ -149,10 +153,11 @@ export class LoadoutPanel {
     input.step = '1';
     row.appendChild(input);
     const valueLabel = element('span', 'loadout-attribute-value', row);
+    const effect = element('span', 'loadout-attribute-effect', row);
     input.addEventListener('input', () => {
       this.onAttributeChanged(id, input, valueLabel);
     });
-    return { input, valueLabel };
+    return { input, valueLabel, effect };
   }
 
   private buildSlot(parent: HTMLElement, id: SlotId, label: string, key: string): Slot {
@@ -175,7 +180,7 @@ export class LoadoutPanel {
   }
 
   private fillSlot(slot: Slot, option: AbilityOption | null): void {
-    if (slot.card?.root.dataset.id === option?.id) return;
+    if (slot.card?.option.id === option?.id) return;
     slot.holder.replaceChildren();
     slot.card = null;
     if (option === null) {
@@ -199,6 +204,7 @@ export class LoadoutPanel {
       this.pickerCards.set(option.id, card);
     }
     this.syncPicker();
+    if (this.state !== null) this.refreshNumbers(this.state);
   }
 
   private onPicked(id: string): void {
@@ -281,10 +287,28 @@ export class LoadoutPanel {
     const state = this.state;
     if (state === null) return;
     this.pointsLabel.textContent = `${pointsLeft(state, this.budget)} point(s) sur ${this.budget} à répartir`;
+    this.refreshNumbers(state);
     this.errorList.replaceChildren();
     for (const message of loadoutErrors(state, this.rules, this.budget, this.techniques)) {
       element('li', 'loadout-error', this.errorList).textContent = message;
     }
+  }
+
+  // Les chiffres des cartes et des lignes de stats découlent tous de la même répartition.
+  private refreshNumbers(state: LoadoutState): void {
+    const effects = attributeEffects(state.build, this.base, this.rules);
+    for (const id of ATTRIBUTE_IDS) {
+      const row = this.attributeRows[id];
+      if (row !== undefined) row.effect.textContent = effects[id];
+    }
+    const stats = computeStats(this.base, state.build, this.rules);
+    const multipliers: DamageMultipliers = {
+      physical: stats.physicalDamageMultiplier,
+      technique: stats.techniqueDamageMultiplier,
+    };
+    for (const slot of this.slots)
+      if (slot.card !== null) updateCardNumbers(slot.card, multipliers);
+    for (const card of this.pickerCards.values()) updateCardNumbers(card, multipliers);
   }
 }
 

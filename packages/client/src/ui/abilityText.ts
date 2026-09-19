@@ -13,6 +13,93 @@ const STATUS_NAMES: Record<StatusEffectType, string> = {
   SHIELDED: 'protège',
 };
 
+export type DamageContext = 'hit' | 'area' | 'contact' | 'delayed';
+
+export interface DamageEntry {
+  amount: number;
+  scaling: DamageScaling;
+  context: DamageContext;
+}
+
+export interface DamageMultipliers {
+  physical: number;
+  technique: number;
+}
+
+const CONTEXT_LABELS: Record<DamageContext, string> = {
+  hit: 'à l’impact',
+  area: 'en zone',
+  contact: 'au passage',
+  delayed: 'à retardement',
+};
+
+export const BASE_MULTIPLIERS: DamageMultipliers = { physical: 1, technique: 1 };
+
+// Les dégâts d'un seul coup réussi: la fin de course d'un projectile ne compte que s'il ne touche rien.
+export function damageProfile(ability: AbilityDefinition): DamageEntry[] {
+  const entries: DamageEntry[] = [];
+  for (const effect of ability.effects) collectDamage(effect, 'hit', entries);
+  return entries;
+}
+
+export function damageTotal(entries: DamageEntry[], multipliers: DamageMultipliers): number {
+  const total = entries.reduce(
+    (sum, entry) => sum + entry.amount * multiplierOf(entry, multipliers),
+    0,
+  );
+  return Math.round(total * 10) / 10;
+}
+
+// `34 (22 à l’impact + 12 en zone)`: le total scellé par la répartition, puis d'où il vient.
+export function damageDetail(entries: DamageEntry[], multipliers: DamageMultipliers): string {
+  if (entries.length === 0) return '';
+  const total = damageTotal(entries, multipliers);
+  if (entries.length === 1) return String(total);
+  const parts = entries.map(
+    (entry) =>
+      `${tenth(entry.amount * multiplierOf(entry, multipliers))} ${CONTEXT_LABELS[entry.context]}`,
+  );
+  return `${total} (${parts.join(' + ')})`;
+}
+
+function tenth(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
+function multiplierOf(entry: DamageEntry, multipliers: DamageMultipliers): number {
+  if (entry.scaling === 'physical') return multipliers.physical;
+  return entry.scaling === 'technique' ? multipliers.technique : 1;
+}
+
+function collectDamage(effect: Effect, context: DamageContext, entries: DamageEntry[]): void {
+  switch (effect.type) {
+    case 'damage':
+      entries.push({ amount: effect.amount, scaling: effect.scaling, context });
+      return;
+    case 'projectile': {
+      const before = entries.length;
+      for (const child of effect.onHit) collectDamage(child, 'hit', entries);
+      if (entries.length === before)
+        for (const child of effect.onExpire) collectDamage(child, 'area', entries);
+      return;
+    }
+    case 'area':
+      for (const child of effect.onHit) collectDamage(child, 'area', entries);
+      return;
+    case 'melee':
+      for (const child of effect.onHit) collectDamage(child, 'hit', entries);
+      return;
+    case 'dash':
+      for (const child of effect.onContact) collectDamage(child, 'contact', entries);
+      return;
+    case 'delayedTrigger':
+      for (const child of effect.effects) collectDamage(child, 'delayed', entries);
+      return;
+    default:
+      return;
+  }
+}
+
 // Un texte rédigé dans le fichier de la technique prime; sinon l'arbre d'effets se raconte lui-même.
 export function describeAbility(ability: AbilityDefinition): string {
   if (ability.description !== undefined) return ability.description;

@@ -342,10 +342,14 @@ screen mounts its own element.
 - The pre-lobby build screen from the vertical slice becomes `ui/loadoutModel.ts` /
   `ui/loadoutPanel.ts`: the stat sliders next to a kit of five slots (basic attack, the
   character's dash, technique 1 to 3), each labelled with the key it is bound to
-  (`slotBindings` over `DEFAULT_BINDINGS`). Picking a slot lists the matching abilities as cards
-  (`ui/abilityCards.ts`: family icon, name, cost and cooldown, a hover bubble with the
-  description from the ability file or the effects tree spelled out by `ui/abilityText.ts`, and
-  the key the slot would give it); picking a card fills the slot and moves on to the next one. The
+  (`slotBindings` over `DEFAULT_BINDINGS`). Every slider says what a point buys (read from the
+  stat rules by `ui/buildText.ts`) and what the current build gives in game numbers: health,
+  chakra, the damage bonuses, the speed bonus and the damage reduction of the defense. Picking a
+  slot lists the matching abilities as cards (`ui/abilityCards.ts`: family icon, name, the damage
+  of one landed hit scaled by the current build, cost and cooldown, a hover bubble with the
+  description from the ability file or the effects tree spelled out by `ui/abilityText.ts`, the
+  damage breakdown and the key the slot would give it); picking a card fills the slot and moves on
+  to the next one. The
   budget comes from the room settings. The client sends `setLoadout` on lobby entry and on every
   change (debounced), so players never need an Apply button; the server's verdict is reflected as
   `loadoutValid`, styled with a visible outline around the kit when invalid.

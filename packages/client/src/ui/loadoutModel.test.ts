@@ -40,7 +40,16 @@ const rules: StatRulesDefinition = {
 };
 
 function option(id: string, name: string, chakraCost: number, cooldownMs: number): AbilityOption {
-  return { id, name, family: 'projectile', chakraCost, cooldownMs, description: '', facts: '' };
+  return {
+    id,
+    name,
+    family: 'projectile',
+    chakraCost,
+    cooldownMs,
+    description: '',
+    facts: '',
+    damage: [],
+  };
 }
 
 const options: TechniqueOption[] = [
@@ -207,6 +216,7 @@ describe('techniqueOptions', () => {
         cooldownMs: 1000,
         description: 'Hop.',
         facts: '10 chakra · 1 s de recharge',
+        damage: [],
       },
     ]);
   });

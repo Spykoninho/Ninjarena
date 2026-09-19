@@ -1692,7 +1692,7 @@ body {
 }
 
 .lobby-setting-control {
-  width: 150px;
+  width: 180px;
 }
 
 .lobby-setting-control[type='checkbox'] {
@@ -1754,9 +1754,48 @@ body {
 
 .loadout-attribute {
   display: grid;
-  grid-template-columns: 96px 1fr 20px;
+  grid-template-columns: 1fr 24px;
+  grid-template-areas:
+    'head head'
+    'slider value'
+    'effect effect';
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(73, 97, 107, 0.5);
+}
+
+.loadout-attribute-head {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
+}
+
+.loadout-attribute-name {
+  font-weight: 700;
+}
+
+.loadout-attribute-hint {
+  font-size: 10px;
+  color: var(--ui-mute);
+}
+
+.loadout-attribute input {
+  grid-area: slider;
+}
+
+.loadout-attribute-value {
+  grid-area: value;
+}
+
+/* Ce que la répartition donne vraiment: le chiffre du jeu, pas le nombre de points. */
+.loadout-attribute-effect {
+  grid-area: effect;
+  font-size: 11px;
+  color: var(--hud-chakra);
 }
 
 .loadout-attribute input {
@@ -1936,6 +1975,13 @@ body {
   display: none;
 }
 
+/* Le chiffre qui compte, en or: ce que la carte enlève à l'adversaire avec la répartition courante. */
+.ability-card-hit {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffd166;
+}
+
 .ability-card-meta {
   font-size: 9px;
   letter-spacing: 0.04em;
@@ -2012,6 +2058,12 @@ body {
 .ability-tip-text {
   font-size: 11px;
   line-height: 1.45;
+}
+
+.ability-tip-damage {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd166;
 }
 
 .ability-tip-facts {
