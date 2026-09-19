@@ -21,6 +21,7 @@ describe('defaultRoomSettings', () => {
       bestOf: 3,
       roundDurationMs: 240_000,
       friendlyFire: false,
+      ranked: false,
     });
   });
 });

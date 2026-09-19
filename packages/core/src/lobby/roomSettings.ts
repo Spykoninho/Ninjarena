@@ -22,6 +22,7 @@ export interface RoomSettings {
   bestOf: (typeof BEST_OF_OPTIONS)[number];
   roundDurationMs: number;
   friendlyFire: boolean;
+  ranked: boolean;
 }
 
 export type RoomSettingsPatch = Partial<RoomSettings>;
@@ -57,6 +58,7 @@ export function roomSettingsSchema(rules: StatRulesDefinition): z.ZodType<RoomSe
       bestOf: z.union(BEST_OF_OPTIONS.map((value) => z.literal(value))),
       roundDurationMs: z.number().int().min(MIN_ROUND_DURATION_MS).max(MAX_ROUND_DURATION_MS),
       friendlyFire: z.boolean(),
+      ranked: z.boolean(),
     })
     .refine((settings) => settings.mode === 'team' || settings.playersPerTeam === 1, {
       path: ['playersPerTeam'],
@@ -74,6 +76,7 @@ export function defaultRoomSettings(rules: StatRulesDefinition, mapId: string): 
     bestOf: DEFAULT_BEST_OF,
     roundDurationMs: DEFAULT_ROUND_DURATION_MS,
     friendlyFire: false,
+    ranked: false,
   };
 }
 
