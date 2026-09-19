@@ -1,8 +1,8 @@
 {
   "id": "lightning-dash",
-  "name": "Lightning Dash",
+  "name": "Ruée foudroyante",
   "kind": "technique",
-  "description": "A long charged dash: anyone you cross takes lightning damage and is slowed, more so in water.",
+  "description": "Une longue ruée chargée de foudre : quiconque est traversé prend des dégâts et est ralenti, encore plus dans l'eau.",
   "cooldownMs": 5000,
   "chakraCost": 30,
   "startupMs": 120,

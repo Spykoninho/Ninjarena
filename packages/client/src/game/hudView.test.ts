@@ -88,9 +88,9 @@ describe('buildHudView', () => {
     expect(view.abilities[1]?.remainingMs).toBe(0);
     expect(view.abilities[2]?.chakraCost).toBe(content.abilities.get('fireball').chakraCost);
     expect(view.abilities.map((ability) => ability.binding)).toEqual([
-      'LMB',
-      'SPC',
-      'RMB',
+      'CLG',
+      'ESP',
+      'CLD',
       'E',
       'R',
     ]);
@@ -110,7 +110,7 @@ describe('buildHudView', () => {
       rttMs: null,
       spectating: null,
     });
-    const fireball = view.abilities.find((ability) => ability.name === 'Fireball');
+    const fireball = view.abilities.find((ability) => ability.name === 'Boule de feu');
     expect(fireball?.reason).toBe('chakra');
     expect(fireball?.available).toBe(false);
     // L'attaque de base ne coûte rien: elle reste disponible pendant que les techniques ne le sont plus.
@@ -215,7 +215,7 @@ describe('buildHudView', () => {
       rttMs: null,
       spectating: null,
     });
-    expect(view.buildSummary).toBe('VIT 2 · STR 0 · POW 3 · SPD 0 · CHK 0 · REG 0 · DEF 0');
+    expect(view.buildSummary).toBe('PV 2 · FOR 0 · PUI 3 · VIT 0 · CHA 0 · RÉG 0 · DÉF 0');
   });
 
   it('falls back to an empty waiting view before the local player exists', () => {

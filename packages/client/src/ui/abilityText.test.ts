@@ -63,7 +63,7 @@ describe('describeAbility', () => {
       }),
     );
     expect(text).toBe(
-      'Fires a projectile; on hit, 22 technique damage, knocks back; at the end of its flight, blasts a 2-tile area; on hit, 12 technique damage (x1.25 on grass).',
+      'Tire un projectile ; à l’impact, 22 dégâts de technique, repousse ; en fin de course, frappe une zone de 2 cases ; à l’impact, 12 dégâts de technique (×1.25 sur l’herbe).',
     );
   });
 
@@ -85,7 +85,7 @@ describe('describeAbility', () => {
       }),
     );
     expect(text).toBe(
-      'After 0.6s, blasts a 2.5-tile area at the aim (up to 10 tiles away); on hit, stuns for 0.4s.',
+      'Après 0.6 s, frappe une zone de 2.5 cases à la visée (jusqu’à 10 cases) ; à l’impact, étourdit 0.4 s.',
     );
   });
 
@@ -106,7 +106,9 @@ describe('describeAbility', () => {
         ],
       }),
     );
-    expect(text).toBe('Dashes 10 tiles; anyone crossed takes 20 damage, slows by 50% for 1.5s.');
+    expect(text).toBe(
+      'Fonce sur 10 cases ; quiconque est traversé subit 20 dégâts, ralentit de 50 % pendant 1.5 s.',
+    );
   });
 
   it('joins several top-level effects as sentences', () => {
@@ -126,18 +128,20 @@ describe('describeAbility', () => {
         ],
       }),
     );
-    expect(text).toBe('Absorbs 40 damage for 3s. Raises a 3-tile wide wall for 4s.');
+    expect(text).toBe(
+      'Absorbe 40 dégâts pendant 3 s. Dresse un mur de 3 cases de large pendant 4 s.',
+    );
   });
 });
 
 describe('abilityFacts', () => {
   it('lists the chakra cost, the cooldown and the cast time', () => {
-    expect(abilityFacts(ability({}))).toBe('25 chakra · 4s cooldown · 0.25s cast');
+    expect(abilityFacts(ability({}))).toBe('25 chakra · 4 s de recharge · 0.25 s d’incantation');
   });
 
   it('says a free ability costs no chakra and skips an instant cast', () => {
     expect(abilityFacts(ability({ chakraCost: 0, startupMs: 0, cooldownMs: 350 }))).toBe(
-      'no chakra · 0.35s cooldown',
+      'sans chakra · 0.35 s de recharge',
     );
   });
 });

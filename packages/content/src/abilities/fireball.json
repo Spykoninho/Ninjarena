@@ -1,8 +1,8 @@
 {
   "id": "fireball",
-  "name": "Fireball",
+  "name": "Boule de feu",
   "kind": "technique",
-  "description": "Launches a fireball that bursts on impact or at the end of its flight, burning and knocking back everyone nearby. Burns harder on grass.",
+  "description": "Lance une boule de feu qui explose à l'impact ou en fin de course, brûlant et repoussant tout le monde autour. Brûle plus fort sur l'herbe.",
   "cooldownMs": 4000,
   "chakraCost": 25,
   "startupMs": 250,

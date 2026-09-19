@@ -5,11 +5,15 @@ version for a first pull request; this note is the reference.
 
 ## Language
 
-- **English** for identifiers, types, file names, test names, documentation, commit messages,
-  issues and anything a player can read.
-- **Code comments are the one exception: one French line each.** This is the maintainer's
-  convention and it applies to every file that carries code — sources, tests and configuration
-  files alike.
+- **English** for identifiers, types, file names, test names, documentation, commit messages and
+  issues.
+- **French for everything a player reads**: UI strings, ability names and descriptions, map
+  names, the map validation messages and the error texts the client shows. The server keeps its
+  messages in English (they are logs); the client maps its error codes to French sentences in
+  `app/errorText.ts`. Tile names in a tileset are render keys and stay in English; the editor's
+  palette translates them.
+- **Code comments are one French line each.** This is the maintainer's convention and it applies
+  to every file that carries code — sources, tests and configuration files alike.
 
 ## Naming
 

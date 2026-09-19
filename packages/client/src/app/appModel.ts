@@ -31,7 +31,7 @@ export function reduceServerMessage(
 ): AppState {
   switch (message.type) {
     case 'welcome':
-      return { ...state, sessionId: message.sessionId, status: `session ${message.sessionId}` };
+      return { ...state, sessionId: message.sessionId, status: `Session ${message.sessionId}` };
     case 'roomState':
       return { ...state, room: message.room, screen: screenWithRoom(state, message.room, intent) };
     case 'roomLeft':

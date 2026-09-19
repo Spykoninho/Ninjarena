@@ -51,7 +51,7 @@ function scanTiles(doc: MapDocument, tileset: TilesetDefinition): TileScan {
         unknown = true;
         issues.push({
           code: 'UNKNOWN_TILE',
-          message: `unknown tile id ${groundId} at (${x}, ${y})`,
+          message: `tuile inconnue ${groundId} en (${x}, ${y})`,
           x,
           y,
         });
@@ -60,7 +60,7 @@ function scanTiles(doc: MapDocument, tileset: TilesetDefinition): TileScan {
         unknown = true;
         issues.push({
           code: 'UNKNOWN_TILE',
-          message: `unknown tile id ${objectId} at (${x}, ${y})`,
+          message: `tuile inconnue ${objectId} en (${x}, ${y})`,
           x,
           y,
         });
@@ -107,7 +107,7 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
   const { issues, walkable } = scanTiles(doc, tileset);
 
   if (doc.spawns.length === 0) {
-    issues.push({ code: 'NO_SPAWN', message: 'the map has no spawn point' });
+    issues.push({ code: 'NO_SPAWN', message: "la carte n'a aucun point d'apparition" });
   }
 
   const seen = new Set<string>();
@@ -118,7 +118,7 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
     if (x < 0 || y < 0 || x >= doc.width || y >= doc.height) {
       issues.push({
         code: 'SPAWN_OUT_OF_BOUNDS',
-        message: `spawn at (${x}, ${y}) is out of bounds`,
+        message: `apparition en (${x}, ${y}) hors de la carte`,
         x,
         y,
       });
@@ -127,7 +127,7 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
     if (!walkable[y * doc.width + x]) {
       issues.push({
         code: 'SPAWN_ON_SOLID',
-        message: `spawn at (${x}, ${y}) is on a solid tile`,
+        message: `apparition en (${x}, ${y}) sur une tuile solide`,
         x,
         y,
       });
@@ -137,7 +137,7 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
     if (seen.has(key)) {
       issues.push({
         code: 'SPAWN_DUPLICATE',
-        message: `spawn at (${x}, ${y}) duplicates another spawn`,
+        message: `apparition en (${x}, ${y}) en double`,
         x,
         y,
       });
@@ -154,7 +154,7 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
       if (visited[candidate.y * doc.width + candidate.x] !== 1) {
         issues.push({
           code: 'SPAWN_UNREACHABLE',
-          message: `spawn at (${candidate.x}, ${candidate.y}) is unreachable from the first spawn`,
+          message: `apparition en (${candidate.x}, ${candidate.y}) inaccessible depuis la première`,
           x: candidate.x,
           y: candidate.y,
         });
@@ -166,7 +166,10 @@ export function validateMapDocument(doc: MapDocument, tileset: TilesetDefinition
 }
 
 function notEnoughGeneric(needed: number, found: number): MapIssue {
-  return { code: 'NOT_ENOUGH_SPAWNS', message: `${needed} generic spawns needed, ${found} found` };
+  return {
+    code: 'NOT_ENOUGH_SPAWNS',
+    message: `${needed} apparitions libres nécessaires, ${found} trouvées`,
+  };
 }
 
 export function spawnIssues(doc: MapDocument, requirement: SpawnRequirement): MapIssue[] {
@@ -190,7 +193,7 @@ export function spawnIssues(doc: MapDocument, requirement: SpawnRequirement): Ma
     if (tagged < requirement.playersPerTeam) {
       issues.push({
         code: 'NOT_ENOUGH_SPAWNS',
-        message: `team ${team + 1} needs ${requirement.playersPerTeam} spawns, ${tagged} found`,
+        message: `l'équipe ${team + 1} a besoin de ${requirement.playersPerTeam} apparitions, ${tagged} trouvées`,
       });
     }
   }

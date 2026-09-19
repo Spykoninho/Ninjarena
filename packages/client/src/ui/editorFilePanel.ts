@@ -27,27 +27,27 @@ export class EditorFilePanel {
     this.popover = new Popover(parent, anchor, 'editor-file');
     const root = this.popover.root;
 
-    const create = section(root, 'New map');
+    const create = section(root, 'Nouvelle carte');
     const sizeRow = element('div', 'editor-row', create);
-    this.widthInput = sizeField(sizeRow, 'Width', size.width);
-    this.heightInput = sizeField(sizeRow, 'Height', size.height);
-    button('Create', 'editor-button', sizeRow, () => {
+    this.widthInput = sizeField(sizeRow, 'Largeur', size.width);
+    this.heightInput = sizeField(sizeRow, 'Hauteur', size.height);
+    button('Créer', 'editor-button', sizeRow, () => {
       actions.createMap(this.size(this.widthInput), this.size(this.heightInput));
       this.popover.setOpen(false);
     });
 
-    const open = section(root, 'Saved maps');
+    const open = section(root, 'Cartes enregistrées');
     const openRow = element('div', 'editor-row', open);
     this.mapSelect = document.createElement('select');
     this.mapSelect.className = 'editor-select';
     openRow.appendChild(this.mapSelect);
-    this.openButton = button('Open', 'editor-button', openRow, () => {
+    this.openButton = button('Ouvrir', 'editor-button', openRow, () => {
       actions.openMap(this.mapSelect.value);
       this.popover.setOpen(false);
     });
     this.setMaps([]);
 
-    const files = section(root, 'JSON file');
+    const files = section(root, 'Fichier JSON');
     const fileRow = element('div', 'editor-row', files);
     this.importInput = document.createElement('input');
     this.importInput.type = 'file';
@@ -61,10 +61,10 @@ export class EditorFilePanel {
       actions.importFile(file);
       this.popover.setOpen(false);
     });
-    button('Import…', 'editor-button', fileRow, () => {
+    button('Importer…', 'editor-button', fileRow, () => {
       this.importInput.click();
     });
-    button('Export', 'editor-button', fileRow, () => {
+    button('Exporter', 'editor-button', fileRow, () => {
       actions.exportFile();
       this.popover.setOpen(false);
     });
@@ -101,7 +101,7 @@ export class EditorFilePanel {
     if (empty) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = 'No saved map yet';
+      option.textContent = 'Aucune carte enregistrée';
       this.mapSelect.appendChild(option);
     }
     this.mapSelect.disabled = empty;

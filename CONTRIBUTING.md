@@ -218,7 +218,9 @@ reaches the room — but only once it has survived the wire, which is what step 
 
 Prettier and ESLint decide the rest; these are the choices they cannot enforce.
 
-- **English** for identifiers, types, test names, documentation, UI strings and commit messages.
+- **English** for identifiers, types, test names, documentation and commit messages. **French**
+  for everything a player reads: UI strings, ability names and descriptions, map validation
+  messages.
 - **Code comments are one French line**, in every file that carries code — sources, tests and
   configuration alike. They are rare: only for an architectural choice, a piece of non-obvious logic
   or a network constraint. A comment that restates the code is removed instead of updated. This is

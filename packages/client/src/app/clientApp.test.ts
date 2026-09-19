@@ -301,7 +301,7 @@ describe('ClientApp message routing', () => {
     h.network.deliver({ type: 'roomState', room: room('WAITING') });
     h.network.deliver({ type: 'error', code: 'CANNOT_START', message: 'everyone must be ready' });
     h.network.deliver({ type: 'roomState', room: room('WAITING') });
-    expect(h.lobby.errors).toEqual(['everyone must be ready']);
+    expect(h.lobby.errors).toEqual(['La partie ne peut pas encore être lancée']);
     // Seul un remontage efface les erreurs de l'écran: un simple rendu ne doit pas en provoquer.
     expect(h.lobby.calls.filter((call) => call === 'mount')).toHaveLength(1);
   });
@@ -424,6 +424,6 @@ describe('ClientApp disconnection', () => {
     expect(h.app.state.screen).toBe('home');
     expect(h.app.state.room).toBeNull();
     expect(h.home.mounted).toBe(true);
-    expect(h.home.errors).toEqual(['disconnected: the server closed the connection']);
+    expect(h.home.errors).toEqual(['Déconnecté : le serveur a fermé la connexion']);
   });
 });

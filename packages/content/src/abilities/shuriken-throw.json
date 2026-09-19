@@ -1,8 +1,8 @@
 {
   "id": "shuriken-throw",
-  "name": "Shuriken Throw",
+  "name": "Lancer de shuriken",
   "kind": "basic",
-  "description": "Throws a shuriken in a straight line. Weaker than the kunai, but it hits from range.",
+  "description": "Lance un shuriken en ligne droite. Moins fort que le kunaï, mais il touche à distance.",
   "cooldownMs": 500,
   "chakraCost": 0,
   "startupMs": 80,

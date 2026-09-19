@@ -14,7 +14,7 @@ export class EditorIssues {
       this.popover.toggle();
     });
     this.popover = new Popover(parent, this.badge, 'editor-issues-panel');
-    element('h2', 'editor-section-title', this.popover.root).textContent = 'Checks';
+    element('h2', 'editor-section-title', this.popover.root).textContent = 'Vérifications';
     this.list = element('ul', 'editor-issues', this.popover.root);
     this.setIssues([]);
   }
@@ -25,12 +25,12 @@ export class EditorIssues {
 
   setIssues(issues: MapIssue[]): void {
     const count = issues.length;
-    this.badge.textContent = count === 0 ? 'Ready to play' : `${String(count)} to fix`;
+    this.badge.textContent = count === 0 ? 'Prête à jouer' : `${String(count)} à corriger`;
     this.badge.classList.toggle('is-clean', count === 0);
     this.list.replaceChildren();
     if (count === 0) {
       element('li', 'editor-issue editor-issue-clean', this.list).textContent =
-        'The map passes every check.';
+        'La carte passe toutes les vérifications.';
       return;
     }
     for (const issue of issues) {

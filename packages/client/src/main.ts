@@ -141,7 +141,7 @@ const editor = new EditorScreen(
     },
   },
   content.tilesets.get(DEFAULT_TILESET_ID),
-  'New map',
+  'Nouvelle carte',
 );
 
 deferred.app = new ClientApp({

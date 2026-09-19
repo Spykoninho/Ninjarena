@@ -1,8 +1,8 @@
 {
   "id": "shadow-step",
-  "name": "Shadow Step",
+  "name": "Pas de l'ombre",
   "kind": "dash",
-  "description": "A short burst of speed in the direction you move. Cheap, and quick to come back.",
+  "description": "Une courte accélération dans la direction où tu vas. Peu coûteuse et vite rechargée.",
   "cooldownMs": 3000,
   "chakraCost": 10,
   "startupMs": 0,

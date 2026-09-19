@@ -1,8 +1,8 @@
 {
   "id": "blink",
-  "name": "Blink",
+  "name": "Éclipse",
   "kind": "technique",
-  "description": "Teleports you a good distance toward your aim, through anything in the way.",
+  "description": "Te téléporte d'un bon bond vers ta visée, à travers tout ce qui se trouve sur le chemin.",
   "cooldownMs": 5000,
   "chakraCost": 20,
   "startupMs": 100,

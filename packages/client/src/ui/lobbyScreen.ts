@@ -34,9 +34,9 @@ export interface LobbyActions {
 type LobbyTab = 'roster' | 'match' | 'loadout';
 
 const TABS: { id: LobbyTab; label: string }[] = [
-  { id: 'roster', label: 'Lobby' },
-  { id: 'match', label: 'Match settings' },
-  { id: 'loadout', label: 'Character' },
+  { id: 'roster', label: 'Salon' },
+  { id: 'match', label: 'Réglages de la partie' },
+  { id: 'loadout', label: 'Personnage' },
 ];
 
 const SEND_DEBOUNCE_MS = 300;
@@ -82,14 +82,14 @@ export class LobbyScreen implements Screen {
 
     const header = element('header', 'lobby-header', this.root);
     const title = element('div', 'lobby-title', header);
-    element('span', 'lobby-title-label', title).textContent = 'Room';
+    element('span', 'lobby-title-label', title).textContent = 'Salle';
     this.codeLine = element('span', 'lobby-code', title);
     this.statusLine = element('span', 'lobby-status', title);
     const headerActions = element('div', 'lobby-header-actions', header);
-    this.copyButton = button('Copy invite link', 'lobby-copy', headerActions, () => {
+    this.copyButton = button('Copier le lien d’invitation', 'lobby-copy', headerActions, () => {
       this.onCopyLink();
     });
-    button('Leave', 'lobby-leave', headerActions, () => {
+    button('Quitter', 'lobby-leave', headerActions, () => {
       this.run(() => {
         actions.leaveRoom();
       });
@@ -139,10 +139,10 @@ export class LobbyScreen implements Screen {
     this.errorLine = element('div', 'lobby-errors', notes);
     this.errorLine.setAttribute('aria-live', 'polite');
     const actionsRow = element('div', 'lobby-actions', footer);
-    this.readyButton = button('Ready', 'lobby-ready', actionsRow, () => {
+    this.readyButton = button('Prêt', 'lobby-ready', actionsRow, () => {
       this.onReadyClicked();
     });
-    this.startButton = button('Start the match', 'lobby-start', actionsRow, () => {
+    this.startButton = button('Lancer la partie', 'lobby-start', actionsRow, () => {
       this.run(() => {
         actions.startMatch();
       });
@@ -178,7 +178,7 @@ export class LobbyScreen implements Screen {
     if (local !== null) {
       this.panel.setServerVerdict(
         local.loadoutValid,
-        local.loadoutValid ? null : 'the server has not accepted this loadout',
+        local.loadoutValid ? null : 'le serveur n’a pas accepté cet équipement',
       );
       this.tabs.get('loadout')?.classList.toggle('has-alert', !local.loadoutValid);
     }
@@ -188,8 +188,8 @@ export class LobbyScreen implements Screen {
     const host = isHost(room, sessionId);
     const editable = host && room.status === 'WAITING';
     this.settingsNote.textContent = host
-      ? 'You are the host: these settings apply to everyone in the room.'
-      : 'Only the host can change the match settings.';
+      ? 'Tu es l’hôte : ces réglages s’appliquent à toute la salle.'
+      : 'Seul l’hôte peut modifier les réglages de la partie.';
     this.settingsForm.sync(settingsRows(room.settings, maps, this.rules), editable);
     renderBlockers(this.blockerList, room);
     this.syncActions(room, local, host);
@@ -221,7 +221,7 @@ export class LobbyScreen implements Screen {
   private syncActions(room: RoomView, local: RoomPlayerView | null, host: boolean): void {
     const waiting = room.status === 'WAITING';
     const ready = local?.ready === true;
-    this.readyButton.textContent = ready ? 'Not ready' : 'Ready';
+    this.readyButton.textContent = ready ? 'Pas prêt' : 'Prêt';
     this.readyButton.classList.toggle('is-ready', ready);
     this.readyButton.disabled = local === null || !local.loadoutValid || !waiting;
     this.startButton.hidden = !host;
@@ -281,11 +281,11 @@ export class LobbyScreen implements Screen {
   }
 
   private confirmCopy(): void {
-    this.copyButton.textContent = 'Link copied';
+    this.copyButton.textContent = 'Lien copié';
     if (this.copyTimer !== null) window.clearTimeout(this.copyTimer);
     this.copyTimer = window.setTimeout(() => {
       this.copyTimer = null;
-      this.copyButton.textContent = 'Copy invite link';
+      this.copyButton.textContent = 'Copier le lien d’invitation';
     }, COPIED_LABEL_MS);
   }
 

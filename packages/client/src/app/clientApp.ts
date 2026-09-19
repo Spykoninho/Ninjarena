@@ -4,6 +4,7 @@ import type { ClientMessage, RoomPlayerView, RoomView, ServerMessage } from '@ni
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
 import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
+import { serverErrorText } from './errorText';
 import { initialAppState, reduceServerMessage, screenFor } from './appModel';
 import type { AppState, ReduceIntent } from './appModel';
 import type { Screen, ScreenId } from './screen';
@@ -62,7 +63,7 @@ export interface ClientAppDeps {
   uiRoot: HTMLElement;
 }
 
-const DISCONNECTED = 'disconnected: the server closed the connection';
+const DISCONNECTED = 'Déconnecté : le serveur a fermé la connexion';
 
 export class ClientApp {
   private readonly deps: ClientAppDeps;
@@ -159,11 +160,11 @@ export class ClientApp {
     if (this.connected) return true;
     if (this.connecting) return false;
     this.connecting = true;
-    this.setStatus(`connecting to ${config.serverUrl}`);
+    this.setStatus(`Connexion à ${config.serverUrl}…`);
     try {
       await network.connect(config.serverUrl);
     } catch (error) {
-      this.showError(`failed to connect: ${reasonOf(error)}`);
+      this.showError(`Connexion impossible : ${reasonOf(error)}`);
       return false;
     } finally {
       this.connecting = false;
@@ -194,7 +195,7 @@ export class ClientApp {
     if (this.appState.screen === 'game' && next.screen !== 'game' && game.active) game.endMatch();
     this.appState = next;
     this.applyMessage(message);
-    if (message.type === 'error') this.showError(message.message);
+    if (message.type === 'error') this.showError(serverErrorText(message.code, message.message));
     else this.render();
   }
 
@@ -269,7 +270,7 @@ export class ClientApp {
     const { game, screens } = this.deps;
     switch (screenFor(this.appState)) {
       case 'game':
-        game.setStatus(`error: ${message}`);
+        game.setStatus(`Erreur : ${message}`);
         return;
       case 'lobby':
         screens.lobby.showError(message);

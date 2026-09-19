@@ -40,23 +40,23 @@ export class HomeScreen implements Screen {
     this.root.className = 'screen home';
     element('h1', 'home-title', this.root).textContent = 'Ninjarena';
     element('p', 'home-tagline', this.root).textContent =
-      'Pick your techniques, ready up, and fight in short rounds.';
+      'Choisis tes techniques, mets-toi prêt, et bats-toi en manches courtes.';
 
     this.menu = element('div', 'home-menu', this.root);
     const entries: MenuEntry[] = [
       {
-        title: 'Create a game',
-        hint: 'Host a room and share its code with your friends',
+        title: 'Créer une partie',
+        hint: 'Ouvre une salle et partage son code à tes amis',
         onClick: () => this.setMode('create'),
       },
       {
-        title: 'Join a game',
-        hint: 'Enter the code of a room someone created',
+        title: 'Rejoindre une partie',
+        hint: 'Entre le code d’une salle déjà ouverte',
         onClick: () => this.setMode('join'),
       },
       {
-        title: 'Map editor',
-        hint: 'Build, validate and test your own arena',
+        title: 'Éditeur de cartes',
+        hint: 'Construis, vérifie et teste ta propre arène',
         onClick: () => {
           this.actions.openEditor();
         },
@@ -65,16 +65,20 @@ export class HomeScreen implements Screen {
     for (const entry of entries) this.menu.appendChild(menuButton(entry));
 
     this.identity = element('div', 'home-identity', this.root);
-    this.nameInput = field(this.identity, 'Your name', 'text');
+    this.nameInput = field(this.identity, 'Ton pseudo', 'text');
     this.nameInput.maxLength = NAME_MAX_LENGTH;
     this.nameInput.value = initial.name;
 
-    this.createForm = this.form('Create a game', () => this.onCreate());
-    this.createPasswordInput = field(this.createForm, 'Room password (optional)', 'password');
-    this.createForm.appendChild(this.formActions(this.createForm, 'Create'));
+    this.createForm = this.form('Créer une partie', () => this.onCreate());
+    this.createPasswordInput = field(
+      this.createForm,
+      'Mot de passe de la salle (facultatif)',
+      'password',
+    );
+    this.createForm.appendChild(this.formActions(this.createForm, 'Créer'));
 
-    this.joinForm = this.form('Join a game', () => this.onJoin());
-    this.codeInput = field(this.joinForm, 'Room code', 'text');
+    this.joinForm = this.form('Rejoindre une partie', () => this.onJoin());
+    this.codeInput = field(this.joinForm, 'Code de la salle', 'text');
     this.codeInput.className += ' home-code';
     this.codeInput.maxLength = CODE_MAX_LENGTH;
     this.codeInput.placeholder = 'ABC123';
@@ -84,8 +88,8 @@ export class HomeScreen implements Screen {
     this.codeInput.addEventListener('input', () => {
       this.codeInput.value = this.codeInput.value.toUpperCase();
     });
-    this.joinPasswordInput = field(this.joinForm, 'Password (if the room has one)', 'password');
-    this.joinForm.appendChild(this.formActions(this.joinForm, 'Join'));
+    this.joinPasswordInput = field(this.joinForm, 'Mot de passe (si la salle en a un)', 'password');
+    this.joinForm.appendChild(this.formActions(this.joinForm, 'Rejoindre'));
 
     this.statusLine = element('div', 'home-status', this.root);
     this.errorList = element('ul', 'home-errors', this.root);
@@ -146,7 +150,7 @@ export class HomeScreen implements Screen {
     this.errorList.replaceChildren();
     const code = this.codeInput.value.trim().toUpperCase();
     if (!isRoomCode(code)) {
-      this.showError('room codes are 6 letters or digits');
+      this.showError('un code de salle fait 6 lettres ou chiffres');
       return;
     }
     this.actions.joinRoom(this.nameInput.value.trim(), code, this.joinPasswordInput.value);
@@ -171,7 +175,7 @@ export class HomeScreen implements Screen {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'home-back';
-    back.textContent = 'Back';
+    back.textContent = 'Retour';
     back.addEventListener('click', () => this.setMode('menu'));
     const submit = document.createElement('button');
     submit.type = 'submit';

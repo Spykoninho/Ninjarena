@@ -173,7 +173,7 @@ describe('withIssues', () => {
     state = applyTool(selectTool(state, { kind: 'spawn', team: 0 }), 3, 2);
     state = withIssues(state, tileset, null);
     expect(state.issues).toEqual([
-      { code: 'SPAWN_ON_SOLID', message: 'spawn at (3, 2) is on a solid tile', x: 3, y: 2 },
+      { code: 'SPAWN_ON_SOLID', message: 'apparition en (3, 2) sur une tuile solide', x: 3, y: 2 },
     ]);
   });
 
@@ -212,6 +212,6 @@ describe('map files', () => {
   });
 
   it('rejects a malformed file with a readable message', () => {
-    expect(() => parseMapFile('{')).toThrow(/^invalid map file/);
+    expect(() => parseMapFile('{')).toThrow(/^fichier de carte invalide/);
   });
 });

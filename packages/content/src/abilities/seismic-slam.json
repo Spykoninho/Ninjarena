@@ -1,8 +1,8 @@
 {
   "id": "seismic-slam",
-  "name": "Seismic Slam",
+  "name": "Frappe sismique",
   "kind": "technique",
-  "description": "Marks the ground at your aim; a moment later it erupts, damaging and briefly stunning everyone standing there.",
+  "description": "Marque le sol à ta visée ; un instant plus tard il se soulève, blessant et étourdissant brièvement tous ceux qui s'y trouvent.",
   "cooldownMs": 6000,
   "chakraCost": 30,
   "startupMs": 200,

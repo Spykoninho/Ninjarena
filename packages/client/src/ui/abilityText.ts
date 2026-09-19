@@ -1,8 +1,17 @@
-import type { AbilityDefinition, Effect } from '@ninjarena/core';
+import type { AbilityDefinition, DamageScaling, Effect, StatusEffectType } from '@ninjarena/core';
 
 const MS_PER_SECOND = 1000;
 const UNITS_PER_TILE = 16;
 const PERCENT = 100;
+
+const TERRAIN_NAMES: Record<string, string> = { grass: 'l’herbe', water: 'l’eau' };
+const STATUS_NAMES: Record<StatusEffectType, string> = {
+  ROOTED: 'immobilise',
+  SLOWED: 'ralentit',
+  INVISIBLE: 'rend invisible',
+  INVULNERABLE: 'rend invulnérable',
+  SHIELDED: 'protège',
+};
 
 // Un texte rédigé dans le fichier de la technique prime; sinon l'arbre d'effets se raconte lui-même.
 export function describeAbility(ability: AbilityDefinition): string {
@@ -12,77 +21,86 @@ export function describeAbility(ability: AbilityDefinition): string {
 }
 
 export function abilityFacts(ability: AbilityDefinition): string {
-  const cost = ability.chakraCost > 0 ? `${ability.chakraCost} chakra` : 'no chakra';
-  const facts = [cost, `${seconds(ability.cooldownMs)}s cooldown`];
-  if (ability.startupMs > 0) facts.push(`${seconds(ability.startupMs)}s cast`);
+  const cost = ability.chakraCost > 0 ? `${ability.chakraCost} chakra` : 'sans chakra';
+  const facts = [cost, `${seconds(ability.cooldownMs)} s de recharge`];
+  if (ability.startupMs > 0) facts.push(`${seconds(ability.startupMs)} s d’incantation`);
   return facts.join(' · ');
 }
 
 function describeEffect(effect: Effect): string {
   switch (effect.type) {
     case 'projectile':
-      return `fires a projectile${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
+      return `tire un projectile${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
     case 'area':
-      return `${delay(effect.delayMs)}blasts a ${tiles(effect.radius)}-tile area${where(effect)}${onHit(effect.onHit)}`;
+      return `${delay(effect.delayMs)}frappe une zone de ${tiles(effect.radius)} cases${where(effect)}${onHit(effect.onHit)}`;
     case 'dash':
-      return `dashes ${tiles(effect.distance)} tiles${contact(effect.onContact)}`;
+      return `fonce sur ${tiles(effect.distance)} cases${contact(effect.onContact)}`;
     case 'melee':
-      return `slashes ${tiles(effect.range)} tiles ahead in a ${effect.arcDegrees}° arc${onHit(effect.onHit)}`;
+      return `frappe à ${tiles(effect.range)} cases devant, sur un arc de ${effect.arcDegrees}°${onHit(effect.onHit)}`;
     case 'teleport':
-      return `teleports ${tiles(effect.distance)} tiles toward the aim`;
+      return `te téléporte de ${tiles(effect.distance)} cases vers la visée`;
     case 'spawnEntity':
-      return `raises a ${tiles(effect.width)}-tile wide wall for ${seconds(effect.lifetimeMs)}s`;
+      return `dresse un mur de ${tiles(effect.width)} cases de large pendant ${seconds(effect.lifetimeMs)} s`;
     case 'shield':
-      return `absorbs ${effect.amount} damage for ${seconds(effect.durationMs)}s`;
+      return `absorbe ${effect.amount} dégâts pendant ${seconds(effect.durationMs)} s`;
     case 'delayedTrigger':
-      return `after ${seconds(effect.delayMs)}s, ${list(effect.effects)}`;
+      return `après ${seconds(effect.delayMs)} s, ${list(effect.effects)}`;
     case 'damage':
-      return `${effect.amount} ${effect.scaling === 'none' ? '' : `${effect.scaling} `}damage${terrain(effect.terrain)}`;
+      return `${effect.amount} dégâts${scalingLabel(effect.scaling)}${terrain(effect.terrain)}`;
     case 'knockback':
-      return 'knocks back';
+      return 'repousse';
     case 'stun':
-      return `stuns for ${seconds(effect.durationMs)}s`;
+      return `étourdit ${seconds(effect.durationMs)} s`;
     case 'applyStatus':
       return status(effect);
   }
 }
 
 function onHit(effects: Effect[]): string {
-  return effects.length === 0 ? '' : `; on hit, ${list(effects)}`;
+  return effects.length === 0 ? '' : ` ; à l’impact, ${list(effects)}`;
 }
 
 function contact(effects: Effect[]): string {
-  return effects.length === 0 ? '' : `; anyone crossed takes ${list(effects)}`;
+  return effects.length === 0 ? '' : ` ; quiconque est traversé subit ${list(effects)}`;
 }
 
 function expiry(effects: Effect[]): string {
-  return effects.length === 0 ? '' : `; at the end of its flight, ${list(effects)}`;
+  return effects.length === 0 ? '' : ` ; en fin de course, ${list(effects)}`;
 }
 
 function where(effect: Extract<Effect, { type: 'area' }>): string {
-  if (effect.origin === 'aim') return ` at the aim (up to ${tiles(effect.range)} tiles away)`;
-  return effect.origin === 'caster' ? ' around you' : '';
+  if (effect.origin === 'aim') return ` à la visée (jusqu’à ${tiles(effect.range)} cases)`;
+  return effect.origin === 'caster' ? ' autour de toi' : '';
 }
 
 function delay(delayMs: number): string {
-  return delayMs > 0 ? `after ${seconds(delayMs)}s, ` : '';
+  return delayMs > 0 ? `après ${seconds(delayMs)} s, ` : '';
 }
 
 function terrain(rules: { tag: string; damageMultiplier?: number }[]): string {
   const notes = rules
     .filter((rule) => rule.damageMultiplier !== undefined)
-    .map((rule) => `x${rule.damageMultiplier} on ${rule.tag}`);
+    .map((rule) => `×${rule.damageMultiplier} sur ${terrainName(rule.tag)}`);
   return notes.length === 0 ? '' : ` (${notes.join(', ')})`;
 }
 
 function status(effect: Extract<Effect, { type: 'applyStatus' }>): string {
-  const duration = `${seconds(effect.durationMs)}s`;
+  const duration = `${seconds(effect.durationMs)} s`;
   if (effect.status === 'SLOWED') {
     const ratio =
-      effect.magnitude === undefined ? '' : `by ${Math.round(effect.magnitude * PERCENT)}% `;
-    return `slows ${ratio}for ${duration}`;
+      effect.magnitude === undefined ? '' : `de ${Math.round(effect.magnitude * PERCENT)} % `;
+    return `ralentit ${ratio}pendant ${duration}`;
   }
-  return `${effect.status.toLowerCase()} for ${duration}`;
+  return `${STATUS_NAMES[effect.status]} pendant ${duration}`;
+}
+
+function scalingLabel(scaling: DamageScaling): string {
+  if (scaling === 'physical') return ' physiques';
+  return scaling === 'technique' ? ' de technique' : '';
+}
+
+function terrainName(tag: string): string {
+  return TERRAIN_NAMES[tag] ?? tag;
 }
 
 function list(effects: Effect[]): string {

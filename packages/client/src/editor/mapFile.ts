@@ -12,7 +12,7 @@ export function parseMapFile(text: string): MapDocument {
   try {
     return migrateMapDocument(JSON.parse(text));
   } catch (error) {
-    throw new Error(`invalid map file: ${reasonOf(error)}`);
+    throw new Error(`fichier de carte invalide : ${reasonOf(error)}`);
   }
 }
 

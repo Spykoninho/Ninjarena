@@ -23,23 +23,23 @@ interface Slot {
 }
 
 const ATTRIBUTE_LABELS: Record<AttributeId, string> = {
-  vitality: 'Vitality',
-  strength: 'Strength',
-  power: 'Power',
-  speed: 'Speed',
+  vitality: 'Vitalité',
+  strength: 'Force',
+  power: 'Puissance',
+  speed: 'Vitesse',
   maxChakra: 'Chakra',
-  chakraRegen: 'Chakra regen',
-  defense: 'Defense',
+  chakraRegen: 'Régénération',
+  defense: 'Défense',
 };
 
 const ATTRIBUTE_HINTS: Record<AttributeId, string> = {
-  vitality: 'More health',
-  strength: 'Stronger basic attacks',
-  power: 'Stronger techniques',
-  speed: 'Faster movement',
-  maxChakra: 'Bigger chakra pool',
-  chakraRegen: 'Faster chakra regen',
-  defense: 'Less damage taken',
+  vitality: 'Plus de points de vie',
+  strength: 'Attaques de base plus fortes',
+  power: 'Techniques plus fortes',
+  speed: 'Déplacement plus rapide',
+  maxChakra: 'Plus de chakra',
+  chakraRegen: 'Chakra régénéré plus vite',
+  defense: 'Moins de dégâts subis',
 };
 
 export class LoadoutPanel {
@@ -78,7 +78,7 @@ export class LoadoutPanel {
 
     const build = element('section', 'loadout-build', this.root);
     const buildHeader = element('div', 'loadout-section-header', build);
-    element('h2', 'lobby-section-title', buildHeader).textContent = 'Build';
+    element('h2', 'lobby-section-title', buildHeader).textContent = 'Répartition';
     this.pointsLabel = element('span', 'loadout-points', buildHeader);
     const attributesRoot = element('div', 'loadout-attributes', build);
     for (const id of ATTRIBUTE_IDS) {
@@ -87,12 +87,12 @@ export class LoadoutPanel {
 
     const kit = element('section', 'loadout-kit', this.root);
     const kitHeader = element('div', 'loadout-section-header', kit);
-    element('h2', 'lobby-section-title', kitHeader).textContent = 'Attacks';
+    element('h2', 'lobby-section-title', kitHeader).textContent = 'Attaques';
     element('span', 'loadout-hint', kitHeader).textContent =
-      'Pick a slot, then a technique. Hover a card to read what it does.';
+      'Choisis un emplacement, puis une technique. Survole une carte pour lire ce qu’elle fait.';
     const slotsRoot = element('div', 'loadout-slots', kit);
-    this.slots.push(this.buildSlot(slotsRoot, { kind: 'basic' }, 'Basic attack', keys.basic));
-    const dashSlot = this.buildSlot(slotsRoot, { kind: 'dash' }, 'Dash', keys.dash);
+    this.slots.push(this.buildSlot(slotsRoot, { kind: 'basic' }, 'Attaque de base', keys.basic));
+    const dashSlot = this.buildSlot(slotsRoot, { kind: 'dash' }, 'Esquive', keys.dash);
     this.slots.push(dashSlot);
     if (dash !== null) this.fillSlot(dashSlot, dash);
     for (let index = 0; index < rules.techniqueSlots; index++) {
@@ -179,7 +179,7 @@ export class LoadoutPanel {
     slot.holder.replaceChildren();
     slot.card = null;
     if (option === null) {
-      element('span', 'loadout-slot-empty', slot.holder).textContent = 'Empty';
+      element('span', 'loadout-slot-empty', slot.holder).textContent = 'Vide';
       return;
     }
     slot.card = abilityCard(option, slot.holder, slot.key, null);
@@ -189,7 +189,7 @@ export class LoadoutPanel {
     this.active = id;
     for (const slot of this.slots) slot.root.classList.toggle('is-active', sameSlot(slot.id, id));
     const basic = id.kind === 'basic';
-    this.pickerTitle.textContent = basic ? 'Basic attacks' : 'Techniques';
+    this.pickerTitle.textContent = basic ? 'Attaques de base' : 'Techniques';
     this.pickerGrid.replaceChildren();
     this.pickerCards.clear();
     for (const option of basic ? this.basics : this.techniques) {
@@ -280,7 +280,7 @@ export class LoadoutPanel {
   private refresh(): void {
     const state = this.state;
     if (state === null) return;
-    this.pointsLabel.textContent = `${pointsLeft(state, this.budget)} of ${this.budget} points left`;
+    this.pointsLabel.textContent = `${pointsLeft(state, this.budget)} point(s) sur ${this.budget} à répartir`;
     this.errorList.replaceChildren();
     for (const message of loadoutErrors(state, this.rules, this.budget, this.techniques)) {
       element('li', 'loadout-error', this.errorList).textContent = message;

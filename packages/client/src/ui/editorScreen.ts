@@ -49,7 +49,11 @@ const TOAST_DURATION_MS = 2500;
 const TOP_INSET = 48;
 const BOTTOM_INSET = 48;
 const DRAWER_INSET = 160;
-const MODE_LABELS: Record<EditorMode, string> = { paint: 'Paint', erase: 'Erase', pan: 'Move' };
+const MODE_LABELS: Record<EditorMode, string> = {
+  paint: 'Peindre',
+  erase: 'Effacer',
+  pan: 'Déplacer',
+};
 const MODE_KEYS: Record<string, EditorMode> = { b: 'paint', e: 'erase', h: 'pan' };
 
 export class EditorScreen implements Screen {
@@ -111,21 +115,21 @@ export class EditorScreen implements Screen {
     this.nameInput.type = 'text';
     this.nameInput.className = 'editor-input editor-name';
     this.nameInput.maxLength = MAP_NAME_MAX_LENGTH;
-    this.nameInput.placeholder = 'Map name';
+    this.nameInput.placeholder = 'Nom de la carte';
     this.nameInput.value = initialName;
     this.nameInput.addEventListener('input', () => {
       this.update(renameDocument(this.state, this.nameInput.value));
     });
     nameBox.appendChild(this.nameInput);
     this.dirtyMark = element('span', 'editor-dirty', nameBox);
-    this.dirtyMark.title = 'Unsaved changes';
+    this.dirtyMark.title = 'Modifications non enregistrées';
     this.sizeLabel = element('span', 'editor-sizelabel', left);
 
     const right = element('div', 'editor-group', top);
     this.issues = new EditorIssues(this.root, right, (issue) => {
       this.focusIssue(issue);
     });
-    const fileButton = button('File', 'editor-button', right, () => {
+    const fileButton = button('Fichier', 'editor-button', right, () => {
       this.filePanel.toggle();
       if (this.filePanel.open) this.actions.listMaps();
     });
@@ -148,10 +152,10 @@ export class EditorScreen implements Screen {
       },
       { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT },
     );
-    button('Save', 'editor-button', right, () => {
+    button('Enregistrer', 'editor-button', right, () => {
       this.onSave();
     });
-    button('▶ Test', 'editor-button editor-primary', right, () => {
+    button('▶ Tester', 'editor-button editor-primary', right, () => {
       this.actions.testMap(this.state.document);
     });
 
@@ -165,9 +169,9 @@ export class EditorScreen implements Screen {
       this.modeButtons.set(mode, node);
     }
     element('span', 'editor-separator', tools);
-    button('Fit', 'editor-tool', tools, () => {
+    button('Ajuster', 'editor-tool', tools, () => {
       this.fit();
-    }).title = 'Fit the map in the window (F)';
+    }).title = 'Ajuster la carte à la fenêtre (F)';
     this.zoomLabel = element('span', 'editor-zoom', tools);
     this.toast = element('div', 'editor-toast', bottom);
     this.toast.setAttribute('aria-live', 'polite');
@@ -191,7 +195,7 @@ export class EditorScreen implements Screen {
     this.setMode('paint');
 
     element('div', 'editor-hint', this.root).textContent =
-      'Left click: paint · Right click: remove · Wheel: zoom · Middle drag or Space+drag: move';
+      'Clic gauche : peindre · Clic droit : effacer · Molette : zoom · Glisser au clic molette ou Espace : déplacer';
 
     this.onKeyDown = (event) => {
       this.handleKeyDown(event);
@@ -231,12 +235,12 @@ export class EditorScreen implements Screen {
     this.canvas.setHighlight(null);
     this.update(loadDocument(document));
     this.fit();
-    this.setStatus(`Opened "${document.name}"`);
+    this.setStatus(`« ${document.name} » ouverte`);
   }
 
   showSaved(id: string): void {
     this.update(withDocumentId(this.state, id));
-    this.setStatus(`Saved as ${id}`);
+    this.setStatus(`Enregistrée sous ${id}`);
   }
 
   setStatus(status: string): void {
@@ -405,7 +409,10 @@ export class EditorScreen implements Screen {
   }
 
   private confirmDiscard(): boolean {
-    return !this.state.dirty || window.confirm('Discard the unsaved changes of this map?');
+    return (
+      !this.state.dirty ||
+      window.confirm('Abandonner les modifications non enregistrées de cette carte ?')
+    );
   }
 
   private onBack(): void {
@@ -415,19 +422,19 @@ export class EditorScreen implements Screen {
 
   private onNew(width: number, height: number): void {
     if (!this.confirmDiscard()) return;
-    const name = this.nameInput.value.trim().length === 0 ? 'New map' : this.nameInput.value;
+    const name = this.nameInput.value.trim().length === 0 ? 'Nouvelle carte' : this.nameInput.value;
     const doc = newMapDocument(name, width, height, this.tileset);
     this.nameInput.value = doc.name;
     this.filePanel.setSize(doc.width, doc.height);
     this.canvas.setHighlight(null);
     this.update(loadDocument(doc));
     this.fit();
-    this.setStatus(`New ${String(doc.width)}×${String(doc.height)} map`);
+    this.setStatus(`Nouvelle carte ${String(doc.width)}×${String(doc.height)}`);
   }
 
   private onOpen(id: string): void {
     if (id.length === 0) {
-      this.showError('No saved map to open');
+      this.showError('Aucune carte enregistrée à ouvrir');
       return;
     }
     if (!this.confirmDiscard()) return;
@@ -435,7 +442,7 @@ export class EditorScreen implements Screen {
   }
 
   private onSave(): void {
-    this.setStatus('Saving…');
+    this.setStatus('Enregistrement…');
     this.actions.saveMap(this.state.document);
   }
 

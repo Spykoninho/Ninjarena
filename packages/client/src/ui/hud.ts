@@ -59,19 +59,19 @@ const ICON_SIZE = 24;
 const MAX_FRAME_MS = 200;
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
-  WAITING: 'Waiting for players',
-  COUNTDOWN: 'Get ready',
-  IN_ROUND: 'Round in progress',
-  ROUND_END: 'Round over',
-  MATCH_END: 'Match over',
+  WAITING: 'En attente des joueurs',
+  COUNTDOWN: 'Préparez-vous',
+  IN_ROUND: 'Manche en cours',
+  ROUND_END: 'Fin de manche',
+  MATCH_END: 'Fin de la partie',
 };
 
 const BANNER_LABELS: Record<MatchPhase, string> = {
-  WAITING: 'STAND BY',
-  COUNTDOWN: 'GET READY',
-  IN_ROUND: 'FIGHT',
-  ROUND_END: 'ROUND OVER',
-  MATCH_END: 'MATCH OVER',
+  WAITING: 'ATTENTE',
+  COUNTDOWN: 'EN GARDE',
+  IN_ROUND: 'COMBATTEZ',
+  ROUND_END: 'FIN DE MANCHE',
+  MATCH_END: 'FIN DE PARTIE',
 };
 
 export class Hud {
@@ -128,12 +128,12 @@ class MatchPanel {
   }
 
   update(view: HudView): void {
-    this.round.set(view.round > 0 ? `ROUND ${view.round}` : '');
+    this.round.set(view.round > 0 ? `MANCHE ${view.round}` : '');
     this.updateScores(view.scores);
     this.timer.set(view.roundTimer ?? '');
     setText(this.phase, PHASE_LABELS[view.matchPhase]);
     setText(this.status, view.status);
-    setText(this.spectate, view.spectating === null ? '' : `SPECTATING ${view.spectating}`);
+    setText(this.spectate, view.spectating === null ? '' : `SPECTATEUR DE ${view.spectating}`);
   }
 
   private updateScores(scores: Record<TeamId, number>): void {
@@ -209,7 +209,7 @@ class Banner {
   private enqueue(previous: MatchPhase, view: HudView): void {
     if (view.matchPhase === 'IN_ROUND') {
       this.queue = [
-        { text: view.round > 0 ? `ROUND ${view.round}` : '', durationMs: BANNER_ROUND_MS },
+        { text: view.round > 0 ? `MANCHE ${view.round}` : '', durationMs: BANNER_ROUND_MS },
         { text: BANNER_LABELS.IN_ROUND, durationMs: BANNER_FIGHT_MS },
       ];
     } else if (previous === 'IN_ROUND') {

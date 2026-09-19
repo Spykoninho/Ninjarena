@@ -79,11 +79,11 @@ describe('groupPlayers', () => {
     expect(groups).toEqual([
       {
         team: 0,
-        label: 'Team 1',
+        label: 'Équipe 1',
         players: [player('c1', 0), player('c3', 0)],
         capacity: 2,
       },
-      { team: 1, label: 'Team 2', players: [player('c2', 1)], capacity: 2 },
+      { team: 1, label: 'Équipe 2', players: [player('c2', 1)], capacity: 2 },
     ]);
   });
 
@@ -95,7 +95,7 @@ describe('groupPlayers', () => {
     expect(groupPlayers(ffa)).toEqual([
       {
         team: null,
-        label: 'Players',
+        label: 'Joueurs',
         players: [player('c1', null), player('c2', null), player('c3', null)],
         capacity: null,
       },
@@ -158,12 +158,12 @@ describe('canStart', () => {
 
 describe('blockerText', () => {
   it('spells out every blocker the server can report', () => {
-    expect(blockerText('NOT_ENOUGH_PLAYERS')).toBe('at least two players are needed');
-    expect(blockerText('PLAYER_NOT_READY')).toBe('everyone must be ready');
-    expect(blockerText('INVALID_LOADOUT')).toBe('every loadout must be valid');
-    expect(blockerText('EMPTY_TEAM')).toBe('every team needs a player');
-    expect(blockerText('MAP_MISSING')).toBe('the selected map is missing');
-    expect(blockerText('MAP_INVALID')).toBe('the selected map is not valid for these settings');
+    expect(blockerText('NOT_ENOUGH_PLAYERS')).toBe('il faut au moins deux joueurs');
+    expect(blockerText('PLAYER_NOT_READY')).toBe('tout le monde doit être prêt');
+    expect(blockerText('INVALID_LOADOUT')).toBe('chaque équipement doit être valide');
+    expect(blockerText('EMPTY_TEAM')).toBe('chaque équipe a besoin d’un joueur');
+    expect(blockerText('MAP_MISSING')).toBe('la carte choisie est introuvable');
+    expect(blockerText('MAP_INVALID')).toBe('la carte choisie ne convient pas à ces réglages');
   });
 });
 
@@ -182,7 +182,7 @@ describe('settingsRows', () => {
     expect(map?.kind).toBe('select');
     expect(map?.value).toBe('arena');
     expect(map?.options).toEqual([
-      { value: 'arena', label: 'Arena (built-in)' },
+      { value: 'arena', label: 'Arena (intégrée)' },
       { value: 'garden', label: 'Garden' },
     ]);
   });
@@ -190,16 +190,16 @@ describe('settingsRows', () => {
   it('keeps the selected map listed even when the map list has not arrived', () => {
     const rows = settingsRows(settings, [], rules);
     expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
-      { value: 'arena', label: 'arena (missing)' },
+      { value: 'arena', label: 'arena (introuvable)' },
     ]);
   });
 
   it('appends the selected map to the real list when it is missing from it', () => {
     const rows = settingsRows({ ...settings, mapId: 'dojo' }, maps, rules);
     expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
-      { value: 'arena', label: 'Arena (built-in)' },
+      { value: 'arena', label: 'Arena (intégrée)' },
       { value: 'garden', label: 'Garden' },
-      { value: 'dojo', label: 'dojo (missing)' },
+      { value: 'dojo', label: 'dojo (introuvable)' },
     ]);
   });
 
@@ -214,7 +214,7 @@ describe('settingsRows', () => {
     const points = settingsRows(settings, maps, rules).find((row) => row.key === 'buildPoints');
     expect(points).toEqual({
       key: 'buildPoints',
-      label: 'Build points',
+      label: 'Points de répartition',
       kind: 'number',
       value: 10,
       min: 0,
@@ -227,10 +227,10 @@ describe('settingsRows', () => {
   it('offers the four best-of options and the friendly fire toggle', () => {
     const rows = settingsRows(settings, maps, rules);
     expect(rows.find((row) => row.key === 'bestOf')?.options).toEqual([
-      { value: '1', label: 'Best of 1' },
-      { value: '3', label: 'Best of 3' },
-      { value: '5', label: 'Best of 5' },
-      { value: '7', label: 'Best of 7' },
+      { value: '1', label: 'Au meilleur des 1' },
+      { value: '3', label: 'Au meilleur des 3' },
+      { value: '5', label: 'Au meilleur des 5' },
+      { value: '7', label: 'Au meilleur des 7' },
     ]);
     const friendlyFire = rows.find((row) => row.key === 'friendlyFire');
     expect(friendlyFire?.kind).toBe('toggle');
@@ -240,11 +240,11 @@ describe('settingsRows', () => {
 
 describe('statusText', () => {
   it('names the status and how full the room is', () => {
-    expect(statusText(room())).toBe('WAITING · 3/4 players');
+    expect(statusText(room())).toBe('En attente · 3/4 joueurs');
   });
 
   it('says the match is over once the room reports FINISHED', () => {
-    expect(statusText(room({ status: 'FINISHED' }))).toBe('Match over · 3/4 players');
+    expect(statusText(room({ status: 'FINISHED' }))).toBe('Partie terminée · 3/4 joueurs');
   });
 });
 
@@ -268,15 +268,13 @@ describe('settingsPatch', () => {
 
 describe('isLoadoutError', () => {
   it('recognises the messages a rejected loadout produces', () => {
-    expect(isLoadoutError('a valid loadout is needed to be ready')).toBe(true);
-    expect(isLoadoutError('build spends 12 points, budget is 10')).toBe(true);
-    expect(isLoadoutError('"blink" is picked twice')).toBe(true);
-    expect(isLoadoutError('"kunai-strike" is not a technique')).toBe(true);
+    expect(isLoadoutError('Équipement refusé par le serveur')).toBe(true);
+    expect(isLoadoutError('un équipement valide est nécessaire pour être prêt')).toBe(true);
   });
 
   it('leaves the other lobby errors to the error line alone', () => {
-    expect(isLoadoutError('team 1 is full')).toBe(false);
-    expect(isLoadoutError('the room already holds 3 players')).toBe(false);
+    expect(isLoadoutError('Cette équipe est pleine')).toBe(false);
+    expect(isLoadoutError('La salle est pleine')).toBe(false);
     expect(isLoadoutError('only the host can do that')).toBe(false);
   });
 });

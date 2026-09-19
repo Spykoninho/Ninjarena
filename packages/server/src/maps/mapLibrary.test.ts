@@ -35,7 +35,7 @@ describe('MapLibrary', () => {
 
     const summaries = await library.list();
     expect(summaries).toContainEqual(
-      expect.objectContaining({ id: 'arena', name: 'Arena', builtin: true }),
+      expect.objectContaining({ id: 'arena', name: 'Arène', builtin: true }),
     );
   });
 
@@ -104,7 +104,7 @@ describe('MapLibrary', () => {
     expect(result).toEqual({
       ok: false,
       code: 'INVALID_MAP',
-      message: 'spawn at (1, 1) is on a solid tile',
+      message: 'apparition en (1, 1) sur une tuile solide',
     });
   });
 

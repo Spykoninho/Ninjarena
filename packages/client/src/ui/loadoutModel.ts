@@ -119,19 +119,19 @@ export function loadoutErrors(
   const errors: string[] = [];
   const spent = buildPointsSpent(state.build);
   if (spent > budget) {
-    errors.push(`build spends ${spent} points, budget is ${budget}`);
+    errors.push(`la répartition dépense ${spent} points pour un budget de ${budget}`);
   }
   if (state.basicAttackId === null) {
-    errors.push('a basic attack must be selected');
+    errors.push('une attaque de base doit être choisie');
   }
   if (state.techniqueIds.length !== rules.techniqueSlots) {
-    errors.push(`exactly ${rules.techniqueSlots} techniques are required`);
+    errors.push(`il faut exactement ${rules.techniqueSlots} techniques`);
   }
   const validIds = new Set(options.map((option) => option.id));
   if (state.techniqueIds.some((id) => id === null || !validIds.has(id))) {
-    errors.push('every technique slot must have a technique selected');
+    errors.push('chaque emplacement de technique doit être rempli');
   } else if (new Set(state.techniqueIds).size !== state.techniqueIds.length) {
-    errors.push('techniques must be distinct');
+    errors.push('chaque technique ne peut être choisie qu’une fois');
   }
   return errors;
 }

@@ -20,15 +20,28 @@ export const DEFAULT_BINDINGS: InputBindings = {
 const KEY_PREFIX = 'Key';
 
 const BINDING_LABELS: Record<string, string> = {
-  Mouse0: 'LMB',
-  Mouse1: 'MMB',
-  Mouse2: 'RMB',
-  Space: 'SPC',
+  Mouse0: 'Clic gauche',
+  Mouse1: 'Molette',
+  Mouse2: 'Clic droit',
+  Space: 'Espace',
 };
 
-// Une pastille du HUD n'a la place que d'une étiquette courte: `KeyE` s'y affiche `E`.
+// Une pastille du HUD n'a la place que de trois lettres: `Clic gauche` y devient `CLG`.
+const SHORT_BINDING_LABELS: Record<string, string> = {
+  Mouse0: 'CLG',
+  Mouse1: 'MOL',
+  Mouse2: 'CLD',
+  Space: 'ESP',
+};
+
 export function bindingLabel(binding: string): string {
-  const known = BINDING_LABELS[binding];
-  if (known !== undefined) return known;
+  return BINDING_LABELS[binding] ?? keyName(binding);
+}
+
+export function shortBindingLabel(binding: string): string {
+  return SHORT_BINDING_LABELS[binding] ?? keyName(binding);
+}
+
+function keyName(binding: string): string {
   return binding.startsWith(KEY_PREFIX) ? binding.slice(KEY_PREFIX.length) : binding;
 }

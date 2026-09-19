@@ -1,8 +1,8 @@
 {
   "id": "kunai-strike",
-  "name": "Kunai Strike",
+  "name": "Frappe au kunaï",
   "kind": "basic",
-  "description": "A quick kunai slash in front of you. Fast, free, and the bread and butter of close combat.",
+  "description": "Un coup de kunaï rapide devant toi. Vif, gratuit, la base du corps à corps.",
   "cooldownMs": 350,
   "chakraCost": 0,
   "startupMs": 60,

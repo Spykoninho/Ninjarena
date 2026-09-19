@@ -152,13 +152,13 @@ describe('loadoutErrors', () => {
     built = { ...built, build: { ...built.build, vitality: 5, strength: 5, power: 5 } };
     built = { ...built, techniqueIds: ['blink', 'blink', built.techniqueIds[2] ?? null] };
     const errors = loadoutErrors(built, rules, budget, options);
-    expect(errors).toContain('techniques must be distinct');
-    expect(errors).toContain('build spends 15 points, budget is 10');
+    expect(errors).toContain('chaque technique ne peut être choisie qu’une fois');
+    expect(errors).toContain('la répartition dépense 15 points pour un budget de 10');
   });
 
   it('reports a missing basic attack', () => {
     const errors = loadoutErrors({ ...state(''), basicAttackId: null }, rules, budget, options);
-    expect(errors).toContain('a basic attack must be selected');
+    expect(errors).toContain('une attaque de base doit être choisie');
   });
 
   it('is empty for a build and a set of techniques that fit', () => {
@@ -206,7 +206,7 @@ describe('techniqueOptions', () => {
         chakraCost: 10,
         cooldownMs: 1000,
         description: 'Hop.',
-        facts: '10 chakra · 1s cooldown',
+        facts: '10 chakra · 1 s de recharge',
       },
     ]);
   });
@@ -230,13 +230,13 @@ describe('basicOptions', () => {
 describe('slotBindings', () => {
   it('labels the basic attack, the dash and one key per technique slot', () => {
     expect(slotBindings(DEFAULT_BINDINGS, 3)).toEqual({
-      basic: 'LMB',
-      dash: 'SPC',
-      techniques: ['RMB', 'E', 'R'],
+      basic: 'Clic gauche',
+      dash: 'Espace',
+      techniques: ['Clic droit', 'E', 'R'],
     });
   });
 
   it('numbers a technique slot that has no key bound', () => {
-    expect(slotBindings(DEFAULT_BINDINGS, 4).techniques).toEqual(['RMB', 'E', 'R', '6']);
+    expect(slotBindings(DEFAULT_BINDINGS, 4).techniques).toEqual(['Clic droit', 'E', 'R', '6']);
   });
 });

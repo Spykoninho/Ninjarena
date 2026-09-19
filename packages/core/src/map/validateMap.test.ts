@@ -164,7 +164,7 @@ describe('spawnIssues', () => {
     });
     const issues = spawnIssues(doc, { mode: 'ffa', teamCount: 2, playersPerTeam: 1 });
     expect(issues).toEqual([
-      { code: 'NOT_ENOUGH_SPAWNS', message: '2 generic spawns needed, 1 found' },
+      { code: 'NOT_ENOUGH_SPAWNS', message: '2 apparitions libres nécessaires, 1 trouvées' },
     ]);
   });
 
@@ -188,7 +188,7 @@ describe('spawnIssues', () => {
     });
     const issues = spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 });
     expect(issues).toEqual([
-      { code: 'NOT_ENOUGH_SPAWNS', message: 'team 2 needs 2 spawns, 1 found' },
+      { code: 'NOT_ENOUGH_SPAWNS', message: "l'équipe 2 a besoin de 2 apparitions, 1 trouvées" },
     ]);
   });
 
@@ -223,7 +223,7 @@ describe('spawnIssues', () => {
       ],
     });
     expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 })).toEqual([
-      { code: 'NOT_ENOUGH_SPAWNS', message: '4 generic spawns needed, 3 found' },
+      { code: 'NOT_ENOUGH_SPAWNS', message: '4 apparitions libres nécessaires, 3 trouvées' },
     ]);
   });
 
@@ -239,7 +239,7 @@ describe('spawnIssues', () => {
       ],
     });
     expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: 2 })).toEqual([
-      { code: 'NOT_ENOUGH_SPAWNS', message: 'team 2 needs 2 spawns, 1 found' },
+      { code: 'NOT_ENOUGH_SPAWNS', message: "l'équipe 2 a besoin de 2 apparitions, 1 trouvées" },
     ]);
   });
 });

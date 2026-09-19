@@ -1,8 +1,8 @@
 {
   "id": "earth-wall",
-  "name": "Earth Wall",
+  "name": "Mur de terre",
   "kind": "technique",
-  "description": "Raises a wall of earth in front of you that blocks movement and projectiles for a few seconds.",
+  "description": "Dresse un mur de terre devant toi qui bloque les déplacements et les projectiles pendant quelques secondes.",
   "cooldownMs": 8000,
   "chakraCost": 35,
   "startupMs": 300,

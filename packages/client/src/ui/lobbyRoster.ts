@@ -105,8 +105,8 @@ export class LobbyRoster {
     }
     const name = element('div', 'roster-name', card);
     element('span', 'roster-name-text', name).textContent = player.name;
-    if (player.id === room.hostId) element('span', 'roster-host', name).textContent = 'HOST';
-    if (player.id === sessionId) element('span', 'roster-you', name).textContent = 'YOU';
+    if (player.id === room.hostId) element('span', 'roster-host', name).textContent = 'HÔTE';
+    if (player.id === sessionId) element('span', 'roster-you', name).textContent = 'TOI';
     const badge = element('div', `roster-status badge-${status}`, card);
     badge.textContent = statusLabel(status);
     this.renderKit(card, player);
@@ -134,13 +134,13 @@ export class LobbyRoster {
       const join = document.createElement('button');
       join.type = 'button';
       join.className = 'roster-join';
-      join.textContent = 'Join this team';
+      join.textContent = 'Rejoindre cette équipe';
       join.addEventListener('click', () => {
         this.onJoin(team);
       });
       seat.appendChild(join);
     } else {
-      element('div', 'roster-empty', seat).textContent = 'Open seat';
+      element('div', 'roster-empty', seat).textContent = 'Place libre';
     }
   }
 }

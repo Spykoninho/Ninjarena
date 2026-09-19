@@ -11,7 +11,7 @@ import { abilityFamily } from '../rendering/art/abilityVisual';
 import { skinIndex, teamCodes } from '../rendering/art/presentation';
 import { ATTRIBUTE_IDS, getStatus } from '@ninjarena/core';
 import type { InputBindings } from '../input/bindings';
-import { bindingLabel } from '../input/bindings';
+import { shortBindingLabel } from '../input/bindings';
 import type { HudAbilityBlock, HudAbilityView, HudView } from '../ui/hud';
 
 export interface HudViewInput {
@@ -31,13 +31,13 @@ const SECONDS_PER_MINUTE = 60;
 const CONTROLLED_PHASES = ['STUNNED', 'DEAD', 'CASTING', 'DASHING', 'KNOCKBACK'];
 
 const ATTRIBUTE_LABELS: Record<AttributeId, string> = {
-  vitality: 'VIT',
-  strength: 'STR',
-  power: 'POW',
-  speed: 'SPD',
-  maxChakra: 'CHK',
-  chakraRegen: 'REG',
-  defense: 'DEF',
+  vitality: 'PV',
+  strength: 'FOR',
+  power: 'PUI',
+  speed: 'VIT',
+  maxChakra: 'CHA',
+  chakraRegen: 'RÉG',
+  defense: 'DÉF',
 };
 
 export function buildHudView(input: HudViewInput): HudView {
@@ -82,7 +82,7 @@ function abilityView(input: HudViewInput, slot: AbilitySlot, index: number): Hud
     family: abilityFamily(ability),
     available: reason === null,
     reason,
-    binding: binding === undefined ? '' : bindingLabel(binding),
+    binding: binding === undefined ? '' : shortBindingLabel(binding),
     chakraCost: ability.chakraCost,
     remainingMs: Math.max(0, (slot.readyAt - input.tick) * input.tickDurationMs),
     cooldownMs: ability.cooldownMs,

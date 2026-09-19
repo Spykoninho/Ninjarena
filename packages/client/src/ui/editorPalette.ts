@@ -11,10 +11,31 @@ const SPAWN_TEXT = '#14141a';
 export type PaletteTab = PaletteCategory | 'spawns';
 
 const TAB_LABELS: Record<PaletteTab, string> = {
-  ground: 'Ground',
-  walls: 'Walls',
-  decor: 'Decor',
-  spawns: 'Spawns',
+  ground: 'Sol',
+  walls: 'Murs',
+  decor: 'Décor',
+  spawns: 'Apparitions',
+};
+
+// Les noms du tileset sont des clés de rendu: l'étal les traduit sans les renommer.
+const TILE_LABELS: Record<string, string> = {
+  ground: 'terre',
+  grass: 'herbe',
+  water: 'eau',
+  wall: 'mur',
+  tree: 'arbre',
+  building: 'bâtiment',
+  paving: 'dallage',
+  bridge: 'pont',
+  bush: 'buisson',
+  path: 'chemin',
+  flowers: 'fleurs',
+  lantern: 'lanterne',
+  rock: 'rocher',
+  fence: 'clôture',
+  well: 'puits',
+  crate: 'caisse',
+  torii: 'torii',
 };
 
 const TABS: readonly PaletteTab[] = [...PALETTE_CATEGORIES, 'spawns'];
@@ -53,11 +74,12 @@ export class EditorPalette {
     this.grid = element('div', 'editor-items', this.root);
     for (const entry of paletteOf(tileset)) {
       const tool: EditorTool = { kind: 'tile', id: entry.id, layer: entry.layer };
-      this.add(entry.category, entry.name, tool, fitThumb(thumbnail(entry.id)), onSelect);
+      const label = TILE_LABELS[entry.name] ?? entry.name;
+      this.add(entry.category, label, tool, fitThumb(thumbnail(entry.id)), onSelect);
     }
-    this.add('spawns', 'Any team', { kind: 'spawn', team: null }, spawnThumb('*'), onSelect);
+    this.add('spawns', 'Toute équipe', { kind: 'spawn', team: null }, spawnThumb('*'), onSelect);
     for (let team = 0; team < SPAWN_TEAM_COUNT; team++) {
-      const label = `Team ${String(team + 1)}`;
+      const label = `Équipe ${String(team + 1)}`;
       this.add('spawns', label, { kind: 'spawn', team }, spawnThumb(String(team + 1)), onSelect);
     }
     const first = this.items[0];

@@ -46,36 +46,34 @@ const ROUND_DURATION_STEP_MS = 10_000;
 const CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 const BLOCKER_TEXTS: Record<StartBlocker, string> = {
-  NOT_ENOUGH_PLAYERS: 'at least two players are needed',
-  PLAYER_NOT_READY: 'everyone must be ready',
-  INVALID_LOADOUT: 'every loadout must be valid',
-  EMPTY_TEAM: 'every team needs a player',
-  MAP_MISSING: 'the selected map is missing',
-  MAP_INVALID: 'the selected map is not valid for these settings',
+  NOT_ENOUGH_PLAYERS: 'il faut au moins deux joueurs',
+  PLAYER_NOT_READY: 'tout le monde doit être prêt',
+  INVALID_LOADOUT: 'chaque équipement doit être valide',
+  EMPTY_TEAM: 'chaque équipe a besoin d’un joueur',
+  MAP_MISSING: 'la carte choisie est introuvable',
+  MAP_INVALID: 'la carte choisie ne convient pas à ces réglages',
 };
 
-// Le serveur renvoie ses refus en texte libre: ces marqueurs disent lesquels parlent du loadout.
-const LOADOUT_ERROR_MARKERS = [
-  'loadout',
-  'build',
-  'technique',
-  'ability',
-  'attribute',
-  'basic attack',
-  'basicattackid',
-  'picked twice',
-];
+// Les refus arrivent déjà traduits: seul le mot-clé dit lesquels parlent de l'équipement.
+const LOADOUT_ERROR_MARKERS = ['équipement'];
+
+const ROOM_STATUS_TEXTS: Record<RoomView['status'], string> = {
+  WAITING: 'En attente',
+  STARTING: 'Lancement',
+  IN_GAME: 'En jeu',
+  FINISHED: 'Partie terminée',
+};
 
 export function groupPlayers(room: RoomView): TeamGroup[] {
   const { settings } = room;
   if (settings.mode !== 'team') {
-    return [{ team: null, label: 'Players', players: [...room.players], capacity: null }];
+    return [{ team: null, label: 'Joueurs', players: [...room.players], capacity: null }];
   }
   const groups: TeamGroup[] = [];
   for (let team = 0; team < settings.teamCount; team++) {
     groups.push({
       team,
-      label: `Team ${team + 1}`,
+      label: `Équipe ${team + 1}`,
       players: room.players.filter((player) => player.team === team),
       capacity: settings.playersPerTeam,
     });
@@ -84,9 +82,9 @@ export function groupPlayers(room: RoomView): TeamGroup[] {
 }
 
 const STATUS_LABELS: Record<PlayerStatus, string> = {
-  ready: 'READY',
-  'not-ready': 'NOT READY',
-  invalid: 'NO LOADOUT',
+  ready: 'PRÊT',
+  'not-ready': 'PAS PRÊT',
+  invalid: 'ÉQUIPEMENT INVALIDE',
 };
 
 // Un loadout refusé prime sur le reste: le joueur ne peut pas être prêt tant qu'il n'est pas corrigé.
@@ -126,9 +124,8 @@ export function roomLink(origin: string, pathname: string, code: string): string
 }
 
 export function statusText(room: RoomView): string {
-  const status = room.status === 'FINISHED' ? 'Match over' : room.status;
   const capacity = roomMaxPlayers(room.settings);
-  return `${status} · ${room.players.length}/${capacity} players`;
+  return `${ROOM_STATUS_TEXTS[room.status]} · ${room.players.length}/${capacity} joueurs`;
 }
 
 // Chaque contrôle du formulaire hôte n'envoie que sa propre clé, dans le type qu'elle attend.
@@ -170,14 +167,14 @@ export function settingsRows(
       kind: 'select',
       value: settings.mode,
       options: [
-        { value: 'team', label: 'Teams' },
-        { value: 'ffa', label: 'Free for all' },
+        { value: 'team', label: 'Équipes' },
+        { value: 'ffa', label: 'Chacun pour soi' },
       ],
       hidden: false,
     },
     {
       key: 'mapId',
-      label: 'Map',
+      label: 'Carte',
       kind: 'select',
       value: settings.mapId,
       options: mapOptions(settings.mapId, maps),
@@ -185,7 +182,7 @@ export function settingsRows(
     },
     {
       key: 'teamCount',
-      label: 'Teams',
+      label: 'Nombre d’équipes',
       kind: 'number',
       value: settings.teamCount,
       min: MIN_TEAM_COUNT,
@@ -195,7 +192,7 @@ export function settingsRows(
     },
     {
       key: 'playersPerTeam',
-      label: 'Players per team',
+      label: 'Joueurs par équipe',
       kind: 'number',
       value: settings.playersPerTeam,
       min: 1,
@@ -205,7 +202,7 @@ export function settingsRows(
     },
     {
       key: 'buildPoints',
-      label: 'Build points',
+      label: 'Points de répartition',
       kind: 'number',
       value: settings.buildPoints,
       min: points.min,
@@ -215,18 +212,18 @@ export function settingsRows(
     },
     {
       key: 'bestOf',
-      label: 'Rounds',
+      label: 'Manches',
       kind: 'select',
       value: String(settings.bestOf),
       options: BEST_OF_OPTIONS.map((value) => ({
         value: `${value}`,
-        label: `Best of ${value}`,
+        label: `Au meilleur des ${value}`,
       })),
       hidden: false,
     },
     {
       key: 'roundDurationMs',
-      label: 'Round duration (ms)',
+      label: 'Durée d’une manche (ms)',
       kind: 'number',
       value: settings.roundDurationMs,
       min: MIN_ROUND_DURATION_MS,
@@ -236,7 +233,7 @@ export function settingsRows(
     },
     {
       key: 'friendlyFire',
-      label: 'Friendly fire',
+      label: 'Tir allié',
       kind: 'toggle',
       value: settings.friendlyFire,
       hidden: false,
@@ -265,8 +262,8 @@ function integerPatch(key: keyof RoomSettings, raw: string | boolean): RoomSetti
 function mapOptions(mapId: string, maps: MapSummary[]): SelectOption[] {
   const known = maps.map((map) => ({
     value: map.id,
-    label: map.builtin ? `${map.name} (built-in)` : map.name,
+    label: map.builtin ? `${map.name} (intégrée)` : map.name,
   }));
   if (maps.some((map) => map.id === mapId)) return known;
-  return [...known, { value: mapId, label: `${mapId} (missing)` }];
+  return [...known, { value: mapId, label: `${mapId} (introuvable)` }];
 }
