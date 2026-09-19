@@ -323,22 +323,32 @@ list and the active screen, and routes messages: room and map messages to the lo
 home. `index.html` keeps `#app` (canvas) and `#hud`, and replaces `#setup` with `#ui` where each
 screen mounts its own element.
 
-- `ui/homeScreen.ts`: name, Create room (password optional), Join (code + password), Map editor.
-  `?room=CODE` prefills and focuses the join form.
-- `lobby/lobbyModel.ts` (pure) + `ui/lobbyScreen.ts`: code with a copy-link button
-  (`?room=CODE`), players grouped by team (or a flat list in FFA) with READY / NOT READY badges and
-  a host marker, team switch buttons, the host form (mode, teams, players per team, build points,
-  map select from `mapList`, best of, round length, friendly fire; disabled for others), the
-  loadout panel, Ready toggle, Start (host, disabled with the blocker reasons listed), Leave.
-  FINISHED does not add a dedicated result screen: the room stays on the `game` screen (the HUD
-  already renders the match's final phase and scores from the streamed snapshot) until the server's
-  `roomState` reports `WAITING` again, at which point the client returns to the lobby on its own —
-  there is no separate countdown UI.
+- `ui/homeScreen.ts`: a menu of three entries — Create a game, Join a game, Map editor. The first
+  two open a form (name plus an optional password; name, code and password), submitted with Enter
+  and left with Back or Escape. `?room=CODE` opens the join form with the code prefilled.
+- `lobby/lobbyModel.ts` (pure) + `ui/lobbyScreen.ts`: a full-screen lobby with a header (room
+  code, status, copy-link button for `?room=CODE`, Leave), three tabs and a footer (the blocker
+  reasons, Ready toggle, Start for the host). The **Lobby** tab is `ui/lobbyRoster.ts`: one column
+  per team (a single one in FFA), each player as a card with their idle ninja, name, HOST and YOU
+  badges, a READY / NOT READY / NO LOADOUT pill and the icons of their kit; open seats are drawn as
+  dashed cards, the first one carrying the Join button when the local player may switch. The
+  **Match settings** tab holds the host form (mode, teams, players per team, build points, map
+  select from `mapList`, best of, round length, friendly fire; disabled for others). The
+  **Character** tab holds the loadout panel; a server-rejected loadout marks that tab and switches
+  to it. FINISHED does not add a dedicated result screen: the room stays on the `game` screen (the
+  HUD already renders the match's final phase and scores from the streamed snapshot) until the
+  server's `roomState` reports `WAITING` again, at which point the client returns to the lobby on
+  its own — there is no separate countdown UI.
 - The pre-lobby build screen from the vertical slice becomes `ui/loadoutModel.ts` /
-  `ui/loadoutPanel.ts`: same build logic plus a basic-attack select; the budget comes from the room
-  settings. The client sends `setLoadout` on lobby entry and on every change (debounced), so players
-  never need an Apply button; the server's verdict is reflected as `loadoutValid`, styled with a
-  visible border on the panel when invalid.
+  `ui/loadoutPanel.ts`: the stat sliders next to a kit of five slots (basic attack, the
+  character's dash, technique 1 to 3), each labelled with the key it is bound to
+  (`slotBindings` over `DEFAULT_BINDINGS`). Picking a slot lists the matching abilities as cards
+  (`ui/abilityCards.ts`: family icon, name, cost and cooldown, a hover bubble with the
+  description from the ability file or the effects tree spelled out by `ui/abilityText.ts`, and
+  the key the slot would give it); picking a card fills the slot and moves on to the next one. The
+  budget comes from the room settings. The client sends `setLoadout` on lobby entry and on every
+  change (debounced), so players never need an Apply button; the server's verdict is reflected as
+  `loadoutValid`, styled with a visible outline around the kit when invalid.
 - `game/clientGame.ts` keeps only match concerns: `beginMatch(matchStarted)`, `handleSnapshot`,
   `endMatch()`, the frame loop and feedback. Connection, hello and setup leave it.
 - `config/clientConfig.ts`: `roomCode` (`?room`), `editor` (`?editor`), `basicAttackId` (`?basic`)

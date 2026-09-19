@@ -140,25 +140,30 @@ pnpm dev
 This starts the server (`ws://localhost:8080`) and the Vite dev server (`http://localhost:5173`)
 side by side. Open two browser tabs:
 
-- <http://localhost:5173/?name=a>, click **Create a room**. The lobby shows a room code (for
-  example `9VHJ3Z`) and a **Copy link** button that copies `?room=9VHJ3Z` appended to the current
-  page.
-- <http://localhost:5173/?name=b&room=9VHJ3Z> (or paste the copied link, or type the code into
-  **Room code** and press **Join** from the plain home screen) — the code prefills and the second
-  tab joins the same room.
+- <http://localhost:5173/?name=a>, pick **Create a game** and press **Create**. The lobby header
+  shows the room code (for example `9VHJ3Z`) and a **Copy invite link** button that copies
+  `?room=9VHJ3Z` appended to the current page.
+- <http://localhost:5173/?name=b&room=9VHJ3Z> (or paste the copied link, or pick **Join a game**
+  and type the code from the home menu) — the code prefills the join form and the second tab joins
+  the same room.
 
-Both tabs now show the lobby: teams, a host-only settings form (mode, map, teams, players per
-team, build points, rounds, round duration, friendly fire), and a loadout panel each player edits
-for themselves. Distribute the stat points, pick a basic attack and three techniques, then press
-**Ready** — the server validates the loadout and reflects the verdict back before Ready can be
-pressed with an invalid one. Once both are ready, the host's **Start** button lights up (it is
-greyed out with the reason otherwise — see `startBlockers` in [docs/rooms.md](docs/rooms.md)).
+Both tabs now show the lobby, split in three tabs. **Lobby** is the stage: one column per team,
+each player drawn as their ninja with their name, a HOST badge, a READY / NOT READY pill and the
+icons of the attacks they picked; open seats carry a **Join this team** button. **Match settings**
+holds the host-only form (mode, map, teams, players per team, build points, rounds, round
+duration, friendly fire). **Character** is where each player distributes the stat points and
+builds their kit: the five slots show the key each attack is bound to (basic attack, dash, then
+technique 1, 2 and 3), and picking a slot lists the techniques as cards — hover one to read what
+it does, its chakra cost, cooldown and cast time. Press **Ready** at the bottom — the server
+validates the loadout and reflects the verdict back before Ready can be pressed with an invalid
+one. Once both are ready, the host's **Start the match** button lights up (it is greyed out with
+the reason otherwise — see `startBlockers` in [docs/rooms.md](docs/rooms.md)).
 Press it: you should see both ninjas, a countdown, then the round banner and the running round
 timer in the HUD. First team to win
 `roundsToWin` rounds (best of 3 by default) takes the match, and every player returns to the lobby,
 not ready, a few seconds after the last round ends.
 
-Add `?editor` to open the map editor instead of the home screen — see
+Add `?editor` (or pick **Map editor** on the home menu) to open the map editor — see
 [docs/map-format.md](docs/map-format.md).
 
 To play over a LAN, both servers have to leave localhost: the game server binds where

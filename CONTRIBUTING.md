@@ -88,7 +88,9 @@ there is no character file to touch.
 3. Give it a `telegraph` (`kind`, `color`, `size`, `anchor`) so the client can announce the cast —
    an ability without one casts silently, which reads as a bug rather than a stealth technique —
    and a `visual` (`color`, `size`, optional `trail`) on every `projectile`, `area` and
-   `spawnEntity` effect so it has something to draw.
+   `spawnEntity` effect so it has something to draw. A one-sentence `description` is what the
+   lobby's card shows on hover; without one the client spells the effects tree out instead, which
+   is accurate but reads like a stat sheet.
 4. Add a test in `packages/core/src/abilities/effects/executor.test.ts` (or the fixture-driven
    style used by the existing techniques there) for the behaviour you introduced.
 
