@@ -1,4 +1,4 @@
-import { iconCanvas } from '../rendering/art/spriteArt';
+import { abilityIconCanvas } from '../rendering/art/abilityIcons';
 import { BASE_MULTIPLIERS, damageDetail, damageTotal } from './abilityText';
 import type { DamageMultipliers } from './abilityText';
 import type { AbilityOption } from './loadoutModel';
@@ -17,12 +17,12 @@ export interface AbilityCard {
   option: AbilityOption;
 }
 
-// Les icônes sont dessinées une fois par famille puis recopiées: chaque carte a son propre canvas.
-export function abilityIcon(family: string, className: string): HTMLCanvasElement {
-  let source = icons.get(family);
+// Les icônes sont dessinées une fois par capacité puis recopiées: chaque carte a son propre canvas.
+export function abilityIcon(option: AbilityOption, className: string): HTMLCanvasElement {
+  let source = icons.get(option.id);
   if (source === undefined) {
-    source = iconCanvas(family);
-    icons.set(family, source);
+    source = abilityIconCanvas(option.id, option.family);
+    icons.set(option.id, source);
   }
   const canvas = document.createElement('canvas');
   canvas.className = className;
@@ -43,7 +43,7 @@ export function abilityCard(
   root.className = 'ability-card';
   root.dataset.id = option.id;
   const frame = element('div', 'ability-card-frame', root);
-  frame.appendChild(abilityIcon(option.family, 'ability-card-icon'));
+  frame.appendChild(abilityIcon(option, 'ability-card-icon'));
   const keyBadge = element('span', 'ability-card-key', frame);
   keyBadge.textContent = key;
   keyBadge.hidden = key.length === 0;
@@ -63,12 +63,19 @@ export function abilityCard(
 export function updateCardNumbers(card: AbilityCard, multipliers: DamageMultipliers): void {
   const { option } = card;
   const total = damageTotal(option.damage, multipliers);
+  const healed = damageTotal(option.heal, multipliers);
   const cooldown = `${Math.round(option.cooldownMs / 100) / 10} s`;
-  card.hit.textContent = option.damage.length > 0 ? `${total} dégâts` : '—';
+  card.hit.textContent =
+    option.damage.length > 0 ? `${total} dégâts` : option.heal.length > 0 ? `+${healed} PV` : '—';
   card.meta.textContent =
     option.chakraCost > 0 ? `${option.chakraCost} chakra · ${cooldown}` : cooldown;
   const detail = damageDetail(option.damage, multipliers);
-  card.damage.textContent = detail.length > 0 ? `Dégâts : ${detail}` : 'Ne fait pas de dégâts';
+  card.damage.textContent =
+    detail.length > 0
+      ? `Dégâts : ${detail}`
+      : option.heal.length > 0
+        ? `Soin : ${healed} PV`
+        : 'Ne fait pas de dégâts';
 }
 
 // La bulle est un enfant de la carte: le survol et le focus clavier la révèlent sans script.

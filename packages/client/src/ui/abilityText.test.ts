@@ -6,6 +6,7 @@ import {
   damageProfile,
   damageTotal,
   describeAbility,
+  healProfile,
 } from './abilityText';
 
 function ability(overrides: Partial<AbilityDefinition>): AbilityDefinition {
@@ -40,6 +41,8 @@ describe('describeAbility', () => {
             speed: 380,
             radius: 4,
             lifetimeMs: 900,
+            count: 1,
+            spreadDegrees: 0,
             visual: { color: '#ff6a3d', size: 5, trail: true },
             onHit: [
               { type: 'damage', amount: 22, scaling: 'technique', terrain: [] },
@@ -108,7 +111,13 @@ describe('describeAbility', () => {
             invulnerableTicks: 0,
             onContact: [
               { type: 'damage', amount: 20, scaling: 'none', terrain: [] },
-              { type: 'applyStatus', status: 'SLOWED', durationMs: 1500, magnitude: 0.5 },
+              {
+                type: 'applyStatus',
+                status: 'SLOWED',
+                durationMs: 1500,
+                magnitude: 0.5,
+                target: 'hit',
+              },
             ],
           },
         ],
@@ -150,6 +159,8 @@ describe('damageProfile', () => {
         speed: 380,
         radius: 4,
         lifetimeMs: 900,
+        count: 1,
+        spreadDegrees: 0,
         visual: { color: '#ff6a3d', size: 5, trail: true },
         onHit: [
           { type: 'damage', amount: 22, scaling: 'technique', terrain: [] },
@@ -197,6 +208,8 @@ describe('damageProfile', () => {
           speed: 100,
           radius: 4,
           lifetimeMs: 500,
+          count: 1,
+          spreadDegrees: 0,
           visual: { color: '#ffffff', size: 4, trail: false },
           onHit: [{ type: 'stun', durationMs: 200 }],
           onExpire: [{ type: 'damage', amount: 9, scaling: 'none', terrain: [] }],
@@ -242,5 +255,47 @@ describe('abilityFacts', () => {
     expect(abilityFacts(ability({ chakraCost: 0, startupMs: 0, cooldownMs: 350 }))).toBe(
       'sans chakra · 0.35 s de recharge',
     );
+  });
+});
+
+describe('new bricks', () => {
+  it('tells a fan of projectiles, a heal and a status cast on oneself', () => {
+    const fan = describeAbility(
+      ability({
+        effects: [
+          {
+            type: 'projectile',
+            speed: 400,
+            radius: 3,
+            lifetimeMs: 500,
+            count: 3,
+            spreadDegrees: 14,
+            visual: { color: '#d8d8e0', size: 3, trail: false },
+            onHit: [{ type: 'damage', amount: 9, scaling: 'physical', terrain: [] }],
+            onExpire: [],
+          },
+        ],
+      }),
+    );
+    expect(fan).toBe('Tire 3 projectiles en éventail ; à l’impact, 9 dégâts physiques.');
+    const mend = ability({ effects: [{ type: 'heal', amount: 28, scaling: 'technique' }] });
+    expect(describeAbility(mend)).toBe('Rend 28 points de vie (renforcés par la puissance).');
+    expect(healProfile(mend)).toEqual([{ amount: 28, scaling: 'technique', context: 'hit' }]);
+    expect(damageProfile(mend)).toEqual([]);
+    const haste = describeAbility(
+      ability({
+        effects: [
+          {
+            type: 'applyStatus',
+            status: 'HASTED',
+            durationMs: 3000,
+            magnitude: 1.35,
+            target: 'self',
+          },
+          { type: 'applyStatus', status: 'INVISIBLE', durationMs: 3000, target: 'self' },
+        ],
+      }),
+    );
+    expect(haste).toBe('T’accélère de 35 % pendant 3 s. Te rend invisible pendant 3 s.');
   });
 });

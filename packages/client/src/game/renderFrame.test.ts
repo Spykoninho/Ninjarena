@@ -443,4 +443,54 @@ describe('buildRenderFrame', () => {
     expect(fast.obstacles[0]?.remaining).toBeCloseTo(0.5);
     expect(slow.obstacles[0]?.remaining).toBeCloseTo(0.5);
   });
+
+  it('telegraphs a melee cast as the exact cone it will strike', () => {
+    const sim = makeSim();
+    const me = sim.world.players['me']!;
+    me.aim = { x: 0, y: 1 };
+    me.phase = {
+      kind: 'CASTING',
+      slot: 0,
+      abilityId: 'frost-breath',
+      startedAt: 0,
+      activatesAt: 12,
+      activeUntil: 20,
+      endsAt: 32,
+      activated: false,
+    };
+    const frame = buildRenderFrame(inputFor(sim, { tick: 6 }));
+    expect(frame.players[0]?.telegraph).toMatchObject({
+      family: 'melee',
+      arc: 80,
+      size: 44,
+      progress: 0.5,
+      direction: { x: 0, y: 1 },
+    });
+    const active = buildRenderFrame(inputFor(sim, { tick: 14 }));
+    expect(active.players[0]?.activeArc).toEqual({ range: 44, arcDegrees: 80, color: '#9fe4f0' });
+  });
+
+  it('reports haste and stealth on a player and keeps a stealthed local player drawn', () => {
+    const sim = makeSim();
+    const me = sim.world.players['me']!;
+    me.statuses.push({ type: 'HASTED', expiresAt: 100, magnitude: 1.35 });
+    me.statuses.push({ type: 'INVISIBLE', expiresAt: 100 });
+    const frame = buildRenderFrame(inputFor(sim));
+    expect(frame.players[0]).toMatchObject({ hasted: true, stealthed: true, visible: true });
+  });
+
+  it('passes the visual style of a projectile and of a pending zone to their views', () => {
+    const sim = makeSim();
+    const needle = projectileOf('p1', 'me', { x: 50, y: 50 }, { x: 100, y: 0 });
+    needle.visual = { color: '#e8e8f0', size: 2, trail: false, style: 'needle' };
+    needle.source = { abilityId: 'senbon-volley', path: '0' };
+    sim.world.projectiles['p1'] = needle;
+    const zone = pendingOf('z1', 'me', 36);
+    zone.visual = { color: '#fff0b0', size: 36, trail: false, style: 'column' };
+    zone.source = { abilityId: 'sky-strike', path: '0' };
+    sim.world.pending['z1'] = zone;
+    const frame = buildRenderFrame(inputFor(sim));
+    expect(frame.projectiles[0]).toMatchObject({ id: 'p1', style: 'needle' });
+    expect(frame.zones[0]).toMatchObject({ id: 'z1', style: 'column' });
+  });
 });

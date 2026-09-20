@@ -46,6 +46,18 @@ function perimeter(
 export function drawTelegraph(g: Graphics, v: TelegraphView): void {
   g.clear();
   const family = v.family;
+  if (family === 'melee' && v.arc !== undefined) {
+    drawCone(g, v);
+    return;
+  }
+  if (family === 'support' || family === 'stealth' || family === 'haste') {
+    drawGathering(g, v);
+    return;
+  }
+  if (v.kind === 'sky-mark') {
+    drawSkyMark(g, v);
+    return;
+  }
   if (family === 'defense') {
     g.poly([
       { x: -7, y: -11 },
@@ -134,9 +146,99 @@ export function drawTelegraph(g: Graphics, v: TelegraphView): void {
     .stroke({ color: v.color, width: PX });
 }
 
+// L'éventail exact de la frappe, orienté sur la visée; le bord se remplit avec l'incantation.
+function drawCone(g: Graphics, v: TelegraphView): void {
+  const half = ((v.arc ?? 0) * Math.PI) / 360,
+    r = v.size,
+    a0 = Math.atan2(v.direction.y, v.direction.x);
+  const full = half >= Math.PI - 0.01;
+  const dangerous = v.dangerous !== false;
+  if (full) g.circle(0, 0, r).fill({ color: v.color, alpha: 0.08 });
+  else
+    g.moveTo(0, 0)
+      .arc(0, 0, r, a0 - half, a0 + half)
+      .lineTo(0, 0)
+      .fill({ color: v.color, alpha: 0.08 });
+  g.arc(0, 0, r, a0 - half, a0 + half).stroke({ color: P.ink, width: 1 });
+  g.arc(0, 0, r, a0 - half, a0 + half).stroke({
+    color: dangerous ? P.danger : P.ivory,
+    width: PX,
+    alpha: dangerous ? 1 : 0.65,
+  });
+  if (!full) {
+    for (const side of [-1, 1]) {
+      const a = a0 + side * half;
+      g.moveTo(0, 0)
+        .lineTo(Math.cos(a) * r, Math.sin(a) * r)
+        .stroke({ color: dangerous ? P.danger : P.ivory, width: PX, alpha: 0.7 });
+    }
+  }
+  const count = Math.max(4, Math.round((half * 2 * r) / 6));
+  for (let i = 0; i <= count; i++) {
+    if (i / count > v.progress) break;
+    const a = a0 - half + (2 * half * i) / count;
+    g.moveTo(Math.cos(a) * (r - 1), Math.sin(a) * (r - 1))
+      .lineTo(Math.cos(a) * (r - 3), Math.sin(a) * (r - 3))
+      .stroke({ color: v.color, width: PX });
+  }
+}
+
+// Un renfort se concentre: des tirets convergent sur le lanceur à mesure que le cast avance.
+function drawGathering(g: Graphics, v: TelegraphView): void {
+  const r = v.size,
+    inner = Math.max(3, r * (1 - v.progress * 0.6));
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 + v.progress * 0.8;
+    g.moveTo(Math.cos(a) * inner, Math.sin(a) * inner)
+      .lineTo(Math.cos(a) * (inner + 3), Math.sin(a) * (inner + 3))
+      .stroke({ color: v.color, width: PX, alpha: 0.9 });
+  }
+  g.circle(0, 0, inner).stroke({ color: v.color, width: PX, alpha: 0.35 });
+}
+
+// Attaque venant du ciel: périmètre exact, croix à centre vide et quatre traits qui convergent.
+function drawSkyMark(g: Graphics, v: TelegraphView): void {
+  perimeter(g, v.size, v.color, v.progress, v.dangerous ?? true);
+  skyMarkDetail(g, v.size, v.color, 0);
+}
+
+// La croix reste; les quatre traits descendent des coins vers la marque à mesure que le coup vient.
+function skyMarkDetail(g: Graphics, size: number, color: string, progress: number): void {
+  const gap = 3;
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const) {
+    g.moveTo(dx * gap, dy * gap)
+      .lineTo(dx * (gap + 5), dy * (gap + 5))
+      .stroke({ color: P.ink, width: 1.5 });
+    g.moveTo(dx * gap, dy * gap)
+      .lineTo(dx * (gap + 5), dy * (gap + 5))
+      .stroke({ color, width: PX });
+  }
+  const reach = size + 8 - progress * (size - 2);
+  for (const [dx, dy] of [
+    [1, 1],
+    [-1, 1],
+    [1, -1],
+    [-1, -1],
+  ] as const) {
+    const k = Math.SQRT1_2;
+    g.moveTo(dx * k * reach, dy * k * reach)
+      .lineTo(dx * k * (reach - 6), dy * k * (reach - 6))
+      .stroke({ color: P.ink, width: 1.5, alpha: 0.6 });
+    g.moveTo(dx * k * reach, dy * k * reach)
+      .lineTo(dx * k * (reach - 6), dy * k * (reach - 6))
+      .stroke({ color, width: PX, alpha: 0.6 + progress * 0.4 });
+  }
+}
+
 export function drawZone(g: Graphics, v: ZoneView): void {
   g.clear();
   perimeter(g, v.radius, v.color, v.progress, v.dangerous ?? true);
+  if (v.style === 'column') skyMarkDetail(g, v.radius, v.color, v.progress);
 }
 export function drawWall(g: Graphics, v: ObstacleView): void {
   g.clear();
@@ -148,8 +250,14 @@ export function drawWall(g: Graphics, v: ObstacleView): void {
 export function drawMeleeArc(g: Graphics, v: MeleeArcView): void {
   g.clear();
   const half = (v.arcDegrees * Math.PI) / 360;
-  g.moveTo(0, 0).arc(0, 0, v.range, -half, half).lineTo(0, 0).fill({ color: P.ivory, alpha: 0.13 });
-  g.arc(0, 0, v.range, -half, half).stroke({ color: P.ivory, width: PX });
+  const color = v.color ?? P.ivory;
+  if (half >= Math.PI - 0.01) {
+    g.circle(0, 0, v.range).fill({ color, alpha: 0.13 });
+    g.circle(0, 0, v.range).stroke({ color, width: PX });
+    return;
+  }
+  g.moveTo(0, 0).arc(0, 0, v.range, -half, half).lineTo(0, 0).fill({ color, alpha: 0.13 });
+  g.arc(0, 0, v.range, -half, half).stroke({ color, width: PX });
 }
 export function drawProjectile(g: Graphics, v: ProjectileView, time: number): void {
   g.clear();
@@ -162,7 +270,44 @@ export function drawProjectile(g: Graphics, v: ProjectileView, time: number): vo
       x: Math.round((Math.cos(a) * x - Math.sin(a) * y) * 2) / 2,
       y: Math.round((Math.sin(a) * x + Math.cos(a) * y) * 2) / 2,
     }));
-  if (v.family === 'control') {
+  const style = v.style ?? v.family;
+  if (style === 'needle') {
+    const tail = points([[-r * 3, 0]])[0] ?? { x: 0, y: 0 };
+    const tip = points([[r * 2, 0]])[0] ?? { x: 0, y: 0 };
+    g.moveTo(tail.x, tail.y).lineTo(tip.x, tip.y).stroke({ color: P.ink, width: 1.5 });
+    g.moveTo(tail.x, tail.y).lineTo(tip.x, tip.y).stroke({ color: v.color, width: PX });
+    g.circle(tip.x, tip.y, 0.5).fill(P.stone[0]);
+    return;
+  }
+  if (style === 'kunai') {
+    g.poly(
+      points([
+        [-r - 1, -1.5],
+        [r * 0.3, -1.5],
+        [r + 3, 0],
+        [r * 0.3, 1.5],
+        [-r - 1, 1.5],
+      ]),
+    )
+      .fill(v.color)
+      .stroke({ color: P.ink, width: PX });
+    g.poly(
+      points([
+        [-r - 1, -1.5],
+        [-r * 0.2, -1.5],
+        [-r * 0.2, 1.5],
+        [-r - 1, 1.5],
+      ]),
+    ).fill(P.wood[1]);
+    const ring = points([[-r - 2.5, 0]])[0] ?? { x: 0, y: 0 };
+    g.circle(ring.x, ring.y, 1.5).stroke({ color: P.ink, width: PX });
+    const wire = points([[-r - 12, 0]])[0] ?? { x: 0, y: 0 };
+    g.moveTo(ring.x, ring.y)
+      .lineTo(wire.x, wire.y)
+      .stroke({ color: P.stone[2], width: PX, alpha: 0.6 });
+    return;
+  }
+  if (style === 'control' || (style === undefined && v.family === 'control')) {
     g.poly(
       points([
         [0, -r],
@@ -179,7 +324,7 @@ export function drawProjectile(g: Graphics, v: ProjectileView, time: number): vo
       .stroke({ color: P.violet, width: PX });
     return;
   }
-  if (v.family === 'shuriken') {
+  if (style === 'shuriken') {
     // Étoile à quatre branches qui tourne à quatre poses; le cercle de collision reste la vérité.
     const spin = (Math.floor(time / 45) % 4) * (Math.PI / 8);
     const star = (list: number[][]) =>

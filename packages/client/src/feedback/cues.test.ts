@@ -209,4 +209,55 @@ describe('cuesForEvent', () => {
       cuesForEvent({ type: 'phaseChanged', tick: 3, playerId: 'me', phase: 'NORMAL' }, view).audio,
     ).toBe(null);
   });
+
+  it('bursts and numbers a heal in its own tone', () => {
+    const cue = cuesForEvent(
+      { type: 'healed', tick: 3, targetId: 'me', sourceId: 'me', amount: 28, remainingHealth: 90 },
+      view,
+    );
+    expect(cue.visual).toEqual([
+      { kind: 'playerBurst', playerId: 'me', color: '#92d8b4', count: 10 },
+      { kind: 'playerDamageNumber', playerId: 'me', amount: 28, tone: 'heal' },
+    ]);
+    expect(cue.shake).toBe(0);
+  });
+
+  it('drops a column on an area whose visual asks for one', () => {
+    const cue = cuesForEvent(
+      {
+        type: 'areaResolved',
+        tick: 8,
+        ownerId: 'me',
+        position: { x: 12, y: 34 },
+        radius: 36,
+        visual: { color: '#fff0b0', size: 36, trail: false, style: 'column' },
+      },
+      view,
+    );
+    expect(kinds(cue.visual)).toEqual(['column', 'impact', 'burst']);
+    expect(cue.visual[0]).toEqual({
+      kind: 'column',
+      position: { x: 12, y: 34 },
+      color: '#fff0b0',
+      radius: 36,
+    });
+  });
+
+  it('puffs smoke on a vanishing player and only announces the buffs', () => {
+    const vanish = cuesForEvent(
+      { type: 'statusApplied', tick: 2, playerId: 'me', status: 'INVISIBLE', expiresAt: 180 },
+      view,
+    );
+    expect(kinds(vanish.visual)).toEqual(['playerPuff']);
+    const haste = cuesForEvent(
+      { type: 'statusApplied', tick: 2, playerId: 'me', status: 'HASTED', expiresAt: 180 },
+      view,
+    );
+    expect(kinds(haste.visual)).toEqual(['playerBurst']);
+    const slow = cuesForEvent(
+      { type: 'statusApplied', tick: 2, playerId: 'me', status: 'SLOWED', expiresAt: 180 },
+      view,
+    );
+    expect(slow.visual).toEqual([]);
+  });
 });

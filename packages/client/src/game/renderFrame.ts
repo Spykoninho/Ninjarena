@@ -180,10 +180,13 @@ function toPlayerView(
     velocity: player.velocity,
     basicCast: ability?.kind === 'basic',
     castFamily: ability === null ? undefined : abilityFamily(ability),
+    castAbilityId: ability === null ? undefined : ability.id,
     // Le relâchement suit le tick d'activation: la pose de frappe ne devance jamais le coup.
     castReleased: casting !== null && (casting.activated || tick >= casting.activatesAt),
     rooted: getStatus(player, 'ROOTED') !== undefined,
     slowed: getStatus(player, 'SLOWED') !== undefined,
+    hasted: getStatus(player, 'HASTED') !== undefined,
+    stealthed: getStatus(player, 'INVISIBLE') !== undefined,
     invulnerable: getStatus(player, 'INVULNERABLE') !== undefined,
   };
 }
@@ -224,8 +227,8 @@ function toTelegraphView(
       : 1;
   return {
     dangerous,
-    family:
-      first?.type === 'spawnEntity' ? 'wall' : first?.type === 'shield' ? 'defense' : first?.type,
+    family: abilityFamily(ability),
+    arc: first?.type === 'melee' ? first.arcDegrees : undefined,
     width:
       first?.type === 'spawnEntity'
         ? first.thickness
@@ -250,7 +253,9 @@ function toTelegraphView(
                   obstacles,
                 )
               : first.distance
-            : telegraph.size,
+            : first?.type === 'melee'
+              ? first.range
+              : telegraph.size,
     progress: progressOf(tick - casting.startedAt, casting.activatesAt - casting.startedAt),
     anchor,
     direction,
@@ -274,7 +279,9 @@ function toArcView(
   const first = ability.effects[0];
   if (first?.type !== 'melee') return null;
   if (tick < casting.activatesAt || tick >= casting.activeUntil) return null;
-  return { range: first.range, arcDegrees: first.arcDegrees };
+  return first.color === undefined
+    ? { range: first.range, arcDegrees: first.arcDegrees }
+    : { range: first.range, arcDegrees: first.arcDegrees, color: first.color };
 }
 
 function toProjectileView(
@@ -283,12 +290,14 @@ function toProjectileView(
   abilities: DefinitionCatalog<AbilityDefinition>,
 ): ProjectileView {
   const ability = abilities.get(projectile.source.abilityId);
+  const style = projectile.visual.style;
   return {
     ...(ability.tags.includes('control')
       ? { family: 'control' }
       : ability.kind === 'basic'
         ? { family: 'shuriken' }
         : {}),
+    ...(style === undefined ? {} : { style }),
     id: projectile.id,
     position,
     radius: projectile.radius,
@@ -301,11 +310,13 @@ function toProjectileView(
 function toZoneView(pending: PendingEffect, tick: number): ZoneView | null {
   // Un déclencheur sans rayon ni visuel ne s'annonce pas: il n'y a rien à dessiner au sol.
   if (pending.radius === null || pending.visual === null) return null;
+  const style = pending.visual.style;
   return {
     id: pending.id,
     position: pending.position,
     radius: pending.radius,
     color: pending.visual.color,
+    ...(style === undefined ? {} : { style }),
     progress: progressOf(tick - pending.createdAt, pending.fireAt - pending.createdAt),
   };
 }

@@ -4,7 +4,7 @@ import type { Animation } from './presentation';
 import type { Direction, Layer, Ramp } from './nativeArt';
 import { P, ellipse, line, ninja, pen, rect, surface, tile } from './nativeArt';
 
-export type Prop = 'kunai' | 'shuriken' | 'none';
+export type Prop = 'kunai' | 'shuriken' | 'staff' | 'fist' | 'needle' | 'none';
 
 // Déformation d'une pose: cisaillement horizontal du haut du corps et étirement vertical.
 interface Deform {
@@ -280,6 +280,36 @@ function drawWeapon(
     return;
   }
   if (prop === 'none') return;
+  if (prop === 'staff') {
+    drawStaff(c, facing, frame, hx, hy);
+    return;
+  }
+  if (prop === 'fist') {
+    rect(c, hx - 2, hy - 2, 6, 6, P.ink);
+    rect(c, hx - 1, hy - 1, 4, 4, P.wood[2]);
+    if (frame === 1 || frame === 2) {
+      const ahead = facing === 'e' ? [1, 0] : facing === 's' ? [0, 1] : [0, -1];
+      for (let i = 4; i <= 8; i += 2)
+        rect(c, hx + ahead[0]! * i, hy + ahead[1]! * i, 2, 2, i === 6 ? P.ivory : P.gold);
+    }
+    return;
+  }
+  if (prop === 'needle') {
+    if (frame !== 0) return;
+    const along = facing === 'e' ? [1, -1] : facing === 's' ? [-1, 1] : [1, 1];
+    for (let n = -1; n <= 1; n++) {
+      for (let i = 0; i <= 5; i++)
+        rect(
+          c,
+          hx + along[0]! * i + n * 2,
+          hy + along[1]! * i,
+          1,
+          1,
+          i === 5 ? P.stone[0] : P.ivory,
+        );
+    }
+    return;
+  }
   if (frame === 0) {
     // Prise inversée, lame vers l'arrière et le haut pendant la préparation.
     const dir = facing === 'n' ? [1, 1] : facing === 's' ? [1, -1] : [-1, -1];
@@ -325,6 +355,35 @@ function drawWeapon(
               [hx + 5, hy - 9],
             ];
     streak.forEach(([x = 0, y = 0], i) => rect(c, x, y, 2, 1, i % 2 ? P.ivory : P.cyan));
+  }
+}
+
+// Bâton tenu à deux tiers: il pivote autour de la main sur les quatre temps de l'attaque.
+function drawStaff(
+  c: CanvasRenderingContext2D,
+  facing: Direction,
+  frame: number,
+  hx: number,
+  hy: number,
+): void {
+  const swing = [-0.9, 0.2, 0.7, 0.4][frame] ?? 0;
+  const base = facing === 'e' ? 0 : facing === 's' ? Math.PI / 2 : -Math.PI / 2;
+  const a = base + swing;
+  const dx = Math.cos(a),
+    dy = Math.sin(a);
+  for (let i = -5; i <= 9; i++) {
+    const x = Math.round(hx + dx * i),
+      y = Math.round(hy + dy * i);
+    rect(c, x - 1, y - 1, 3, 3, P.ink);
+  }
+  for (let i = -5; i <= 9; i++) {
+    const x = Math.round(hx + dx * i),
+      y = Math.round(hy + dy * i);
+    rect(c, x, y, 1, 1, i > 6 || i < -3 ? P.wood[2] : P.wood[1]);
+  }
+  if (frame === 2) {
+    for (let i = 10; i <= 14; i += 2)
+      rect(c, Math.round(hx + dx * i), Math.round(hy + dy * i), 1, 1, i === 12 ? P.ivory : P.cyan);
   }
 }
 
@@ -431,6 +490,30 @@ export function iconCanvas(family: string): HTMLCanvasElement {
     rect(ctx, 17, 5, 2, 13, P.ivory);
     rect(ctx, 12, 4, 5, 2, P.ivory);
     rect(ctx, 12, 18, 5, 2, P.ivory);
+  } else if (family === 'support') {
+    ellipse(ctx, 12, 12, 8, 8, P.mint, true);
+    rect(ctx, 11, 7, 2, 10, P.mint);
+    rect(ctx, 7, 11, 10, 2, P.mint);
+  } else if (family === 'stealth') {
+    for (const [x, y, r] of [
+      [7, 13, 5],
+      [16, 11, 5],
+      [12, 17, 5],
+    ] as const)
+      ellipse(ctx, x, y, r, r - 1, P.stone[1]);
+    rect(ctx, 10, 6, 4, 4, P.ink);
+  } else if (family === 'haste') {
+    for (const [x, y, w] of [
+      [3, 6, 10],
+      [5, 11, 12],
+      [3, 16, 9],
+    ] as const)
+      rect(ctx, x, y, w, 1, P.mint);
+    rect(ctx, 16, 5, 2, 3, P.cyan);
+    rect(ctx, 18, 8, 2, 3, P.cyan);
+    rect(ctx, 20, 11, 2, 2, P.ivory);
+    rect(ctx, 18, 13, 2, 3, P.cyan);
+    rect(ctx, 16, 16, 2, 3, P.cyan);
   } else if (family === 'projectile') {
     for (let x = 4; x < 20; x++) {
       const h = Math.max(1, 5 - Math.abs(x - 14));

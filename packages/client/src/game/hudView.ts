@@ -80,6 +80,7 @@ function abilityView(input: HudViewInput, slot: AbilitySlot, index: number): Hud
   const binding = input.bindings.abilities[index];
   const reason = abilityBlock(input, ability.chakraCost);
   return {
+    id: ability.id,
     name: ability.name,
     family: abilityFamily(ability),
     available: reason === null,

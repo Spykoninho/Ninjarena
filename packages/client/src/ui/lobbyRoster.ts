@@ -122,7 +122,7 @@ export class LobbyRoster {
     for (const id of [loadout.basicAttackId, ...loadout.techniqueIds]) {
       const option = this.options.get(id);
       if (option === undefined) continue;
-      const icon = abilityIcon(option.family, 'roster-kit-icon');
+      const icon = abilityIcon(option, 'roster-kit-icon');
       icon.title = option.name;
       kit.appendChild(icon);
     }

@@ -18,6 +18,8 @@ export interface TelegraphView {
   family?: string;
   dangerous?: boolean;
   width?: number;
+  // Ouverture en degrés d'un cône de mêlée: le télégraphe copie l'éventail réellement frappé.
+  arc?: number;
   anchor: Vec2;
   direction: Vec2;
 }
@@ -25,6 +27,7 @@ export interface TelegraphView {
 export interface MeleeArcView {
   range: number;
   arcDegrees: number;
+  color?: string;
 }
 
 export interface PlayerView {
@@ -43,9 +46,13 @@ export interface PlayerView {
   velocity?: Vec2;
   basicCast?: boolean;
   castFamily?: string;
+  castAbilityId?: string;
   castReleased?: boolean;
   rooted?: boolean;
   slowed?: boolean;
+  hasted?: boolean;
+  // Invisible mais dessiné quand même: soi-même et ses alliés se voient en transparence.
+  stealthed?: boolean;
   invulnerable?: boolean;
 }
 
@@ -57,6 +64,7 @@ export interface ProjectileView {
   trail: boolean;
   direction: Vec2;
   family?: string;
+  style?: string;
   dangerous?: boolean;
 }
 
@@ -66,6 +74,7 @@ export interface ZoneView {
   position: Vec2;
   radius: number;
   color: string;
+  style?: string;
   progress: number;
 }
 

@@ -152,6 +152,12 @@ export class PixiRenderer implements Renderer {
         return this.atPlayer(cue.playerId, (position) => {
           this.effectsLayer.damageNumber(position, cue.amount, cue.tone);
         });
+      case 'column':
+        return this.effectsLayer.column(cue.position, cue.color, cue.radius);
+      case 'playerPuff':
+        return this.atPlayer(cue.playerId, (position) => {
+          this.effectsLayer.puff(position, cue.color);
+        });
     }
   }
 

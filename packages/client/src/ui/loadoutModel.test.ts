@@ -49,6 +49,7 @@ function option(id: string, name: string, chakraCost: number, cooldownMs: number
     description: '',
     facts: '',
     damage: [],
+    heal: [],
   };
 }
 
@@ -217,6 +218,7 @@ describe('techniqueOptions', () => {
         description: 'Hop.',
         facts: '10 chakra · 1 s de recharge',
         damage: [],
+        heal: [],
       },
     ]);
   });

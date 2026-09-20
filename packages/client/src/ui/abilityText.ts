@@ -11,6 +11,15 @@ const STATUS_NAMES: Record<StatusEffectType, string> = {
   INVISIBLE: 'rend invisible',
   INVULNERABLE: 'rend invulnérable',
   SHIELDED: 'protège',
+  HASTED: 'accélère',
+};
+const SELF_STATUS_NAMES: Record<StatusEffectType, string> = {
+  ROOTED: 't’immobilise',
+  SLOWED: 'te ralentit',
+  INVISIBLE: 'te rend invisible',
+  INVULNERABLE: 'te rend invulnérable',
+  SHIELDED: 'te protège',
+  HASTED: 't’accélère',
 };
 
 export type DamageContext = 'hit' | 'area' | 'contact' | 'delayed';
@@ -39,6 +48,13 @@ export const BASE_MULTIPLIERS: DamageMultipliers = { physical: 1, technique: 1 }
 export function damageProfile(ability: AbilityDefinition): DamageEntry[] {
   const entries: DamageEntry[] = [];
   for (const effect of ability.effects) collectDamage(effect, 'hit', entries);
+  return entries;
+}
+
+// Les soins d'un lancer: ils suivent la puissance comme les dégâts de technique.
+export function healProfile(ability: AbilityDefinition): DamageEntry[] {
+  const entries: DamageEntry[] = [];
+  for (const effect of ability.effects) collectHeal(effect, entries);
   return entries;
 }
 
@@ -100,6 +116,29 @@ function collectDamage(effect: Effect, context: DamageContext, entries: DamageEn
   }
 }
 
+function collectHeal(effect: Effect, entries: DamageEntry[]): void {
+  switch (effect.type) {
+    case 'heal':
+      entries.push({ amount: effect.amount, scaling: effect.scaling, context: 'hit' });
+      return;
+    case 'projectile':
+      for (const child of effect.onHit) collectHeal(child, entries);
+      return;
+    case 'area':
+    case 'melee':
+      for (const child of effect.onHit) collectHeal(child, entries);
+      return;
+    case 'dash':
+      for (const child of effect.onContact) collectHeal(child, entries);
+      return;
+    case 'delayedTrigger':
+      for (const child of effect.effects) collectHeal(child, entries);
+      return;
+    default:
+      return;
+  }
+}
+
 // Un texte rédigé dans le fichier de la technique prime; sinon l'arbre d'effets se raconte lui-même.
 export function describeAbility(ability: AbilityDefinition): string {
   if (ability.description !== undefined) return ability.description;
@@ -117,7 +156,7 @@ export function abilityFacts(ability: AbilityDefinition): string {
 function describeEffect(effect: Effect): string {
   switch (effect.type) {
     case 'projectile':
-      return `tire un projectile${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
+      return `tire ${projectiles(effect.count)}${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
     case 'area':
       if (effect.triggerRadius > 0) {
         return `arme une mine${where(effect)} qui explose au passage d’un ennemi ou après ${seconds(effect.delayMs)} s sur ${tiles(effect.radius)} cases${onHit(effect.onHit)}`;
@@ -133,6 +172,8 @@ function describeEffect(effect: Effect): string {
       return `dresse un mur de ${tiles(effect.width)} cases de large pendant ${seconds(effect.lifetimeMs)} s`;
     case 'shield':
       return `absorbe ${effect.amount} dégâts pendant ${seconds(effect.durationMs)} s`;
+    case 'heal':
+      return `rend ${effect.amount} points de vie${effect.scaling === 'technique' ? ' (renforcés par la puissance)' : ''}`;
     case 'delayedTrigger':
       return `après ${seconds(effect.delayMs)} s, ${list(effect.effects)}`;
     case 'damage':
@@ -176,12 +217,22 @@ function terrain(rules: { tag: string; damageMultiplier?: number }[]): string {
 
 function status(effect: Extract<Effect, { type: 'applyStatus' }>): string {
   const duration = `${seconds(effect.durationMs)} s`;
+  const self = effect.target === 'self';
   if (effect.status === 'SLOWED') {
     const ratio =
       effect.magnitude === undefined ? '' : `de ${Math.round(effect.magnitude * PERCENT)} % `;
-    return `ralentit ${ratio}pendant ${duration}`;
+    return `${self ? 'te ralentit' : 'ralentit'} ${ratio}pendant ${duration}`;
   }
-  return `${STATUS_NAMES[effect.status]} pendant ${duration}`;
+  if (effect.status === 'HASTED') {
+    const ratio =
+      effect.magnitude === undefined ? '' : `de ${Math.round((effect.magnitude - 1) * PERCENT)} % `;
+    return `${self ? 't’accélère' : 'accélère'} ${ratio}pendant ${duration}`;
+  }
+  return `${self ? SELF_STATUS_NAMES[effect.status] : STATUS_NAMES[effect.status]} pendant ${duration}`;
+}
+
+function projectiles(count: number): string {
+  return count > 1 ? `${count} projectiles en éventail` : 'un projectile';
 }
 
 function scalingLabel(scaling: DamageScaling): string {

@@ -3,7 +3,7 @@ import type { MatchSummary, TournamentView } from '@ninjarena/protocol';
 import { toggleFullscreen } from '../input/fullscreen';
 import { P } from '../rendering/art/nativeArt';
 import { teamCodes } from '../rendering/art/presentation';
-import { iconCanvas } from '../rendering/art/spriteArt';
+import { abilityIconCanvas } from '../rendering/art/abilityIcons';
 import { setVisualSetting, visualSettings } from '../rendering/visualSettings';
 import {
   gearCanvas,
@@ -26,6 +26,7 @@ export interface HudExitAction {
 }
 
 export interface HudAbilityView {
+  id?: string;
   name: string;
   family?: string;
   available?: boolean;
@@ -497,6 +498,7 @@ class Slot {
   private readonly timer = new PixelText({ scale: 2, color: P.wood[2] });
   private readonly name: HTMLElement;
   private family = '';
+  private iconKey = '';
   private hidden = false;
   private cooling = false;
   private blocked: HudAbilityBlock | null = null;
@@ -541,8 +543,12 @@ class Slot {
     if (this.family !== family) {
       this.family = family;
       this.root.dataset.family = family;
+    }
+    const iconKey = `${ability.id ?? ''}:${family}`;
+    if (this.iconKey !== iconKey) {
+      this.iconKey = iconKey;
       this.icon.getContext('2d')?.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
-      this.icon.getContext('2d')?.drawImage(iconCanvas(family), 0, 0);
+      this.icon.getContext('2d')?.drawImage(abilityIconCanvas(ability.id ?? '', family), 0, 0);
     }
     if (this.nameText !== ability.name) {
       this.nameText = ability.name;

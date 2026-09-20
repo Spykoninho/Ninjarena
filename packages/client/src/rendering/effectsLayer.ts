@@ -29,7 +29,11 @@ const NUMBER_COLORS: Record<DamageTone, number> = {
   dealt: 0xffd166,
   taken: 0xff7867,
   other: 0xf5edcd,
+  heal: 0x92d8b4,
 };
+
+const COLUMN_LIFE_MS = 320;
+const PUFF_LIFE_MS = 520;
 
 const SLASH_LIFE_MS = 150;
 
@@ -66,6 +70,19 @@ interface Slash {
   ageMs: number;
 }
 
+interface Column {
+  node: Graphics;
+  radius: number;
+  color: string;
+  ageMs: number;
+}
+
+interface Puff {
+  node: Graphics;
+  color: string;
+  ageMs: number;
+}
+
 // La couche des effets vit au-dessus des entités et ne connaît que des positions monde.
 export class EffectsLayer {
   readonly container = new Container();
@@ -80,6 +97,25 @@ export class EffectsLayer {
   private seed = 0;
   private readonly portals: { node: Graphics; age: number; arriving: boolean }[] = [];
   private readonly slashes: Slash[] = [];
+  private readonly columns: Column[] = [];
+  private readonly puffs: Puff[] = [];
+
+  // Colonne venue du ciel: elle tombe sur la marque puis s'efface, sans couvrir l'anticipation.
+  column(position: Vec2, color: string, radius: number): void {
+    if (this.columns.length >= 8) return;
+    const node = new Graphics();
+    node.position.set(position.x, position.y);
+    this.container.addChild(node);
+    this.columns.push({ node, radius, color, ageMs: 0 });
+  }
+
+  puff(position: Vec2, color: string): void {
+    if (this.puffs.length >= 12) return;
+    const node = new Graphics();
+    node.position.set(position.x, position.y - 6);
+    this.container.addChild(node);
+    this.puffs.push({ node, color, ageMs: 0 });
+  }
 
   // Croissant de coupe orienté sur la visée; l'éventail translucide reste la zone touchée.
   slash(position: Vec2, angle: number, range: number, arcDegrees: number, color: string): void {
@@ -146,7 +182,7 @@ export class EffectsLayer {
   damageNumber(position: Vec2, amount: number, tone: DamageTone): void {
     if (this.numbers.length >= 24) return;
     const node = this.numberPool.pop() ?? newDamageText();
-    node.text = damageLabel(amount);
+    node.text = tone === 'heal' ? `+${damageLabel(amount)}` : damageLabel(amount);
     node.style.fill = NUMBER_COLORS[tone];
     node.alpha = 1;
     node.scale.set(NUMBER_POP_SCALE);
@@ -188,6 +224,8 @@ export class EffectsLayer {
       }
     }
     this.advanceSlashes(dtMs);
+    this.advanceColumns(dtMs);
+    this.advancePuffs(dtMs);
     this.advanceParticles(dtMs, seconds);
     this.advanceRings(dtMs);
     this.advanceAfterimages(dtMs);
@@ -199,6 +237,10 @@ export class EffectsLayer {
     this.portals.length = 0;
     for (const s of this.slashes) s.node.destroy();
     this.slashes.length = 0;
+    for (const c of this.columns) c.node.destroy();
+    this.columns.length = 0;
+    for (const p of this.puffs) p.node.destroy();
+    this.puffs.length = 0;
     this.container.removeChildren();
     destroyAll(this.particles, (particle) => particle.node, this.particlePool);
     destroyAll(this.rings, (ring) => ring.node, this.ringPool);
@@ -246,6 +288,71 @@ export class EffectsLayer {
         s.node
           .rect(Math.round(Math.cos(a) * r * 2) / 2, Math.round(Math.sin(a) * r * 2) / 2, 0.5, 0.5)
           .fill({ color: k ? s.color : P.ivory, alpha: 1 - p });
+      }
+    }
+  }
+
+  private advanceColumns(dtMs: number): void {
+    for (let i = this.columns.length - 1; i >= 0; i--) {
+      const c = this.columns[i];
+      if (!c) continue;
+      c.ageMs += dtMs;
+      const p = c.ageMs / COLUMN_LIFE_MS;
+      if (p >= 1) {
+        c.node.destroy();
+        this.columns.splice(i, 1);
+        continue;
+      }
+      // Descente en un tiers du temps, puis la colonne se resserre et s'éteint.
+      const drop = Math.min(1, p * 3),
+        fade = p < 0.33 ? 1 : 1 - (p - 0.33) / 0.67;
+      const height = 90,
+        top = -height * drop,
+        width = Math.max(1, c.radius * 0.6 * fade);
+      c.node.clear();
+      c.node
+        .rect(-width, top, width * 2, height * drop)
+        .fill({ color: c.color, alpha: 0.45 * fade });
+      c.node
+        .rect(-width * 0.35, top, width * 0.7, height * drop)
+        .fill({ color: P.ivory, alpha: 0.9 * fade });
+      c.node.ellipse(0, 0, c.radius * fade, c.radius * 0.4 * fade).fill({
+        color: c.color,
+        alpha: 0.3 * fade,
+      });
+      for (let k = 0; k < 6; k++) {
+        const a = (k * Math.PI) / 3 + p * 2;
+        c.node
+          .rect(Math.cos(a) * c.radius * 0.8 * p, Math.sin(a) * c.radius * 0.35 * p - 2, 1, 1)
+          .fill({ color: P.gold, alpha: fade });
+      }
+    }
+  }
+
+  private advancePuffs(dtMs: number): void {
+    for (let i = this.puffs.length - 1; i >= 0; i--) {
+      const puff = this.puffs[i];
+      if (!puff) continue;
+      puff.ageMs += dtMs;
+      const p = puff.ageMs / PUFF_LIFE_MS;
+      if (p >= 1) {
+        puff.node.destroy();
+        this.puffs.splice(i, 1);
+        continue;
+      }
+      puff.node.clear();
+      for (const [dx, dy, r] of [
+        [-4, 1, 4],
+        [4, -1, 4.5],
+        [0, -5, 3.5],
+      ] as const) {
+        const spread = 1 + p * 1.5;
+        puff.node
+          .circle(dx * spread, dy * spread - p * 6, r + p * 3)
+          .fill({ color: puff.color, alpha: 0.55 * (1 - p) });
+        puff.node
+          .circle(dx * spread - 1, dy * spread - p * 6 - 1, (r + p * 3) * 0.5)
+          .fill({ color: P.ivory, alpha: 0.25 * (1 - p) });
       }
     }
   }

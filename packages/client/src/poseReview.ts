@@ -2,6 +2,9 @@
 import type { PlayerView, ProjectileView } from './rendering/renderer';
 import type { Animation } from './rendering/art/presentation';
 import type { Direction } from './rendering/art/nativeArt';
+import type { AbilityDefinition } from '@ninjarena/core';
+import { abilityIconCanvas } from './rendering/art/abilityIcons';
+import { abilityFamily } from './rendering/art/abilityVisual';
 import { poseCanvas } from './rendering/art/spriteArt';
 import type { Prop } from './rendering/art/spriteArt';
 
@@ -117,6 +120,33 @@ export function showcaseProjectiles(
   ];
 }
 
+// Planche des illustrations: chaque capacité du contenu, agrandie x2 comme dans le HUD, nom dessous.
+export function drawIconSheet(
+  target: HTMLCanvasElement,
+  abilities: readonly AbilityDefinition[],
+): void {
+  const cell = 64,
+    perRow = 8;
+  const rows = Math.ceil(abilities.length / perRow);
+  target.width = perRow * cell;
+  target.height = rows * cell;
+  const ctx = target.getContext('2d');
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  abilities.forEach((ability, index) => {
+    const x = (index % perRow) * cell,
+      y = Math.floor(index / perRow) * cell;
+    ctx.fillStyle = index % 2 ? '#152530' : '#12212b';
+    ctx.fillRect(x, y, cell, cell);
+    ctx.fillStyle = '#101c24';
+    ctx.fillRect(x + 8, y + 4, 48, 48);
+    ctx.drawImage(abilityIconCanvas(ability.id, abilityFamily(ability)), x + 8, y + 4, 48, 48);
+    ctx.fillStyle = '#f5edcd';
+    ctx.font = '7px monospace';
+    ctx.fillText(ability.id.slice(0, 15), x + 2, y + 61);
+  });
+}
+
 // Planche statique de toutes les poses: la vérité des textures, sans dépendre du temps.
 export function drawPoseSheet(target: HTMLCanvasElement): void {
   const columns: { animation: Animation; frames: number; prop: Prop }[] = [
@@ -124,6 +154,9 @@ export function drawPoseSheet(target: HTMLCanvasElement): void {
     { animation: 'walk', frames: 6, prop: 'none' },
     { animation: 'attack', frames: 4, prop: 'kunai' },
     { animation: 'attack', frames: 4, prop: 'shuriken' },
+    { animation: 'attack', frames: 4, prop: 'staff' },
+    { animation: 'attack', frames: 4, prop: 'fist' },
+    { animation: 'attack', frames: 4, prop: 'needle' },
     { animation: 'cast', frames: 5, prop: 'none' },
     { animation: 'hit', frames: 2, prop: 'none' },
     { animation: 'dash', frames: 3, prop: 'none' },

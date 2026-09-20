@@ -2,7 +2,7 @@
 import { DEFAULT_MAP_ID, loadContent, loadMap } from '@ninjarena/content';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import type { PlayerView, RenderFrame } from './rendering/renderer';
-import { drawPoseSheet, showcasePlayers, showcaseProjectiles } from './poseReview';
+import { drawIconSheet, drawPoseSheet, showcasePlayers, showcaseProjectiles } from './poseReview';
 import './styles.css';
 import { Hud } from './ui/hud';
 import { KeyBindingsPanel } from './ui/keyBindingsPanel';
@@ -34,6 +34,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-v
 }
 const sheet = document.querySelector<HTMLCanvasElement>('#sheet');
 if (sheet) drawPoseSheet(sheet);
+const icons = document.querySelector<HTMLCanvasElement>('#icons');
+if (icons) drawIconSheet(icons, content.abilities.all());
 const hudRoot = document.querySelector<HTMLElement>('#hud');
 const hud =
   hudRoot === null ? null : new Hud(hudRoot, new KeyBindingsPanel(new BindingsStore(null)));

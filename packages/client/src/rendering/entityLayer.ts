@@ -42,6 +42,28 @@ interface ProjectileNode {
   body: Graphics;
 }
 
+// L'accessoire tenu suit l'attaque de base en cours: bâton, poing, aiguilles, étoile ou kunaï.
+function propOf(view: PlayerView): Prop {
+  switch (view.castAbilityId) {
+    case 'staff-sweep':
+      return 'staff';
+    case 'iron-fist':
+      return 'fist';
+    case 'senbon-volley':
+      return 'needle';
+    default:
+      return view.castFamily === 'projectile'
+        ? 'shuriken'
+        : view.castFamily === 'melee'
+          ? 'kunai'
+          : 'none';
+  }
+}
+
+function colorValue(color: string): number {
+  return Number.parseInt(color.slice(1), 16);
+}
+
 export class EntityLayer {
   readonly container = new Container();
   readonly depth = new Container();
@@ -87,18 +109,13 @@ export class EntityLayer {
         node.releasedAt = null;
       }
       if (view.castReleased && node.releasedAt === null) node.releasedAt = node.age;
-      node.prop =
-        view.castFamily === 'projectile'
-          ? 'shuriken'
-          : view.castFamily === 'melee'
-            ? 'kunai'
-            : 'none';
+      node.prop = propOf(view);
       if (view.activeArc && !node.view.activeArc && view.visible)
         this.onMelee?.(
           { x: node.container.x, y: node.container.y },
           Math.atan2(view.aim.y, view.aim.x),
           view.activeArc,
-          node.color,
+          view.activeArc.color === undefined ? node.color : colorValue(view.activeArc.color),
         );
       node.view = view;
       node.container.position.set(
@@ -197,7 +214,13 @@ export class EntityLayer {
       }
       node.body.tint = node.flashMs > 0 ? node.flashColor : 0xffffff;
       node.body.filters = node.flashMs > 0 ? [node.flashFilter] : [];
-      node.container.alpha = node.animation === 'death' ? Math.max(0.2, 1 - node.age / 1800) : 1;
+      // Un allié voilé se devine en transparence; un ennemi voilé n'est simplement pas dessiné.
+      node.container.alpha =
+        node.animation === 'death'
+          ? Math.max(0.2, 1 - node.age / 1800)
+          : node.view.stealthed
+            ? 0.45
+            : 1;
     }
   }
 
@@ -267,6 +290,27 @@ export class EntityLayer {
         .lineTo(2, 2)
         .lineTo(5, 0)
         .stroke({ color: P.cyan, width: 0.5 });
+    if (v.hasted) {
+      // Traits de vitesse derrière le corps, du côté opposé à la visée: le vent le pousse.
+      const back = { x: -Math.sign(v.aim.x) || -1, y: 0 };
+      for (const [dy, len] of [
+        [-9, 4],
+        [-6, 6],
+        [-3, 4],
+      ] as const) {
+        g.moveTo(back.x * 5, dy)
+          .lineTo(back.x * (5 + len), dy)
+          .stroke({ color: P.mint, width: 0.5, alpha: 0.9 });
+      }
+    }
+    if (v.stealthed) {
+      for (const [x, y] of [
+        [-5, -4],
+        [5, -7],
+        [0, 2],
+      ] as const)
+        g.circle(x, y, 1.5).fill({ color: P.stone[2], alpha: 0.5 });
+    }
   }
 
   private createPlayer(view: PlayerView): PlayerNode {
