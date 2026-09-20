@@ -53,9 +53,70 @@ describe('AccountService access', () => {
     expect(result).toEqual({
       ok: true,
       account: { name: 'Kage', rating: 100, wins: 0, losses: 0 },
+      token: expect.stringMatching(/^[0-9a-f]{64}$/) as string,
     });
     expect(session.name).toBe('Kage');
     expect(session.account?.name).toBe('Kage');
+  });
+
+  it('resumes an account from its token until a logout revokes that token', async () => {
+    const { service, repository } = createService();
+    const first = createSession('c1');
+    const registered = await service.register(first.session, 'kage', 'shadow');
+    const token = registered.ok ? registered.token : undefined;
+    if (token === undefined) throw new Error('no token issued');
+    // Le fichier ne garde qu'une empreinte: le jeton lui-même n'y est jamais.
+    expect(JSON.stringify(await repository.get('kage'))).not.toContain(token);
+
+    // Une coupure garde le jeton: la page rechargée reprend le compte.
+    service.disconnect(first.session);
+    const second = createSession('c2');
+    expect(await service.resume(second.session, token)).toEqual({
+      ok: true,
+      account: { name: 'kage', rating: 100, wins: 0, losses: 0 },
+    });
+    expect(second.session.name).toBe('kage');
+
+    // Le compte reste tenu par une seule session: le même jeton ne l'ouvre pas deux fois.
+    expect(await service.resume(createSession('c3').session, token)).toMatchObject({
+      ok: false,
+      error: { code: 'ALREADY_LOGGED_IN' },
+    });
+
+    await service.logout(second.session);
+    expect(second.session.account).toBeNull();
+    expect(await service.resume(createSession('c4').session, token)).toMatchObject({
+      ok: false,
+      error: { code: 'BAD_CREDENTIALS' },
+    });
+    expect(await service.resume(createSession('c5').session, 'ab'.repeat(32))).toMatchObject({
+      ok: false,
+      error: { code: 'BAD_CREDENTIALS' },
+    });
+  });
+
+  it('keeps one token per device and forgets only the oldest ones', async () => {
+    const { service, repository } = createService();
+    const tokens: string[] = [];
+    for (let device = 0; device < 6; device++) {
+      const { session } = createSession(`c${device}`);
+      const result =
+        device === 0
+          ? await service.register(session, 'kage', 'shadow')
+          : await service.login(session, 'kage', 'shadow');
+      if (result.ok && result.token !== undefined) tokens.push(result.token);
+      service.disconnect(session);
+    }
+    expect(tokens).toHaveLength(6);
+    expect((await repository.get('kage'))?.sessionTokens).toHaveLength(5);
+    const [oldest, ...kept] = tokens;
+    if (oldest === undefined) throw new Error('no token');
+    expect((await service.resume(createSession('x').session, oldest)).ok).toBe(false);
+    for (const token of kept) {
+      const { session } = createSession(`k${token.slice(0, 4)}`);
+      expect((await service.resume(session, token)).ok).toBe(true);
+      service.disconnect(session);
+    }
   });
 
   it('refuses a taken name whatever its case, and a wrong password', async () => {
@@ -91,7 +152,7 @@ describe('AccountService access', () => {
       error: { code: 'ALREADY_LOGGED_IN' },
     });
 
-    service.logout(first.session);
+    await service.logout(first.session);
     expect(first.session.account).toBeNull();
     expect((await service.login(second.session, 'kage', 'shadow')).ok).toBe(true);
 

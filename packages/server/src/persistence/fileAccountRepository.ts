@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 import type { AccountRecord, AccountRepository } from './accountRepository';
-import { accountKey } from './accountRepository';
+import { accountKey, cloneRecord, holdsSessionToken } from './accountRepository';
 
 export interface FileAccountRepositoryOptions {
   file: string;
@@ -16,6 +16,8 @@ const AccountRecordSchema = z.object({
   wins: z.number().int().nonnegative(),
   losses: z.number().int().nonnegative(),
   createdAt: z.string(),
+  // Les fichiers d'avant les jetons n'ont pas le champ: ces comptes repartent sans session.
+  sessionTokens: z.array(z.string().min(1)).default([]),
 });
 
 const AccountFileSchema = z.object({ accounts: z.array(AccountRecordSchema) });
@@ -35,12 +37,12 @@ export class FileAccountRepository implements AccountRepository {
   async get(name: string): Promise<AccountRecord | null> {
     const accounts = await this.load();
     const record = accounts.get(accountKey(name));
-    return record === undefined ? null : { ...record };
+    return record === undefined ? null : cloneRecord(record);
   }
 
   async save(record: AccountRecord): Promise<void> {
     const accounts = await this.load();
-    accounts.set(accountKey(record.name), { ...record });
+    accounts.set(accountKey(record.name), cloneRecord(record));
     // Les écritures s'enchaînent: deux sauvegardes rapprochées ne se disputent pas le fichier temporaire.
     this.writing = this.writing.then(() => this.persist([...accounts.values()]));
     await this.writing;
@@ -48,7 +50,15 @@ export class FileAccountRepository implements AccountRepository {
 
   async list(): Promise<AccountRecord[]> {
     const accounts = await this.load();
-    return [...accounts.values()].map((record) => ({ ...record }));
+    return [...accounts.values()].map(cloneRecord);
+  }
+
+  async findBySessionToken(hash: string): Promise<AccountRecord | null> {
+    const accounts = await this.load();
+    for (const record of accounts.values()) {
+      if (holdsSessionToken(record, hash)) return cloneRecord(record);
+    }
+    return null;
   }
 
   private async load(): Promise<Map<string, AccountRecord>> {

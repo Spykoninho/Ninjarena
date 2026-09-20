@@ -6,11 +6,13 @@ import type { AccountRecord, AccountRepository } from '../persistence/accountRep
 import { accountKey } from '../persistence/accountRepository';
 import type { ClientSession } from '../session/clientSession';
 import { accountPasswordMatches, hashAccountPassword } from './accountPassword';
+import { hashSessionToken, issueSessionToken } from './sessionToken';
 
 export type AccountErrorCode = 'NAME_TAKEN' | 'BAD_CREDENTIALS' | 'ALREADY_LOGGED_IN';
 
+// Le jeton n'est remis que sur une connexion par mot de passe: une reprise n'en tire pas un neuf.
 export type AccountResult =
-  | { ok: true; account: AccountView }
+  | { ok: true; account: AccountView; token?: string }
   | { ok: false; error: { code: AccountErrorCode; message: string } };
 
 export interface AccountServiceOptions {
@@ -20,6 +22,8 @@ export interface AccountServiceOptions {
 }
 
 const MAX_LEADERBOARD_ENTRIES = 100;
+// Un compte garde autant de sessions ouvertes que d'appareils raisonnables; la plus vieille tombe.
+const MAX_SESSION_TOKENS = 5;
 
 export class AccountService {
   private readonly repository: AccountRepository;
@@ -51,9 +55,10 @@ export class AccountService {
         wins: 0,
         losses: 0,
         createdAt: this.now().toISOString(),
+        sessionTokens: [],
       };
-      await this.repository.save(record);
-      return this.attach(session, record);
+      // Le nom reste réservé jusqu'à l'écriture: un `return` nu relâcherait la réservation avant.
+      return await this.open(session, record);
     } finally {
       this.claiming.delete(key);
     }
@@ -65,15 +70,42 @@ export class AccountService {
     if (record === null || !(await accountPasswordMatches(record.passwordHash, password))) {
       return fail('BAD_CREDENTIALS', 'unknown account or wrong password');
     }
-    return this.attach(session, record);
+    return this.open(session, record);
   }
 
-  logout(session: ClientSession): void {
+  // Un jeton inconnu ou révoqué vaut de mauvais identifiants: le client l'oublie et redevient invité.
+  async resume(session: ClientSession, token: string): Promise<AccountResult> {
+    if (session.account !== null) return alreadyLoggedIn(session.account.name);
+    const hash = hashSessionToken(token);
+    const record = await this.repository.findBySessionToken(hash);
+    if (record === null) return fail('BAD_CREDENTIALS', 'unknown or expired session');
+    const result = this.attach(session, record);
+    if (result.ok) session.sessionToken = hash;
+    return result;
+  }
+
+  // La déconnexion voulue révoque le jeton de cette session; les autres appareils gardent le leur.
+  async logout(session: ClientSession): Promise<void> {
+    const account = session.account;
+    const hash = session.sessionToken;
+    this.disconnect(session);
+    if (account === null || hash === null) return;
+    const record = await this.repository.get(account.name);
+    if (record === null) return;
+    await this.repository.save({
+      ...record,
+      sessionTokens: record.sessionTokens.filter((stored) => stored !== hash),
+    });
+  }
+
+  // Une coupure libère le compte sans toucher au jeton: la page rechargée le reprendra.
+  disconnect(session: ClientSession): void {
     const account = session.account;
     if (account === null) return;
     const key = accountKey(account.name);
     if (this.online.get(key) === session) this.online.delete(key);
     session.account = null;
+    session.sessionToken = null;
   }
 
   // Les scores changent en mémoire tout de suite; leur écriture suit sans retenir la fin de partie.
@@ -99,6 +131,20 @@ export class AccountService {
       .sort(byStanding)
       .slice(0, MAX_LEADERBOARD_ENTRIES)
       .map((record) => viewOf(record));
+  }
+
+  // Une connexion par mot de passe ouvre une session durable: son jeton est écrit avec le compte.
+  private async open(session: ClientSession, record: AccountRecord): Promise<AccountResult> {
+    const issued = issueSessionToken();
+    const stored: AccountRecord = {
+      ...record,
+      sessionTokens: [...record.sessionTokens, issued.hash].slice(-MAX_SESSION_TOKENS),
+    };
+    const result = this.attach(session, stored);
+    if (!result.ok) return result;
+    await this.repository.save(stored);
+    session.sessionToken = issued.hash;
+    return { ...result, token: issued.token };
   }
 
   private attach(session: ClientSession, record: AccountRecord): AccountResult {

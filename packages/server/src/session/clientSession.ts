@@ -13,6 +13,8 @@ export class ClientSession {
   name: string;
   room: Room | null = null;
   account: AccountView | null = null;
+  // L'empreinte du jeton qui a ouvert le compte: c'est lui que la déconnexion révoque.
+  sessionToken: string | null = null;
   playerId: PlayerId | null = null;
   invalidMessages = 0;
   closed = false;

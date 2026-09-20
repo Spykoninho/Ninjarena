@@ -193,7 +193,7 @@ export class GameServer {
       this.openConnections -= 1;
       this.leaveQueue(session, false);
       this.roomManager.leave(session);
-      this.accounts.logout(session);
+      this.accounts.disconnect(session);
     });
   }
 
@@ -223,6 +223,9 @@ export class GameServer {
       case 'register':
       case 'login':
         this.handleAccountAccess(session, message);
+        return;
+      case 'resume':
+        this.handleResume(session, message);
         return;
       case 'logout':
         this.handleLogout(session);
@@ -307,10 +310,39 @@ export class GameServer {
           session.send({ type: 'error', code: result.error.code, message: result.error.message });
           return;
         }
-        session.send({ type: 'accountState', account: result.account });
+        session.send({
+          type: 'accountState',
+          account: result.account,
+          ...(result.token === undefined ? {} : { token: result.token }),
+        });
       })
       .catch((error: unknown) => {
         this.log(`${message.type} failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({ type: 'error', code: 'SERVER_ERROR', message: 'accounts are unavailable' });
+      });
+  }
+
+  // Un jeton périmé ne mérite pas d'erreur à l'écran: la session reste invitée et le client l'oublie.
+  private handleResume(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'resume' }>,
+  ): void {
+    if (session.room !== null) {
+      session.send({ type: 'error', code: 'ALREADY_IN_ROOM', message: 'leave the room first' });
+      return;
+    }
+    void this.accounts
+      .resume(session, message.token)
+      .then((result) => {
+        if (result.ok) session.send({ type: 'accountState', account: result.account });
+        else if (result.error.code === 'BAD_CREDENTIALS') {
+          session.send({ type: 'accountState', account: null });
+        } else {
+          session.send({ type: 'error', code: result.error.code, message: result.error.message });
+        }
+      })
+      .catch((error: unknown) => {
+        this.log(`resume failed for ${session.id}: ${reasonOf(error)}`);
         session.send({ type: 'error', code: 'SERVER_ERROR', message: 'accounts are unavailable' });
       });
   }
@@ -321,7 +353,10 @@ export class GameServer {
       return;
     }
     this.leaveQueue(session, false);
-    this.accounts.logout(session);
+    // Le compte est rendu tout de suite; la révocation du jeton s'écrit derrière.
+    void this.accounts.logout(session).catch((error: unknown) => {
+      this.log(`logout failed for ${session.id}: ${reasonOf(error)}`);
+    });
     session.send({ type: 'accountState', account: null });
   }
 

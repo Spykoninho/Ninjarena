@@ -91,6 +91,7 @@ const CLIENT_MESSAGES: ClientMessage[] = [
   { type: 'hello', protocolVersion: PROTOCOL_VERSION, name: 'ninja-a1b2' },
   { type: 'register', name: 'kage', password: 'secret' },
   { type: 'login', name: 'kage', password: 'secret' },
+  { type: 'resume', token: 'ab'.repeat(32) },
   { type: 'logout' },
   { type: 'getLeaderboard' },
   { type: 'createRoom', password: 'secret', settings: { teamCount: 4 } },
@@ -110,7 +111,11 @@ const CLIENT_MESSAGES: ClientMessage[] = [
 
 const SERVER_MESSAGES: ServerMessage[] = [
   { type: 'welcome', sessionId: 'session-1' },
-  { type: 'accountState', account: { name: 'kage', rating: 120, wins: 3, losses: 1 } },
+  {
+    type: 'accountState',
+    account: { name: 'kage', rating: 120, wins: 3, losses: 1 },
+    token: 'ab'.repeat(32),
+  },
   { type: 'accountState', account: null },
   { type: 'leaderboard', entries: [{ name: 'kage', rating: 120, wins: 3, losses: 1 }] },
   { type: 'roomState', room: ROOM_VIEW },
@@ -219,6 +224,12 @@ describe('protocol codec', () => {
       clientMessageCodec.decode(
         JSON.stringify({ type: 'register', name: 'kage', password: 'abc' }),
       ),
+    ).toBeNull();
+  });
+
+  it('rejects a resume whose token is not the hexadecimal the server hands out', () => {
+    expect(
+      clientMessageCodec.decode(JSON.stringify({ type: 'resume', token: 'not-a-token' })),
     ).toBeNull();
   });
 

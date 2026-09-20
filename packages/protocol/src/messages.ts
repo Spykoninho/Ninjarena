@@ -104,6 +104,8 @@ export type ClientMessage =
   | { type: 'hello'; protocolVersion: number; name: string }
   | { type: 'register'; name: string; password: string }
   | { type: 'login'; name: string; password: string }
+  // Reprend un compte avec le jeton reçu à la connexion: le joueur n'a pas à se reconnecter.
+  | { type: 'resume'; token: string }
   | { type: 'logout' }
   | { type: 'getLeaderboard' }
   | { type: 'createRoom'; password?: string; settings?: RoomSettingsPatch }
@@ -153,7 +155,8 @@ export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 
 export type ServerMessage =
   | { type: 'welcome'; sessionId: string }
-  | { type: 'accountState'; account: AccountView | null }
+  // Le jeton n'accompagne qu'une connexion par mot de passe: le client le garde pour la prochaine fois.
+  | { type: 'accountState'; account: AccountView | null; token?: string }
   | { type: 'leaderboard'; entries: AccountView[] }
   | { type: 'roomState'; room: RoomView }
   | { type: 'roomLeft' }

@@ -405,6 +405,41 @@ describe('GameServer dispatch', () => {
     expect(lastOf(connection, 'accountState')?.account).toMatchObject({ name: 'kage' });
   });
 
+  it('resumes an account from its token on a new connection, silently drops a revoked one', async () => {
+    const { server, transport } = await startServer();
+    const first = transport.accept('c1');
+    hello(first, 'guest');
+    send(first, { type: 'register', name: 'kage', password: 'shadow' });
+    await settled(first);
+    const token = lastOf(first, 'accountState')?.token;
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    if (token === undefined) throw new Error('no token');
+
+    // Le rechargement de la page coupe la socket: la suivante reprend le compte sans mot de passe.
+    first.close();
+    const second = transport.accept('c2');
+    hello(second, 'guest');
+    send(second, { type: 'resume', token });
+    await settled(second);
+    expect(lastOf(second, 'accountState')).toEqual({
+      type: 'accountState',
+      account: { name: 'kage', rating: 100, wins: 0, losses: 0 },
+    });
+    send(second, { type: 'createRoom' });
+    expect(lastOf(second, 'roomState')?.room.players[0]?.name).toBe('kage');
+    send(second, { type: 'leaveRoom' });
+    send(second, { type: 'logout' });
+    await settled(second);
+
+    const third = transport.accept('c3');
+    hello(third, 'guest');
+    send(third, { type: 'resume', token });
+    await settled(third);
+    expect(lastOf(third, 'accountState')).toEqual({ type: 'accountState', account: null });
+    expect(lastOf(third, 'error')).toBeUndefined();
+    expect(server.rooms.count).toBe(0);
+  });
+
   it('keeps guests out of a ranked room and blocks its start until everyone has an account', async () => {
     const { transport } = await startServer();
     const host = transport.accept('c1');

@@ -18,6 +18,13 @@ import { initialAppState, reduceServerMessage, screenFor } from './appModel';
 import type { AppState, ReduceIntent } from './appModel';
 import type { Screen, ScreenId } from './screen';
 
+// Le jeton de session que le navigateur garde entre deux visites.
+export interface ClientAppSession {
+  readonly token: string | null;
+  save(token: string): void;
+  clear(): void;
+}
+
 // Les dépendances sont décrites par ce dont l'application se sert, pour que les tests puissent les doubler.
 export interface ClientAppNetwork {
   connect(url: string): Promise<void>;
@@ -75,6 +82,7 @@ export interface ClientAppDeps {
   network: ClientAppNetwork;
   game: ClientAppGame;
   screens: ClientAppScreens;
+  session: ClientAppSession;
   stage: HTMLElement;
   uiRoot: HTMLElement;
 }
@@ -124,6 +132,9 @@ export class ClientApp {
   private lastError: string | null = null;
   private connected = false;
   private connecting = false;
+  // La reprise du compte suit le `hello`: toute action attend sa réponse pour partir sous le bon nom.
+  private ready: Promise<void> = Promise.resolve();
+  private settleResume: (() => void) | null = null;
   private mapsRequested = false;
   private pendingTest = false;
   private solo: SoloRun | null = null;
@@ -258,7 +269,10 @@ export class ClientApp {
 
   private async connect(): Promise<boolean> {
     const { config, network } = this.deps;
-    if (this.connected) return true;
+    if (this.connected) {
+      await this.ready;
+      return this.connected;
+    }
     if (this.connecting) return false;
     this.connecting = true;
     this.setStatus(`Connexion à ${config.serverUrl}…`);
@@ -272,9 +286,28 @@ export class ClientApp {
     }
     this.connected = true;
     this.sendHello();
+    this.ready = this.resumeAccount();
+    await this.ready;
+    if (!this.connected) return false;
     // Un éditeur ouvert avant la connexion n'a pas pu demander sa liste de cartes.
     if (screenFor(this.appState) === 'editor') this.send({ type: 'listMaps' });
     return true;
+  }
+
+  // Un jeton gardé reprend le compte sans mot de passe; la promesse tombe avec la réponse ou la coupure.
+  private resumeAccount(): Promise<void> {
+    const token = this.deps.session.token;
+    if (token === null) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.settleResume = resolve;
+      this.send({ type: 'resume', token });
+    });
+  }
+
+  private resumeSettled(): void {
+    const settle = this.settleResume;
+    this.settleResume = null;
+    settle?.();
   }
 
   private sendHello(): void {
@@ -291,6 +324,7 @@ export class ClientApp {
       if (game.active) game.handlePong(message);
       return;
     }
+    if (message.type === 'accountState' || message.type === 'error') this.resumeSettled();
     const next = reduceServerMessage(this.appState, message, this.intent);
     // Le match doit être démonté avant que le salon ne reprenne l'écran.
     const leftGame = this.appState.screen === 'game' && next.screen !== 'game';
@@ -333,6 +367,9 @@ export class ClientApp {
       case 'accountState':
         // Le compte impose son pseudo: le prochain `hello` et les salles l'utilisent.
         if (message.account !== null) this.name = message.account.name;
+        // Le navigateur suit le serveur: un jeton neuf est gardé, un compte rendu est oublié.
+        if (message.account === null) this.deps.session.clear();
+        else if (message.token !== undefined) this.deps.session.save(message.token);
         return;
       case 'mapDocument':
         screens.editor.showDocument(message.document);
@@ -430,6 +467,7 @@ export class ClientApp {
     if (game.active) game.endMatch();
     this.connected = false;
     this.connecting = false;
+    this.resumeSettled();
     this.mapsRequested = false;
     // Une coupure annule la partie en solo en vol: la sauvegarde suivante ne doit pas ouvrir de salle.
     this.pendingTest = false;

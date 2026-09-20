@@ -16,7 +16,15 @@ afterEach(async () => {
 });
 
 function record(name: string, rating = 100): AccountRecord {
-  return { name, passwordHash: 'salt:hash', rating, wins: 0, losses: 0, createdAt: '2026-01-01' };
+  return {
+    name,
+    passwordHash: 'salt:hash',
+    rating,
+    wins: 0,
+    losses: 0,
+    createdAt: '2026-01-01',
+    sessionTokens: [],
+  };
 }
 
 describe('FileAccountRepository', () => {
@@ -40,6 +48,26 @@ describe('FileAccountRepository', () => {
     expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({
       accounts: [{ name: 'kage', rating: 130 }],
     });
+  });
+
+  it('finds an account by one of its session tokens and reads a file written before tokens', async () => {
+    const file = join(dir, 'accounts.json');
+    await writeFile(
+      file,
+      JSON.stringify({
+        accounts: [{ ...record('old'), sessionTokens: undefined }],
+      }),
+      'utf8',
+    );
+    const repository = new FileAccountRepository({ file });
+    expect(await repository.get('old')).toMatchObject({ sessionTokens: [] });
+
+    await repository.save({ ...record('kage'), sessionTokens: ['t1', 't2'] });
+    expect(await repository.findBySessionToken('t2')).toMatchObject({ name: 'kage' });
+    expect(await repository.findBySessionToken('t3')).toBeNull();
+
+    const reopened = new FileAccountRepository({ file });
+    expect(await reopened.findBySessionToken('t1')).toMatchObject({ name: 'kage' });
   });
 
   it('ignores an unreadable file rather than failing every login', async () => {

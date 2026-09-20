@@ -12,15 +12,16 @@ delay, which is what prediction, reconciliation and interpolation below are for.
 
 The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 6`.
 
-| The client may send                                                    | The server alone decides                                                                                                     |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `hello { protocolVersion, name }`                                      | the session id (it comes from the connection, never the wire)                                                                |
-| `createRoom { password?, settings? }` / `joinRoom { code, password? }` | a room's code, its host, and whether a join is allowed                                                                       |
-| `updateSettings { patch }` / `setLoadout` / `setReady` / `switchTeam`  | whether a settings patch or a loadout is valid                                                                               |
-| `startMatch`                                                           | when a match actually starts, and the team a player gets                                                                     |
-| `listMaps` / `getMap { id }` / `saveMap { document }`                  | a map's final id, and whether it is valid                                                                                    |
-| `input { seq, input: { move, aim, abilityHeld } }`                     | whether an ability is allowed, and what it hits                                                                              |
-| `ping { sentAt }`                                                      | damage, deaths, statuses, knockback, shields; positions, collisions, projectile and zone resolution; round and match results |
+| The client may send                                                     | The server alone decides                                                                                                     |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`                                       | the session id (it comes from the connection, never the wire)                                                                |
+| `register` / `login { name, password }` / `resume { token }` / `logout` | whether an account opens, the session token it hands out, and when that token stops working                                  |
+| `createRoom { password?, settings? }` / `joinRoom { code, password? }`  | a room's code, its host, and whether a join is allowed                                                                       |
+| `updateSettings { patch }` / `setLoadout` / `setReady` / `switchTeam`   | whether a settings patch or a loadout is valid                                                                               |
+| `startMatch`                                                            | when a match actually starts, and the team a player gets                                                                     |
+| `listMaps` / `getMap { id }` / `saveMap { document }`                   | a map's final id, and whether it is valid                                                                                    |
+| `input { seq, input: { move, aim, abilityHeld } }`                      | whether an ability is allowed, and what it hits                                                                              |
+| `ping { sentAt }`                                                       | damage, deaths, statuses, knockback, shields; positions, collisions, projectile and zone resolution; round and match results |
 
 Every client frame is validated by a zod schema before it reaches game code
 (`ClientMessageSchema`, strict objects, `hello`'s name limited to 24 characters, a room code
@@ -48,6 +49,8 @@ The server sends:
   the one message that carries the whole room, so the client never has to reconstruct it from a
   diff — see [rooms.md](rooms.md) for the shape and every status it can report.
 - `roomLeft` — acknowledges `leaveRoom`.
+- `accountState { account, token? }` — the account the session holds (`null` for a guest); `token`
+  comes only with a login or a registration and is what `resume` sends back on the next visit.
 - `matchStarted { playerId, tickRate, snapshotRate, matchConfig, maps }` — sent once per player when
   a room's match begins; `maps` holds one full `MapDocument` per round, in order (a single one when
   the room plays a fixed map; round N is played on `maps[(N - 1) % maps.length]`), so the client

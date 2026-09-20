@@ -122,6 +122,9 @@ const AccountPasswordSchema = z
   .min(MIN_ACCOUNT_PASSWORD_LENGTH)
   .max(MAX_ACCOUNT_PASSWORD_LENGTH);
 
+// Un jeton de session est l'hexadécimal de 32 octets tirés au sort par le serveur.
+const SessionTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
+
 const AccountViewSchema: z.ZodType<AccountView> = z.strictObject({
   name: AccountNameSchema,
   rating: z.number().int().nonnegative(),
@@ -222,6 +225,7 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
     name: AccountNameSchema,
     password: AccountPasswordSchema,
   }),
+  z.strictObject({ type: z.literal('resume'), token: SessionTokenSchema }),
   z.strictObject({ type: z.literal('logout') }),
   z.strictObject({ type: z.literal('getLeaderboard') }),
   z.strictObject({
@@ -263,7 +267,11 @@ const WorldEventSchema = z.custom<WorldEvent>(isObject);
 
 export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnion('type', [
   z.object({ type: z.literal('welcome'), sessionId: z.string().min(1) }),
-  z.object({ type: z.literal('accountState'), account: AccountViewSchema.nullable() }),
+  z.object({
+    type: z.literal('accountState'),
+    account: AccountViewSchema.nullable(),
+    token: SessionTokenSchema.optional(),
+  }),
   z.object({
     type: z.literal('leaderboard'),
     entries: z.array(AccountViewSchema).max(MAX_LEADERBOARD_ENTRIES),

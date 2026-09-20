@@ -1,5 +1,6 @@
 import { loadContent } from '@ninjarena/content';
 import { ClientApp } from './app/clientApp';
+import { SessionStore } from './app/sessionStore';
 import { WebAudioSynth } from './audio/webAudioSynth';
 import { loadClientConfig, sameOriginServerUrl } from './config/clientConfig';
 import { ClientGame } from './game/clientGame';
@@ -185,6 +186,8 @@ deferred.app = new ClientApp({
   network,
   game,
   screens: { home, lobby, editor },
+  // Le compte survit au rechargement de la page: son jeton reste dans le navigateur.
+  session: new SessionStore(localStorageOrNull()),
   stage,
   uiRoot,
 });

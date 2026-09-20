@@ -15,7 +15,14 @@ import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/
 import type { HudExitAction } from '../ui/hud';
 import { loadClientConfig } from '../config/clientConfig';
 import { ClientApp } from './clientApp';
-import type { ClientAppGame, ClientAppNetwork, EditorView, HomeView, LobbyView } from './clientApp';
+import type {
+  ClientAppGame,
+  ClientAppNetwork,
+  ClientAppSession,
+  EditorView,
+  HomeView,
+  LobbyView,
+} from './clientApp';
 
 const settings: RoomSettings = {
   mode: 'team',
@@ -323,6 +330,22 @@ class FakeEditor implements EditorView {
 // Les tests tournent sous node: l'application ne fait que transmettre ces éléments à ses écrans.
 const element = (): HTMLElement => ({}) as HTMLElement;
 
+class FakeSession implements ClientAppSession {
+  token: string | null;
+
+  constructor(token: string | null) {
+    this.token = token;
+  }
+
+  save(token: string): void {
+    this.token = token;
+  }
+
+  clear(): void {
+    this.token = null;
+  }
+}
+
 interface Harness {
   app: ClientApp;
   network: FakeNetwork;
@@ -330,24 +353,27 @@ interface Harness {
   home: FakeHome;
   lobby: FakeLobby;
   editor: FakeEditor;
+  session: FakeSession;
 }
 
-function harness(): Harness {
+function harness(token: string | null = null): Harness {
   const network = new FakeNetwork();
   const game = new FakeGame();
   const home = new FakeHome();
   const lobby = new FakeLobby();
   const editor = new FakeEditor();
+  const session = new FakeSession(token);
   const app = new ClientApp({
     config: loadClientConfig('?name=kage'),
     content: {} as GameContent,
     network,
     game,
     screens: { home, lobby, editor },
+    session,
     stage: element(),
     uiRoot: element(),
   });
-  return { app, network, game, home, lobby, editor };
+  return { app, network, game, home, lobby, editor, session };
 }
 
 let h: Harness;
@@ -446,6 +472,7 @@ describe('ClientApp editor', () => {
       network: fresh.network,
       game: fresh.game,
       screens: { home: fresh.home, lobby: fresh.lobby, editor: fresh.editor },
+      session: fresh.session,
       stage: element(),
       uiRoot: element(),
     });
@@ -703,6 +730,7 @@ describe('ClientApp sandbox and ranked queue', () => {
 
 describe('ClientApp accounts', () => {
   const account: AccountView = { name: 'Kage', rating: 115, wins: 1, losses: 0 };
+  const TOKEN = 'ab'.repeat(32);
 
   it('sends the credentials and pushes the account to the home screen once', async () => {
     h.app.register('Kage', 'shadow');
@@ -737,6 +765,49 @@ describe('ClientApp accounts', () => {
     h.network.drop();
     expect(h.app.state.account).toBeNull();
     expect(h.home.accounts.at(-1)).toBeNull();
+  });
+
+  it('keeps the token a login hands out and forgets it when the server ends the account', async () => {
+    h.app.login('kage', 'shadow');
+    await flush();
+    h.network.deliver({ type: 'accountState', account, token: TOKEN });
+    expect(h.session.token).toBe(TOKEN);
+    h.network.deliver({ type: 'accountState', account });
+    expect(h.session.token).toBe(TOKEN);
+    h.network.drop();
+    expect(h.session.token).toBe(TOKEN);
+
+    h.network.deliver({ type: 'accountState', account: null });
+    expect(h.session.token).toBeNull();
+  });
+
+  it('resumes the stored token after hello and holds every action until the server answers', async () => {
+    const resumed = harness(TOKEN);
+    await Promise.race([resumed.app.start(), flush()]);
+    expect(resumed.network.sent).toEqual([
+      { type: 'hello', protocolVersion: 6, name: 'kage' },
+      { type: 'resume', token: TOKEN },
+    ]);
+
+    resumed.app.createRoom('kage', '');
+    await flush();
+    expect(resumed.network.sent).toHaveLength(2);
+
+    resumed.network.deliver({ type: 'accountState', account });
+    await flush();
+    expect(resumed.network.sent.at(-1)).toEqual({ type: 'createRoom' });
+    expect(resumed.app.state.account).toEqual(account);
+  });
+
+  it('lets a rejected resume through as a guest without keeping the token', async () => {
+    const resumed = harness(TOKEN);
+    await Promise.race([resumed.app.start(), flush()]);
+    resumed.app.openLeaderboard();
+    resumed.network.deliver({ type: 'accountState', account: null });
+    await flush();
+    expect(resumed.session.token).toBeNull();
+    expect(resumed.network.sent.at(-1)).toEqual({ type: 'getLeaderboard' });
+    expect(resumed.home.errors).toEqual([]);
   });
 
   it('asks for the leaderboard and hands the entries to the home screen', async () => {
