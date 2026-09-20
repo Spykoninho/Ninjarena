@@ -224,10 +224,12 @@ nests more effects inside it, so a fireball is one `projectile` whose `onHit` is
 an `area` whose own `onHit` is another `damage` next to a `knockback`. The schema
 (`packages/core/src/definitions/ability.ts`) is declared with `z.lazy` to allow this.
 
-The twelve bricks are `projectile`, `area` (instant or delayed, `origin: 'caster' | 'aim' | 'here'`),
-`dash` (with optional `invulnerableTicks` and an `onContact` list), `melee`, `teleport`,
-`spawnEntity` (currently only `entity: 'wall'`), `shield`, `delayedTrigger`, and the four
-target-bound bricks `damage`, `knockback`, `stun`, `applyStatus`. All twelve run through **one**
+The thirteen bricks are `projectile` (`count` and `spreadDegrees` turn one into a fan), `area`
+(instant or delayed, `origin: 'caster' | 'aim' | 'here'`), `dash` (with optional
+`invulnerableTicks` and an `onContact` list), `melee`, `teleport`, `spawnEntity` (currently only
+`entity: 'wall'`), `shield`, `heal`, `delayedTrigger`, and the four target-bound bricks `damage`,
+`knockback`, `stun`, `applyStatus` (which `target: 'self'` turns into a self buff). All thirteen
+run through **one**
 executor (`packages/core/src/abilities/effects/executor.ts`) instead of the two lists the
 foundations step used: a single typed record, `effectHandlers: { [K in Effect['type']]:
 EffectHandler<K> }`, maps every discriminant to its handler file under
@@ -237,9 +239,9 @@ compiler refuses to compile until a new brick has both a schema variant and a ha
 
 A brick executes with an `EffectContext { ctx, casterId, teamId, origin, direction, target?,
 source }`. `target` is only set while executing an `onHit`/`onContact` list against a specific
-player, so `damage`, `knockback`, `stun`, `applyStatus` and a `shield` used inside such a list are
-no-ops without one — `shield` used directly in an ability's activation list instead applies to the
-caster. `source` is an `EffectRef { abilityId, path }`, a dotted path into the ability's own tree
+player, so `damage`, `knockback`, `stun`, a hit-targeted `applyStatus` and a `shield` used inside
+such a list are no-ops without one — `shield` and `heal` used directly in an ability's activation
+list instead apply to the caster, and `applyStatus` with `target: 'self'` always does. `source` is an `EffectRef { abilityId, path }`, a dotted path into the ability's own tree
 (`"0"`, `"0.onHit.1"`, `"2.effects.0"`); `resolveEffect` walks it on demand, so a projectile, a
 pending zone or a dashing player's `contact` never copies effect data, only the coordinates to find
 it again. `TerrainRule[]` on `damage` and `area` multiplies the damage or the radius when the

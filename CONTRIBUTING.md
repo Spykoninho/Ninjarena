@@ -95,12 +95,29 @@ there is no character file to touch.
    style used by the existing techniques there) for the behaviour you introduced.
 
 A technique declares `cooldownMs`, `chakraCost` (basic attacks cost 0; techniques in this project
-run 20–35), `startupMs`, `activeMs` (visual only — how long the client keeps drawing a melee arc or
+run 15–35), `startupMs`, `activeMs` (visual only — how long the client keeps drawing a melee arc or
 held pose after activation; 0 does nothing to the simulation), `recoveryMs`, an optional
 `canMoveWhileCasting`, `tags`, and an `effects` tree that runs once when the cast activates. See
 "Adding a brick" below for what a brick can do, and `packages/content/src/abilities/fireball.json`
 or `seismic-slam.json` for worked examples that nest a `damage` inside an `area` inside a
 `projectile`.
+
+Give the technique a strategy, not only numbers: the roster is balanced so that every attribute of
+the build has techniques that reward it. A `damage` with `scaling: "physical"` belongs to a
+strength build (`blade-whirlwind.json`, `ram-charge.json`, `shuriken-fan.json`), `"technique"` to
+a power build, a `heal` or a `shield` to vitality and defense, a self `applyStatus` (`target:
+"self"`, as in `wind-stride.json` or `smoke-veil.json`) to speed and chakra regeneration. Basic
+attacks are free and follow the same idea: fast and weak, slow and heavy, wide and pushing, or
+long-ranged.
+
+5. Draw its illustration: add a painter for its id in
+   `packages/client/src/rendering/art/abilityIcons.ts` (24 × 24, the palette `P` of
+   `nativeArt.js`, no text). Without one the lobby card, the roster and the HUD fall back to the
+   icon of its family (`abilityFamily`), which is legible but anonymous. If the technique needs a
+   look of its own in the world, name it in the `style` of its `visual` (`"needle"`, `"kunai"`,
+   `"shuriken"` on a projectile; `"column"` on an area) and draw it in `telegraphArt.ts` or
+   `cues.ts`; a `melee` can carry a `color` so its arc and slash take the technique's tint. The
+   [art-review page](http://localhost:5173/art-review.html) shows every icon at HUD scale.
 
 ## Adding a brick
 
@@ -117,7 +134,10 @@ the third:
 
 A brick that places something in the world says where from: `spawnEntity` and an `area` with
 `origin: 'caster' | 'aim'` re-anchor on the caster, never on the impact point that triggered them,
-so nesting one under an `onHit` list still spawns it at the caster.
+so nesting one under an `onHit` list still spawns it at the caster. A brick that acts on a player
+says on whom: `damage`, `knockback` and `stun` need the `target` of an `onHit`/`onContact` list,
+`shield` and `heal` fall back to the caster without one, and `applyStatus` picks with `target:
+'hit' | 'self'`, so a self buff sits directly in the activation list.
 
 `effectHandlers` is typed as `{ [K in Effect['type']]: EffectHandler<K> }`, one entry per
 discriminant, so the project does not compile until every brick in the union has a handler — there
@@ -159,6 +179,11 @@ the tests that pin the formulas.
   the duel a pair lands in is `QUEUE_ROOM_SETTINGS` in `packages/server/src/server.ts`.
 - **Mines** — an `area` with `triggerRadius` fires when an enemy comes that close, or at
   `delayMs` otherwise; both are plain fields of the technique's file.
+- **Fans** — a `projectile` with `count` above 1 fires that many, evenly spread over
+  `spreadDegrees` and centred on the aim; each one carries the full `onHit` list.
+- **Buffs** — a self `applyStatus` is tuned by its `durationMs` and `magnitude`: `HASTED`
+  multiplies the move speed (1.35 is +35 %, and it stacks with a `SLOWED` magnitude), `INVISIBLE`
+  hides the player from the other teams. A `heal` scales with power unless `scaling: "none"`.
 - **The ranking** — the starting rating, the K factor, the spread and the tier thresholds are
   the constants at the top of `packages/core/src/ranking/rating.ts`; `rating.test.ts` pins the
   formula. Changing a threshold re-tiers every account on the next read, since a tier is derived

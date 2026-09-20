@@ -333,9 +333,12 @@ loads, so a typo fails immediately with the file name and the offending field.
 
 ```
 packages/content/src/
-  abilities/kunai-strike.json  shuriken-throw.json  shadow-step.json  fireball.json
-            seismic-slam.json  lightning-dash.json  earth-wall.json  blink.json
-            paralysis-seal.json  chakra-shield.json
+  abilities/kunai-strike.json  shuriken-throw.json  staff-sweep.json  iron-fist.json
+            senbon-volley.json  shadow-step.json  fireball.json  seismic-slam.json
+            lightning-dash.json  earth-wall.json  blink.json  paralysis-seal.json
+            chakra-shield.json  explosive-mine.json  blade-whirlwind.json  ram-charge.json
+            pinning-kunai.json  shuriken-fan.json  frost-breath.json  sky-strike.json
+            smoke-veil.json  wind-stride.json  meditation.json
   characters/ninja.json
   stat-rules.json
   tilesets/default.json
@@ -381,12 +384,19 @@ milliseconds, an optional telegraph, and an effect tree that runs once at activa
 }
 ```
 
-The bricks are `projectile`, `area`, `dash`, `melee`, `teleport`, `spawnEntity` (a wall),
-`shield`, `delayedTrigger`, `damage`, `knockback`, `stun` and `applyStatus`; the ones that carry
-sub-effects (`projectile.onHit`/`onExpire`, `area.onHit`, `dash.onContact`,
+The bricks are `projectile` (one, or a fan of `count` spread by `spreadDegrees`), `area`, `dash`,
+`melee`, `teleport`, `spawnEntity` (a wall), `shield`, `heal`, `delayedTrigger`, `damage`,
+`knockback`, `stun` and `applyStatus` (on the target hit, or on the caster with `target: "self"`);
+the ones that carry sub-effects (`projectile.onHit`/`onExpire`, `area.onHit`, `dash.onContact`,
 `delayedTrigger.effects`) make the tree recursive, so an explosion can knock back into a stun into
 a slow. Damage `scaling` is `physical` (scales with the attacker's strength), `technique` (scales
-with power) or `none`. Adding a technique is JSON only — see
+with power) or `none`. The roster is built so that every stat carries a strategy: five basic
+attacks (kunai, shuriken, staff sweep, iron fist, senbon) and seventeen techniques split between
+physical ones for strength builds (blade whirlwind, ram charge, pinning kunai, shuriken fan),
+technique-scaled ones for power builds (fireball, seismic slam, lightning dash, frost breath, sky
+strike, explosive mine), control (paralysis seal, pinning kunai, frost breath), self buffs
+(smoke veil, wind stride), sustain (meditation, chakra shield) and utility (earth wall, blink).
+Adding a technique is JSON only — see
 [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-technique). A new kind of brick means one schema
 variant plus one handler — see
 [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-brick).
