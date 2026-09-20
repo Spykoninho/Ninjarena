@@ -1,0 +1,23 @@
+{
+  "id": "senbon-volley",
+  "name": "Senbon",
+  "kind": "basic",
+  "description": "Une aiguille fine et très rapide, qui porte plus loin qu'un shuriken. Peu de dégâts, mais elle part sans arrêt.",
+  "cooldownMs": 280,
+  "chakraCost": 0,
+  "startupMs": 60,
+  "activeMs": 0,
+  "recoveryMs": 100,
+  "telegraph": { "kind": "orb", "color": "#e8e8f0", "size": 4, "anchor": "aim" },
+  "tags": ["ranged", "physical"],
+  "effects": [
+    {
+      "type": "projectile",
+      "speed": 520,
+      "radius": 2,
+      "lifetimeMs": 520,
+      "visual": { "color": "#e8e8f0", "size": 2, "trail": false, "style": "needle" },
+      "onHit": [{ "type": "damage", "amount": 6, "scaling": "physical" }]
+    }
+  ]
+}

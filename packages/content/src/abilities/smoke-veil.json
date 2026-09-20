@@ -1,0 +1,15 @@
+{
+  "id": "smoke-veil",
+  "name": "Voile de fumée",
+  "kind": "technique",
+  "description": "Tu disparais dans un nuage de fumée pendant trois secondes : les adversaires ne te voient plus, tes alliés si. Attaquer ne te révèle pas, mais les coups te touchent toujours.",
+  "cooldownMs": 10000,
+  "chakraCost": 20,
+  "startupMs": 120,
+  "recoveryMs": 100,
+  "telegraph": { "kind": "ring", "color": "#a8b0b8", "size": 14 },
+  "tags": ["stealth", "utility"],
+  "effects": [
+    { "type": "applyStatus", "status": "INVISIBLE", "durationMs": 3000, "target": "self" }
+  ]
+}

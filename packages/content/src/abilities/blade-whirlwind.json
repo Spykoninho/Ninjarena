@@ -1,0 +1,25 @@
+{
+  "id": "blade-whirlwind",
+  "name": "Tourbillon de lames",
+  "kind": "technique",
+  "description": "Tu tournoies lames tendues : tout le monde autour de toi est tranché et repoussé. Dégâts physiques, portés par la force.",
+  "cooldownMs": 5000,
+  "chakraCost": 20,
+  "startupMs": 180,
+  "activeMs": 120,
+  "recoveryMs": 200,
+  "telegraph": { "kind": "ring", "color": "#f5edcd", "size": 30 },
+  "tags": ["melee", "physical"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 30,
+      "arcDegrees": 360,
+      "color": "#f5edcd",
+      "onHit": [
+        { "type": "damage", "amount": 20, "scaling": "physical" },
+        { "type": "knockback", "speed": 200, "durationMs": 110 }
+      ]
+    }
+  ]
+}

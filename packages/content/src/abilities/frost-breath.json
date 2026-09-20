@@ -1,0 +1,25 @@
+{
+  "id": "frost-breath",
+  "name": "Souffle de givre",
+  "kind": "technique",
+  "description": "Un cône de givre soufflé devant toi : tout ce qu'il touche est blessé et lourdement ralenti pendant deux secondes.",
+  "cooldownMs": 5000,
+  "chakraCost": 25,
+  "startupMs": 220,
+  "activeMs": 140,
+  "recoveryMs": 200,
+  "telegraph": { "kind": "ring", "color": "#9fe4f0", "size": 44 },
+  "tags": ["melee", "ice", "control"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 44,
+      "arcDegrees": 80,
+      "color": "#9fe4f0",
+      "onHit": [
+        { "type": "damage", "amount": 16, "scaling": "technique" },
+        { "type": "applyStatus", "status": "SLOWED", "durationMs": 2000, "magnitude": 0.45 }
+      ]
+    }
+  ]
+}

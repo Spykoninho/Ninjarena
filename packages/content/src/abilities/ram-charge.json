@@ -1,0 +1,23 @@
+{
+  "id": "ram-charge",
+  "name": "Percée du bélier",
+  "kind": "technique",
+  "description": "Une charge épaule en avant : le premier traversé encaisse un coup physique et reste sonné un instant, le temps d'enchaîner.",
+  "cooldownMs": 6000,
+  "chakraCost": 25,
+  "startupMs": 100,
+  "recoveryMs": 0,
+  "telegraph": { "kind": "charge", "color": "#ffd16a", "size": 18 },
+  "tags": ["mobility", "melee", "physical", "control"],
+  "effects": [
+    {
+      "type": "dash",
+      "distance": 110,
+      "durationMs": 170,
+      "onContact": [
+        { "type": "damage", "amount": 18, "scaling": "physical" },
+        { "type": "stun", "durationMs": 450 }
+      ]
+    }
+  ]
+}

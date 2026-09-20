@@ -16,6 +16,9 @@ describe('content', () => {
     expect(content.abilities.all().map((a) => a.id)).toEqual([
       'kunai-strike',
       'shuriken-throw',
+      'staff-sweep',
+      'iron-fist',
+      'senbon-volley',
       'shadow-step',
       'blink',
       'lightning-dash',
@@ -25,6 +28,15 @@ describe('content', () => {
       'seismic-slam',
       'earth-wall',
       'explosive-mine',
+      'blade-whirlwind',
+      'ram-charge',
+      'pinning-kunai',
+      'shuriken-fan',
+      'frost-breath',
+      'sky-strike',
+      'smoke-veil',
+      'wind-stride',
+      'meditation',
     ]);
     for (const ability of content.abilities.all()) {
       if (ability.kind !== 'technique') continue;
@@ -34,7 +46,38 @@ describe('content', () => {
 
   it('offers a choice of basic attacks', () => {
     const basicAttacks = content.abilities.all().filter((a) => a.kind === 'basic');
-    expect(basicAttacks.length).toBeGreaterThanOrEqual(2);
+    expect(basicAttacks.length).toBeGreaterThanOrEqual(5);
+    for (const ability of basicAttacks) expect(ability.chakraCost).toBe(0);
+  });
+
+  it('gives every build a technique that scales with it', () => {
+    const techniques = content.abilities.all().filter((a) => a.kind === 'technique');
+    const scalings = new Set<string>();
+    for (const ability of techniques) {
+      for (const effect of flatten(ability.effects)) {
+        if (effect.type === 'damage') scalings.add(effect.scaling);
+      }
+    }
+    // La force a ses propres techniques: un build physique ne dépend plus des seules attaques de base.
+    expect(scalings.has('physical')).toBe(true);
+    expect(scalings.has('technique')).toBe(true);
+    expect(techniques.some((a) => flatten(a.effects).some((e) => e.type === 'heal'))).toBe(true);
+    expect(
+      techniques.some((a) =>
+        flatten(a.effects).some((e) => e.type === 'applyStatus' && e.target === 'self'),
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps every technique within the chakra and cooldown envelope', () => {
+    for (const ability of content.abilities.all()) {
+      if (ability.kind !== 'technique') continue;
+      expect(ability.chakraCost, ability.id).toBeGreaterThanOrEqual(15);
+      expect(ability.chakraCost, ability.id).toBeLessThanOrEqual(35);
+      expect(ability.cooldownMs, ability.id).toBeGreaterThanOrEqual(3000);
+      expect(ability.cooldownMs, ability.id).toBeLessThanOrEqual(10000);
+      expect(ability.description, ability.id).toBeDefined();
+    }
   });
 
   it('gives every projectile, zone and wall a visual', () => {

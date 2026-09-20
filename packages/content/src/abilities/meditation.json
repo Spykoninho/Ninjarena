@@ -1,0 +1,13 @@
+{
+  "id": "meditation",
+  "name": "Méditation",
+  "kind": "technique",
+  "description": "Un long moment de concentration, immobile et vulnérable, qui te rend une bonne part de tes points de vie. La puissance renforce le soin.",
+  "cooldownMs": 10000,
+  "chakraCost": 30,
+  "startupMs": 700,
+  "recoveryMs": 200,
+  "telegraph": { "kind": "ring", "color": "#92d8b4", "size": 16 },
+  "tags": ["support", "utility"],
+  "effects": [{ "type": "heal", "amount": 28, "scaling": "technique" }]
+}

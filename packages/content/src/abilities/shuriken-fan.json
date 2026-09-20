@@ -1,0 +1,24 @@
+{
+  "id": "shuriken-fan",
+  "name": "Éventail de shuriken",
+  "kind": "technique",
+  "description": "Trois shuriken lancés d'un coup en éventail. Redoutable de près quand tout touche, et une bonne façon de couvrir un couloir de loin.",
+  "cooldownMs": 4000,
+  "chakraCost": 20,
+  "startupMs": 120,
+  "recoveryMs": 160,
+  "telegraph": { "kind": "orb", "color": "#d8d8e0", "size": 6, "anchor": "aim" },
+  "tags": ["ranged", "physical"],
+  "effects": [
+    {
+      "type": "projectile",
+      "speed": 400,
+      "radius": 3,
+      "lifetimeMs": 500,
+      "count": 3,
+      "spreadDegrees": 14,
+      "visual": { "color": "#d8d8e0", "size": 3, "trail": false, "style": "shuriken" },
+      "onHit": [{ "type": "damage", "amount": 9, "scaling": "physical" }]
+    }
+  ]
+}

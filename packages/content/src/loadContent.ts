@@ -15,17 +15,29 @@ import type {
   TilesetDefinition,
 } from '@ninjarena/core';
 
+import bladeWhirlwind from './abilities/blade-whirlwind.json';
 import blink from './abilities/blink.json';
 import chakraShield from './abilities/chakra-shield.json';
 import earthWall from './abilities/earth-wall.json';
 import explosiveMine from './abilities/explosive-mine.json';
 import fireball from './abilities/fireball.json';
+import frostBreath from './abilities/frost-breath.json';
+import ironFist from './abilities/iron-fist.json';
 import kunaiStrike from './abilities/kunai-strike.json';
 import lightningDash from './abilities/lightning-dash.json';
+import meditation from './abilities/meditation.json';
 import paralysisSeal from './abilities/paralysis-seal.json';
+import pinningKunai from './abilities/pinning-kunai.json';
+import ramCharge from './abilities/ram-charge.json';
 import seismicSlam from './abilities/seismic-slam.json';
+import senbonVolley from './abilities/senbon-volley.json';
 import shadowStep from './abilities/shadow-step.json';
+import shurikenFan from './abilities/shuriken-fan.json';
 import shurikenThrow from './abilities/shuriken-throw.json';
+import skyStrike from './abilities/sky-strike.json';
+import smokeVeil from './abilities/smoke-veil.json';
+import staffSweep from './abilities/staff-sweep.json';
+import windStride from './abilities/wind-stride.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
 import courtyard from './maps/cour-des-berges.json';
@@ -58,6 +70,9 @@ export function loadContent(): GameContent {
     abilities: new DefinitionCatalog<AbilityDefinition>([
       parseFile(AbilityDefinitionSchema, 'abilities/kunai-strike.json', kunaiStrike),
       parseFile(AbilityDefinitionSchema, 'abilities/shuriken-throw.json', shurikenThrow),
+      parseFile(AbilityDefinitionSchema, 'abilities/staff-sweep.json', staffSweep),
+      parseFile(AbilityDefinitionSchema, 'abilities/iron-fist.json', ironFist),
+      parseFile(AbilityDefinitionSchema, 'abilities/senbon-volley.json', senbonVolley),
       parseFile(AbilityDefinitionSchema, 'abilities/shadow-step.json', shadowStep),
       parseFile(AbilityDefinitionSchema, 'abilities/blink.json', blink),
       parseFile(AbilityDefinitionSchema, 'abilities/lightning-dash.json', lightningDash),
@@ -67,6 +82,15 @@ export function loadContent(): GameContent {
       parseFile(AbilityDefinitionSchema, 'abilities/seismic-slam.json', seismicSlam),
       parseFile(AbilityDefinitionSchema, 'abilities/earth-wall.json', earthWall),
       parseFile(AbilityDefinitionSchema, 'abilities/explosive-mine.json', explosiveMine),
+      parseFile(AbilityDefinitionSchema, 'abilities/blade-whirlwind.json', bladeWhirlwind),
+      parseFile(AbilityDefinitionSchema, 'abilities/ram-charge.json', ramCharge),
+      parseFile(AbilityDefinitionSchema, 'abilities/pinning-kunai.json', pinningKunai),
+      parseFile(AbilityDefinitionSchema, 'abilities/shuriken-fan.json', shurikenFan),
+      parseFile(AbilityDefinitionSchema, 'abilities/frost-breath.json', frostBreath),
+      parseFile(AbilityDefinitionSchema, 'abilities/sky-strike.json', skyStrike),
+      parseFile(AbilityDefinitionSchema, 'abilities/smoke-veil.json', smokeVeil),
+      parseFile(AbilityDefinitionSchema, 'abilities/wind-stride.json', windStride),
+      parseFile(AbilityDefinitionSchema, 'abilities/meditation.json', meditation),
     ]),
     characters: new DefinitionCatalog<CharacterDefinition>([
       parseFile(CharacterDefinitionSchema, 'characters/ninja.json', ninja),

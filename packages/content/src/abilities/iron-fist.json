@@ -1,0 +1,22 @@
+{
+  "id": "iron-fist",
+  "name": "Poing de fer",
+  "kind": "basic",
+  "description": "Un coup de poing lourd, court et lent, qui frappe bien plus fort que le kunaï. Il faut coller sa cible.",
+  "cooldownMs": 650,
+  "chakraCost": 0,
+  "startupMs": 120,
+  "activeMs": 70,
+  "recoveryMs": 160,
+  "telegraph": { "kind": "ring", "color": "#ffd16a", "size": 18 },
+  "tags": ["melee", "physical"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 18,
+      "arcDegrees": 70,
+      "color": "#ffd16a",
+      "onHit": [{ "type": "damage", "amount": 22, "scaling": "physical" }]
+    }
+  ]
+}

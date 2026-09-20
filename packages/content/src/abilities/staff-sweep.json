@@ -1,0 +1,25 @@
+{
+  "id": "staff-sweep",
+  "name": "Balayage au bō",
+  "kind": "basic",
+  "description": "Un large balayage de bâton qui repousse tout ce qui s'approche. Moins vif que le kunaï, mais il tient la distance.",
+  "cooldownMs": 550,
+  "chakraCost": 0,
+  "startupMs": 100,
+  "activeMs": 90,
+  "recoveryMs": 160,
+  "telegraph": { "kind": "ring", "color": "#cf9565", "size": 26 },
+  "tags": ["melee", "physical", "control"],
+  "effects": [
+    {
+      "type": "melee",
+      "range": 26,
+      "arcDegrees": 170,
+      "color": "#cf9565",
+      "onHit": [
+        { "type": "damage", "amount": 11, "scaling": "physical" },
+        { "type": "knockback", "speed": 150, "durationMs": 90 }
+      ]
+    }
+  ]
+}

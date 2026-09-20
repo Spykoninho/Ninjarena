@@ -1,0 +1,22 @@
+{
+  "id": "wind-stride",
+  "name": "Foulée du vent",
+  "kind": "technique",
+  "description": "Le vent te porte : tu cours bien plus vite pendant trois secondes. Pour fondre sur une cible, ou fuir un mauvais échange.",
+  "cooldownMs": 7000,
+  "chakraCost": 15,
+  "startupMs": 80,
+  "recoveryMs": 60,
+  "canMoveWhileCasting": true,
+  "telegraph": { "kind": "flash", "color": "#b8f0d8", "size": 12 },
+  "tags": ["mobility", "wind", "utility"],
+  "effects": [
+    {
+      "type": "applyStatus",
+      "status": "HASTED",
+      "durationMs": 3000,
+      "magnitude": 1.35,
+      "target": "self"
+    }
+  ]
+}
