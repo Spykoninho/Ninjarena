@@ -5,32 +5,57 @@
   "description": "Lance une boule de feu qui explose à l'impact ou en fin de course, brûlant et repoussant tout le monde autour. Brûle plus fort sur l'herbe.",
   "cooldownMs": 4000,
   "chakraCost": 25,
-  "startupMs": 250,
+  "startupMs": 320,
   "recoveryMs": 150,
-  "telegraph": { "kind": "orb", "color": "#ff6a3d", "size": 8, "anchor": "aim" },
+  "telegraph": {
+    "kind": "orb",
+    "color": "#ff6a3d",
+    "size": 8,
+    "anchor": "aim"
+  },
   "tags": ["ranged", "fire"],
   "effects": [
     {
       "type": "projectile",
       "speed": 380,
       "radius": 4,
-      "lifetimeMs": 900,
-      "visual": { "color": "#ff6a3d", "size": 5, "trail": true },
+      "lifetimeMs": 1050,
+      "visual": {
+        "color": "#ff6a3d",
+        "size": 5,
+        "trail": true
+      },
       "onHit": [
-        { "type": "damage", "amount": 22, "scaling": "technique" },
+        {
+          "type": "damage",
+          "amount": 22,
+          "scaling": "technique"
+        },
         {
           "type": "area",
           "radius": 28,
           "origin": "here",
-          "visual": { "color": "#ff9a3d", "size": 28 },
+          "visual": {
+            "color": "#ff9a3d",
+            "size": 28
+          },
           "onHit": [
             {
               "type": "damage",
               "amount": 12,
               "scaling": "technique",
-              "terrain": [{ "tag": "grass", "damageMultiplier": 1.25 }]
+              "terrain": [
+                {
+                  "tag": "grass",
+                  "damageMultiplier": 1.25
+                }
+              ]
             },
-            { "type": "knockback", "speed": 220, "durationMs": 100 }
+            {
+              "type": "knockback",
+              "speed": 220,
+              "durationMs": 100
+            }
           ]
         }
       ],
@@ -39,15 +64,27 @@
           "type": "area",
           "radius": 28,
           "origin": "here",
-          "visual": { "color": "#ff9a3d", "size": 28 },
+          "visual": {
+            "color": "#ff9a3d",
+            "size": 28
+          },
           "onHit": [
             {
               "type": "damage",
               "amount": 12,
               "scaling": "technique",
-              "terrain": [{ "tag": "grass", "damageMultiplier": 1.25 }]
+              "terrain": [
+                {
+                  "tag": "grass",
+                  "damageMultiplier": 1.25
+                }
+              ]
             },
-            { "type": "knockback", "speed": 220, "durationMs": 100 }
+            {
+              "type": "knockback",
+              "speed": 220,
+              "durationMs": 100
+            }
           ]
         }
       ]

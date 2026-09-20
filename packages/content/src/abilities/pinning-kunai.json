@@ -5,20 +5,38 @@
   "description": "Lance un kunaï lesté d'un fil : la cible touchée est clouée au sol un instant, incapable de bouger mais libre d'agir.",
   "cooldownMs": 6000,
   "chakraCost": 25,
-  "startupMs": 160,
+  "startupMs": 220,
   "recoveryMs": 200,
-  "telegraph": { "kind": "orb", "color": "#d1c9a0", "size": 6, "anchor": "aim" },
+  "telegraph": {
+    "kind": "orb",
+    "color": "#d1c9a0",
+    "size": 6,
+    "anchor": "aim"
+  },
   "tags": ["ranged", "physical", "control"],
   "effects": [
     {
       "type": "projectile",
       "speed": 380,
       "radius": 4,
-      "lifetimeMs": 650,
-      "visual": { "color": "#d1c9a0", "size": 4, "trail": false, "style": "kunai" },
+      "lifetimeMs": 780,
+      "visual": {
+        "color": "#d1c9a0",
+        "size": 4,
+        "trail": false,
+        "style": "kunai"
+      },
       "onHit": [
-        { "type": "damage", "amount": 16, "scaling": "physical" },
-        { "type": "applyStatus", "status": "ROOTED", "durationMs": 1100 }
+        {
+          "type": "damage",
+          "amount": 16,
+          "scaling": "physical"
+        },
+        {
+          "type": "applyStatus",
+          "status": "ROOTED",
+          "durationMs": 1100
+        }
       ]
     }
   ]

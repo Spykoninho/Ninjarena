@@ -5,19 +5,34 @@
   "description": "Lance un shuriken en ligne droite. Moins fort que le kunaï, mais il touche à distance.",
   "cooldownMs": 500,
   "chakraCost": 0,
-  "startupMs": 80,
+  "startupMs": 120,
   "activeMs": 0,
   "recoveryMs": 140,
-  "telegraph": { "kind": "orb", "color": "#d8d8e0", "size": 5, "anchor": "aim" },
+  "telegraph": {
+    "kind": "orb",
+    "color": "#d8d8e0",
+    "size": 5,
+    "anchor": "aim"
+  },
   "tags": ["ranged"],
   "effects": [
     {
       "type": "projectile",
       "speed": 400,
       "radius": 3,
-      "lifetimeMs": 450,
-      "visual": { "color": "#d8d8e0", "size": 3, "trail": false },
-      "onHit": [{ "type": "damage", "amount": 9, "scaling": "physical" }]
+      "lifetimeMs": 540,
+      "visual": {
+        "color": "#d8d8e0",
+        "size": 3,
+        "trail": false
+      },
+      "onHit": [
+        {
+          "type": "damage",
+          "amount": 9,
+          "scaling": "physical"
+        }
+      ]
     }
   ]
 }

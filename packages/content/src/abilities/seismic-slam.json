@@ -2,24 +2,40 @@
   "id": "seismic-slam",
   "name": "Frappe sismique",
   "kind": "technique",
-  "description": "Marque le sol à ta visée ; un instant plus tard il se soulève, blessant et étourdissant brièvement tous ceux qui s'y trouvent.",
+  "description": "Frappe le sol : une vague de terre part devant toi et avance sur 11 cases, blessant et étourdissant tous ceux qu'elle traverse. Elle s'arrête au premier mur.",
   "cooldownMs": 6000,
   "chakraCost": 30,
-  "startupMs": 200,
+  "startupMs": 260,
   "recoveryMs": 250,
-  "telegraph": { "kind": "ground-circle", "color": "#c9a26b", "size": 40, "anchor": "aim" },
+  "telegraph": {
+    "kind": "charge",
+    "color": "#c9a26b",
+    "size": 176
+  },
   "tags": ["ground", "control"],
   "effects": [
     {
-      "type": "area",
-      "origin": "aim",
-      "range": 140,
-      "radius": 40,
-      "delayMs": 600,
-      "visual": { "color": "#c9a26b", "size": 40 },
+      "type": "projectile",
+      "speed": 160,
+      "radius": 14,
+      "lifetimeMs": 1100,
+      "pierce": true,
+      "visual": {
+        "color": "#c9a26b",
+        "size": 14,
+        "trail": false,
+        "style": "wave"
+      },
       "onHit": [
-        { "type": "damage", "amount": 30, "scaling": "technique" },
-        { "type": "stun", "durationMs": 400 }
+        {
+          "type": "damage",
+          "amount": 26,
+          "scaling": "technique"
+        },
+        {
+          "type": "stun",
+          "durationMs": 800
+        }
       ]
     }
   ]

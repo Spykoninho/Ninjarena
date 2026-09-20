@@ -2,24 +2,41 @@
   "id": "sky-strike",
   "name": "Frappe céleste",
   "kind": "technique",
-  "description": "Marque une zone lointaine ; une seconde plus tard, une colonne de lumière s'y abat, blesse lourdement et projette tout le monde hors de la zone.",
+  "description": "Marque le sol sous ton curseur, jusqu'à 11 cases ; une seconde plus tard, une colonne de lumière s'y abat, blesse lourdement et projette tout le monde hors de la zone.",
   "cooldownMs": 8000,
   "chakraCost": 30,
   "startupMs": 250,
   "recoveryMs": 250,
-  "telegraph": { "kind": "sky-mark", "color": "#fff0b0", "size": 36, "anchor": "aim" },
+  "telegraph": {
+    "kind": "sky-mark",
+    "color": "#fff0b0",
+    "size": 36,
+    "anchor": "aim"
+  },
   "tags": ["ground", "sky"],
   "effects": [
     {
       "type": "area",
-      "origin": "aim",
+      "origin": "cursor",
       "range": 180,
       "radius": 36,
       "delayMs": 1000,
-      "visual": { "color": "#fff0b0", "size": 36, "style": "column" },
+      "visual": {
+        "color": "#fff0b0",
+        "size": 36,
+        "style": "column"
+      },
       "onHit": [
-        { "type": "damage", "amount": 44, "scaling": "technique" },
-        { "type": "knockback", "speed": 240, "durationMs": 130 }
+        {
+          "type": "damage",
+          "amount": 44,
+          "scaling": "technique"
+        },
+        {
+          "type": "knockback",
+          "speed": 240,
+          "durationMs": 130
+        }
       ]
     }
   ]
