@@ -926,6 +926,15 @@ body {
   background: #e0a877;
 }
 
+.editor-danger:not(:disabled) {
+  border-color: var(--ui-danger);
+  color: var(--ui-danger);
+}
+
+.editor-danger:not(:disabled):hover {
+  background: rgba(255, 138, 138, 0.16);
+}
+
 .editor-badge {
   padding: 6px 10px;
   background: rgba(255, 176, 90, 0.16);

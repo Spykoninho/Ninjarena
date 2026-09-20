@@ -10,18 +10,18 @@ delay, which is what prediction, reconciliation and interpolation below are for.
 
 ## Authority model
 
-The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 6`.
+The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 7`.
 
-| The client may send                                                     | The server alone decides                                                                                                     |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `hello { protocolVersion, name }`                                       | the session id (it comes from the connection, never the wire)                                                                |
-| `register` / `login { name, password }` / `resume { token }` / `logout` | whether an account opens, the session token it hands out, and when that token stops working                                  |
-| `createRoom { password?, settings? }` / `joinRoom { code, password? }`  | a room's code, its host, and whether a join is allowed                                                                       |
-| `updateSettings { patch }` / `setLoadout` / `setReady` / `switchTeam`   | whether a settings patch or a loadout is valid                                                                               |
-| `startMatch`                                                            | when a match actually starts, and the team a player gets                                                                     |
-| `listMaps` / `getMap { id }` / `saveMap { document }`                   | a map's final id, and whether it is valid                                                                                    |
-| `input { seq, input: { move, aim, abilityHeld } }`                      | whether an ability is allowed, and what it hits                                                                              |
-| `ping { sentAt }`                                                       | damage, deaths, statuses, knockback, shields; positions, collisions, projectile and zone resolution; round and match results |
+| The client may send                                                        | The server alone decides                                                                                                     |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `hello { protocolVersion, name }`                                          | the session id (it comes from the connection, never the wire)                                                                |
+| `register` / `login { name, password }` / `resume { token }` / `logout`    | whether an account opens, the session token it hands out, and when that token stops working                                  |
+| `createRoom { password?, settings? }` / `joinRoom { code, password? }`     | a room's code, its host, and whether a join is allowed                                                                       |
+| `updateSettings { patch }` / `setLoadout` / `setReady` / `switchTeam`      | whether a settings patch or a loadout is valid                                                                               |
+| `startMatch`                                                               | when a match actually starts, and the team a player gets                                                                     |
+| `listMaps` / `getMap { id }` / `saveMap { document }` / `deleteMap { id }` | a map's final id, whether it is valid, and whether it may be deleted                                                         |
+| `input { seq, input: { move, aim, abilityHeld } }`                         | whether an ability is allowed, and what it hits                                                                              |
+| `ping { sentAt }`                                                          | damage, deaths, statuses, knockback, shields; positions, collisions, projectile and zone resolution; round and match results |
 
 Every client frame is validated by a zod schema before it reaches game code
 (`ClientMessageSchema`, strict objects, `hello`'s name limited to 24 characters, a room code
@@ -57,15 +57,16 @@ The server sends:
   never needs a separate `getMap` round trip and both sides switch maps at the same tick.
 - `snapshot { tick, lastProcessedSeq, world, events }` — sent only to the sessions seated in the
   room whose `MatchHost` produced it; a session in a different room, or in no room, never sees it.
-- `mapList { maps }`, `mapSaved { id }`, `mapDocument { document }` — replies to `listMaps`,
-  `saveMap` and `getMap`.
+- `mapList { maps }`, `mapSaved { id }`, `mapDocument { document }`, `mapDeleted { id }` — replies
+  to `listMaps`, `saveMap`, `getMap` and `deleteMap`; a save or a delete is followed by a fresh
+  `mapList`.
 - `error { code, message }` — one of `PROTOCOL_VERSION`, `INVALID_MESSAGE`, `NOT_INTRODUCED`,
   `NOT_IN_ROOM`, `ALREADY_IN_ROOM`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `WRONG_PASSWORD`, `ROOM_IN_GAME`,
   `TOO_MANY_ROOMS`, `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`, `INVALID_LOADOUT`, `TEAM_FULL`,
-  `CANNOT_START`, `INVALID_MAP`, `MAP_NOT_FOUND`, `MAP_STORE_FULL`, `SERVER_ERROR` — see
+  `CANNOT_START`, `INVALID_MAP`, `MAP_NOT_FOUND`, `MAP_STORE_FULL`, `MAP_READONLY`, `SERVER_ERROR` — see
   [rooms.md](rooms.md) for which message can produce which. `INVALID_MESSAGE` answers a malformed
   frame (in addition to the frame counting towards the 20-frame close limit above); `SERVER_ERROR`
-  answers `listMaps`, `getMap` or `saveMap` when the map store itself is unavailable (a disk error,
+  answers `listMaps`, `getMap`, `saveMap` or `deleteMap` when the map store itself is unavailable (a disk error,
   say), as opposed to the request being invalid.
 - `pong { sentAt, serverTime }`.
 

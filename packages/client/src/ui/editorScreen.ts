@@ -8,6 +8,7 @@ import type {
 } from '@ninjarena/core';
 import type { Screen } from '../app/screen';
 import {
+  DRAFT_ID,
   applyTool,
   loadDocument,
   newMapDocument,
@@ -31,6 +32,7 @@ export interface EditorActions {
   saveMap(document: MapDocument): void;
   listMaps(): void;
   getMap(id: string): void;
+  deleteMap(id: string): void;
   testMap(document: MapDocument): void;
   back(): void;
 }
@@ -143,6 +145,9 @@ export class EditorScreen implements Screen {
         openMap: (id) => {
           this.onOpen(id);
         },
+        deleteMap: (id, name) => {
+          this.onDelete(id, name);
+        },
         importFile: (file) => {
           this.onImport(file);
         },
@@ -241,6 +246,14 @@ export class EditorScreen implements Screen {
   showSaved(id: string): void {
     this.update(withDocumentId(this.state, id));
     this.setStatus(`Enregistrée sous ${id}`);
+  }
+
+  // La carte ouverte survit à sa suppression comme brouillon non enregistré: enregistrer la recrée.
+  showDeleted(id: string): void {
+    if (this.state.document.id === id) {
+      this.update({ ...withDocumentId(this.state, DRAFT_ID), dirty: true });
+    }
+    this.setStatus(`Carte ${id} supprimée`);
   }
 
   setStatus(status: string): void {
@@ -439,6 +452,11 @@ export class EditorScreen implements Screen {
     }
     if (!this.confirmDiscard()) return;
     this.actions.getMap(id);
+  }
+
+  private onDelete(id: string, name: string): void {
+    if (!window.confirm(`Supprimer définitivement la carte « ${name} » du serveur ?`)) return;
+    this.actions.deleteMap(id);
   }
 
   private onSave(): void {

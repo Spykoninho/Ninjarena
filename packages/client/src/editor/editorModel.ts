@@ -56,6 +56,9 @@ const WALL_NAMES: readonly string[] = [
 
 export const DEFAULT_TOOL: EditorTool = { kind: 'tile', id: 0, layer: 'ground' };
 
+// L'id d'une carte jamais enregistrée: le serveur en attribue un vrai au premier enregistrement.
+export const DRAFT_ID = 'draft';
+
 export function fillTileId(tileset: TilesetDefinition): number {
   const walkable = paletteOf(tileset).find(
     (entry) => entry.layer === 'ground' && tileset.tiles[String(entry.id)]?.solid !== true,
@@ -91,7 +94,7 @@ export function newMapDocument(
   const fill = fillTileId(tileset);
   return {
     version: CURRENT_MAP_FORMAT_VERSION,
-    id: 'draft',
+    id: DRAFT_ID,
     name,
     tileset: tileset.id,
     width: columns,

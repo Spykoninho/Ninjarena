@@ -66,6 +66,7 @@ export interface EditorView extends Screen {
   setMaps(maps: MapSummary[]): void;
   showDocument(document: MapDocument): void;
   showSaved(id: string): void;
+  showDeleted(id: string): void;
   setStatus(status: string): void;
   showError(message: string): void;
 }
@@ -373,6 +374,9 @@ export class ClientApp {
         return;
       case 'mapDocument':
         screens.editor.showDocument(message.document);
+        return;
+      case 'mapDeleted':
+        screens.editor.showDeleted(message.id);
         return;
       case 'mapSaved':
         screens.editor.showSaved(message.id);

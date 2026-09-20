@@ -57,6 +57,16 @@ describe('FileMapRepository', () => {
     await expect(repository.get('one')).resolves.toEqual(makeDocument('one', 'One'));
   });
 
+  it('deletes a saved document and reports a missing one', async () => {
+    const repository = new FileMapRepository({ dir, log: (line) => logs.push(line) });
+    await repository.save(makeDocument('one', 'One'));
+
+    await expect(repository.delete('one')).resolves.toBe(true);
+    await expect(repository.get('one')).resolves.toBeNull();
+    await expect(readdir(dir)).resolves.toEqual([]);
+    await expect(repository.delete('one')).resolves.toBe(false);
+  });
+
   it('skips and logs a corrupt file', async () => {
     const repository = new FileMapRepository({ dir, log: (line) => logs.push(line) });
     await repository.save(makeDocument('one', 'One'));

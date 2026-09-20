@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MapDocument } from '@ninjarena/core';
 import { migrateMapDocument } from '@ninjarena/core';
@@ -38,6 +38,16 @@ export class FileMapRepository implements MapRepository {
     const temp = `${target}.tmp`;
     await writeFile(temp, JSON.stringify(document, null, 2), 'utf8');
     await rename(temp, target);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      await unlink(join(this.dir, `${id}.json`));
+      return true;
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') return false;
+      throw error;
+    }
   }
 
   async count(): Promise<number> {

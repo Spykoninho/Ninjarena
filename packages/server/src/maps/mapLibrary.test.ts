@@ -99,6 +99,27 @@ describe('MapLibrary', () => {
     });
   });
 
+  it('deletes a stored map but never a built-in one', async () => {
+    const repository = new InMemoryMapRepository();
+    const library = new MapLibrary({ content, repository, maxStoredMaps: 10 });
+    const saved = await library.save(tinyMap(), 'kunoichi');
+    if (!saved.ok) throw new Error('expected save to succeed');
+
+    expect(await library.delete('arena')).toEqual({
+      ok: false,
+      code: 'MAP_READONLY',
+      message: '"arena" is a built-in map',
+    });
+    expect(await library.delete('nope')).toEqual({
+      ok: false,
+      code: 'MAP_NOT_FOUND',
+      message: 'no map "nope"',
+    });
+    expect(await library.delete(saved.id)).toEqual({ ok: true });
+    expect(await library.get(saved.id)).toBeNull();
+    expect(await library.get('arena')).not.toBeNull();
+  });
+
   it('refuses to save a document with a spawn on a wall', async () => {
     const size = 8;
     const objects = Array.from({ length: size }, () => new Array<number | null>(size).fill(null));

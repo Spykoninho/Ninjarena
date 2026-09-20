@@ -169,6 +169,9 @@ const editor = new EditorScreen(
     getMap: (id) => {
       app().send({ type: 'getMap', id });
     },
+    deleteMap: (id) => {
+      app().send({ type: 'deleteMap', id });
+    },
     testMap: (document) => {
       app().testMap(document);
     },

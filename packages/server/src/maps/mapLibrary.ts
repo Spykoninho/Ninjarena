@@ -11,6 +11,9 @@ const MAX_REPORTED_ISSUES = 3;
 export type SaveMapResult =
   { ok: true; id: string } | { ok: false; code: 'INVALID_MAP' | 'MAP_STORE_FULL'; message: string };
 
+export type DeleteMapResult =
+  { ok: true } | { ok: false; code: 'MAP_READONLY' | 'MAP_NOT_FOUND'; message: string };
+
 export interface MapLibraryOptions {
   content: GameContent;
   repository: MapRepository;
@@ -107,6 +110,16 @@ export class MapLibrary {
     };
     await this.repository.save(stamped);
     return { ok: true, id };
+  }
+
+  async delete(id: string): Promise<DeleteMapResult> {
+    if (this.content.maps.has(id)) {
+      return { ok: false, code: 'MAP_READONLY', message: `"${id}" is a built-in map` };
+    }
+    if (!(await this.repository.delete(id))) {
+      return { ok: false, code: 'MAP_NOT_FOUND', message: `no map "${id}"` };
+    }
+    return { ok: true };
   }
 
   private async generateId(name: string): Promise<string> {

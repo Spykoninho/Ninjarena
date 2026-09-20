@@ -253,6 +253,10 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.discriminatedUnio
   z.strictObject({ type: z.literal('getMap'), id: z.string().min(1).max(MAX_MAP_STRING_LENGTH) }),
   z.strictObject({ type: z.literal('saveMap'), document: MapDocumentSchema }),
   z.strictObject({
+    type: z.literal('deleteMap'),
+    id: z.string().min(1).max(MAX_MAP_STRING_LENGTH),
+  }),
+  z.strictObject({
     type: z.literal('input'),
     seq: z.number().int().nonnegative(),
     input: PlayerInputSchema,
@@ -302,6 +306,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
   z.object({ type: z.literal('matchSummary'), summary: MatchSummarySchema }),
   z.object({ type: z.literal('mapList'), maps: z.array(MapSummarySchema) }),
   z.object({ type: z.literal('mapSaved'), id: z.string().min(1).max(MAX_MAP_STRING_LENGTH) }),
+  z.object({ type: z.literal('mapDeleted'), id: z.string().min(1).max(MAX_MAP_STRING_LENGTH) }),
   z.object({ type: z.literal('mapDocument'), document: MapDocumentSchema }),
   z.object({
     type: z.literal('error'),

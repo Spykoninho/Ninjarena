@@ -4,6 +4,8 @@ export interface MapRepository {
   list(): Promise<MapDocument[]>;
   get(id: string): Promise<MapDocument | null>;
   save(document: MapDocument): Promise<void>;
+  // Vrai si une carte a bien disparu, faux si l'id n'existait pas.
+  delete(id: string): Promise<boolean>;
   count(): Promise<number>;
 }
 
@@ -21,6 +23,10 @@ export class InMemoryMapRepository implements MapRepository {
   save(document: MapDocument): Promise<void> {
     this.maps.set(document.id, document);
     return Promise.resolve();
+  }
+
+  delete(id: string): Promise<boolean> {
+    return Promise.resolve(this.maps.delete(id));
   }
 
   count(): Promise<number> {

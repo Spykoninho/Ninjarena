@@ -254,6 +254,9 @@ export class GameServer {
       case 'saveMap':
         this.handleSaveMap(session, message);
         return;
+      case 'deleteMap':
+        this.handleDeleteMap(session, message);
+        return;
       case 'leaveRoom':
       case 'updateSettings':
       case 'setLoadout':
@@ -503,6 +506,30 @@ export class GameServer {
       })
       .catch((error: unknown) => {
         this.log(`saveMap failed for ${session.id}: ${reasonOf(error)}`);
+        session.send({
+          type: 'error',
+          code: 'SERVER_ERROR',
+          message: 'the map library is unavailable',
+        });
+      });
+  }
+
+  private handleDeleteMap(
+    session: ClientSession,
+    message: Extract<ClientMessage, { type: 'deleteMap' }>,
+  ): void {
+    void this.mapLibrary
+      .delete(message.id)
+      .then((result) => {
+        if (!result.ok) {
+          session.send({ type: 'error', code: result.code, message: result.message });
+          return;
+        }
+        session.send({ type: 'mapDeleted', id: message.id });
+        this.handleListMaps(session);
+      })
+      .catch((error: unknown) => {
+        this.log(`deleteMap failed for ${session.id}: ${reasonOf(error)}`);
         session.send({
           type: 'error',
           code: 'SERVER_ERROR',

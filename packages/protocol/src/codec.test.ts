@@ -105,6 +105,7 @@ const CLIENT_MESSAGES: ClientMessage[] = [
   { type: 'listMaps' },
   { type: 'getMap', id: 'arena' },
   { type: 'saveMap', document: MAP },
+  { type: 'deleteMap', id: 'dojo-a1b2' },
   { type: 'input', seq: 12, input: { move: { x: 1, y: 0 }, aim: { x: 0, y: 1 }, abilityHeld: 2 } },
   { type: 'ping', sentAt: 1_700_000_000_000 },
 ];

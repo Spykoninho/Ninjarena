@@ -121,6 +121,7 @@ export type ClientMessage =
   | { type: 'listMaps' }
   | { type: 'getMap'; id: string }
   | { type: 'saveMap'; document: MapDocument }
+  | { type: 'deleteMap'; id: string }
   | { type: 'input'; seq: number; input: PlayerInput }
   | { type: 'ping'; sentAt: number };
 
@@ -144,6 +145,7 @@ export const SERVER_ERROR_CODES = [
   'INVALID_MAP',
   'MAP_NOT_FOUND',
   'MAP_STORE_FULL',
+  'MAP_READONLY',
   'NAME_TAKEN',
   'BAD_CREDENTIALS',
   'ALREADY_LOGGED_IN',
@@ -182,6 +184,7 @@ export type ServerMessage =
   | { type: 'matchSummary'; summary: MatchSummary }
   | { type: 'mapList'; maps: MapSummary[] }
   | { type: 'mapSaved'; id: string }
+  | { type: 'mapDeleted'; id: string }
   | { type: 'mapDocument'; document: MapDocument }
   | { type: 'error'; code: ServerErrorCode; message: string }
   | { type: 'pong'; sentAt: number; serverTime: number };

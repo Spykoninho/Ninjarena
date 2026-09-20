@@ -329,6 +329,29 @@ describe('GameServer dispatch', () => {
     expect(lastOf(connection, 'error')).toMatchObject({ code: 'INVALID_MAP' });
   });
 
+  it('deletes a stored map, refreshes the list and refuses a built-in one', async () => {
+    const { transport } = await startServer();
+    const connection = transport.accept('c1');
+    hello(connection, 'kunoichi');
+
+    send(connection, { type: 'saveMap', document: smallMap() });
+    await flush();
+    const saved = lastOf(connection, 'mapSaved');
+
+    send(connection, { type: 'deleteMap', id: saved?.id ?? '' });
+    await flush();
+    expect(lastOf(connection, 'mapDeleted')).toEqual({ type: 'mapDeleted', id: saved?.id });
+    expect(lastOf(connection, 'mapList')?.maps.map((map) => map.id)).not.toContain(saved?.id);
+
+    send(connection, { type: 'deleteMap', id: 'arena' });
+    await flush();
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'MAP_READONLY' });
+
+    send(connection, { type: 'deleteMap', id: 'nope' });
+    await flush();
+    expect(lastOf(connection, 'error')).toMatchObject({ code: 'MAP_NOT_FOUND' });
+  });
+
   it('answers SERVER_ERROR when the map repository is unavailable', async () => {
     const { transport } = await startServer({}, undefined, new FailingMapRepository());
     const connection = transport.accept('c1');

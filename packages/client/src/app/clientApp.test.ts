@@ -294,6 +294,7 @@ class FakeLobby implements LobbyView {
 class FakeEditor implements EditorView {
   readonly calls: string[] = [];
   readonly saved: string[] = [];
+  readonly deleted: string[] = [];
   readonly statuses: string[] = [];
 
   mount(): void {
@@ -315,6 +316,11 @@ class FakeEditor implements EditorView {
   showSaved(id: string): void {
     this.calls.push('showSaved');
     this.saved.push(id);
+  }
+
+  showDeleted(id: string): void {
+    this.calls.push('showDeleted');
+    this.deleted.push(id);
   }
 
   setStatus(status: string): void {
@@ -385,7 +391,7 @@ beforeEach(async () => {
 
 describe('ClientApp.start', () => {
   it('introduces the session with the configured name', () => {
-    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 6, name: 'kage' }]);
+    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 7, name: 'kage' }]);
     expect(h.game.calls).toContain('init');
     expect(h.home.mounted).toBe(true);
   });
@@ -491,6 +497,13 @@ describe('ClientApp editor', () => {
     h.app.openEditor();
     h.network.deliver({ type: 'mapList', maps: [] });
     expect(h.editor.calls).toContain('setMaps');
+  });
+
+  it('tells the editor which map was deleted', () => {
+    h.app.openEditor();
+    h.network.deliver({ type: 'mapDeleted', id: 'dojo-a1b2' });
+    expect(h.editor.deleted).toEqual(['dojo-a1b2']);
+    expect(h.app.state.screen).toBe('editor');
   });
 
   it('reports a save without opening a room', () => {
@@ -785,7 +798,7 @@ describe('ClientApp accounts', () => {
     const resumed = harness(TOKEN);
     await Promise.race([resumed.app.start(), flush()]);
     expect(resumed.network.sent).toEqual([
-      { type: 'hello', protocolVersion: 6, name: 'kage' },
+      { type: 'hello', protocolVersion: 7, name: 'kage' },
       { type: 'resume', token: TOKEN },
     ]);
 

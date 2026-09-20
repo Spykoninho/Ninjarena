@@ -176,9 +176,14 @@ Because the id is reassigned server-side for a new map, and an overwrite is only
 submitting the id an earlier save returned, **anything sent by a client is either a new map or one
 whose id it already knows** — but nothing about the id proves the sender created it.
 
-**Known limitation: there are no accounts.** A stored map's id is a bearer token: whoever knows it
-— because they created it, or because someone shared a `mapId` — can overwrite it with `saveMap`.
-There is no ownership check today; this is an accepted gap until an account system exists.
+`MapLibrary.delete(id)` removes a stored map's file; it answers `MAP_READONLY` for a built-in id
+and `MAP_NOT_FOUND` for an unknown one. The editor offers it as **Supprimer** in the file panel,
+disabled while a built-in map is selected, behind a confirmation.
+
+**Known limitation: no ownership check.** A stored map's id is a bearer token: whoever knows it
+— because they created it, or because someone shared a `mapId` — can overwrite it with `saveMap`
+or remove it with `deleteMap`. Accounts exist but maps are not tied to them yet; this is an
+accepted gap.
 
 ## Migration policy
 

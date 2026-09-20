@@ -161,6 +161,7 @@ Client → server:
 | `listMaps`       | —                                               | introduced                                                    |
 | `getMap`         | `id`                                            | introduced                                                    |
 | `saveMap`        | `document`                                      | introduced                                                    |
+| `deleteMap`      | `id`                                            | introduced, stored map only                                   |
 | `input`          | `seq`, `input`                                  | STARTING / IN_GAME                                            |
 | `ping`           | `sentAt`                                        | always                                                        |
 

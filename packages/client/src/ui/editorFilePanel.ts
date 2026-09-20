@@ -5,6 +5,7 @@ import { Popover, button, element, field } from './editorToolbar';
 export interface FilePanelActions {
   createMap(width: number, height: number): void;
   openMap(id: string): void;
+  deleteMap(id: string, name: string): void;
   importFile(file: File): void;
   exportFile(): void;
 }
@@ -16,7 +17,9 @@ export class EditorFilePanel {
   private readonly heightInput: HTMLInputElement;
   private readonly mapSelect: HTMLSelectElement;
   private readonly openButton: HTMLButtonElement;
+  private readonly deleteButton: HTMLButtonElement;
   private readonly importInput: HTMLInputElement;
+  private maps: MapSummary[] = [];
 
   constructor(
     parent: HTMLElement,
@@ -44,6 +47,17 @@ export class EditorFilePanel {
     this.openButton = button('Ouvrir', 'editor-button', openRow, () => {
       actions.openMap(this.mapSelect.value);
       this.popover.setOpen(false);
+    });
+    // Seule une carte enregistrée par un joueur se supprime: une carte intégrée grise le bouton.
+    this.deleteButton = button('Supprimer', 'editor-button editor-danger', openRow, () => {
+      const selected = this.selectedMap();
+      if (selected === undefined) return;
+      actions.deleteMap(selected.id, selected.name);
+      this.popover.setOpen(false);
+    });
+    this.deleteButton.title = 'Supprimer la carte sélectionnée du serveur';
+    this.mapSelect.addEventListener('change', () => {
+      this.refreshDeleteButton();
     });
     this.setMaps([]);
 
@@ -88,12 +102,16 @@ export class EditorFilePanel {
   }
 
   setMaps(maps: MapSummary[]): void {
+    this.maps = maps;
     const selected = this.mapSelect.value;
     this.mapSelect.replaceChildren();
     for (const map of maps) {
       const option = document.createElement('option');
       option.value = map.id;
-      option.textContent = `${map.name} (${String(map.width)}×${String(map.height)})`;
+      const size = `${String(map.width)}×${String(map.height)}`;
+      option.textContent = map.builtin
+        ? `${map.name} (${size}, intégrée)`
+        : `${map.name} (${size})`;
       this.mapSelect.appendChild(option);
     }
     if (maps.some((map) => map.id === selected)) this.mapSelect.value = selected;
@@ -106,6 +124,16 @@ export class EditorFilePanel {
     }
     this.mapSelect.disabled = empty;
     this.openButton.disabled = empty;
+    this.refreshDeleteButton();
+  }
+
+  private selectedMap(): MapSummary | undefined {
+    return this.maps.find((map) => map.id === this.mapSelect.value);
+  }
+
+  private refreshDeleteButton(): void {
+    const selected = this.selectedMap();
+    this.deleteButton.disabled = selected === undefined || selected.builtin;
   }
 
   private size(input: HTMLInputElement): number {
