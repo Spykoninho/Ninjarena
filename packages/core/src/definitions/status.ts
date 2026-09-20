@@ -6,6 +6,7 @@ export const StatusEffectTypeSchema = z.enum([
   'INVISIBLE',
   'INVULNERABLE',
   'SHIELDED',
+  'HASTED',
 ]);
 
 export type StatusEffectType = z.infer<typeof StatusEffectTypeSchema>;

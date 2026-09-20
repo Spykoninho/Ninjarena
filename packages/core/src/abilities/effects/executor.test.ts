@@ -121,3 +121,62 @@ describe('damage scaling', () => {
     expect(strong.health).toBe(100);
   });
 });
+
+describe('heal', () => {
+  it('restores health up to the maximum and reports what was really healed', () => {
+    const { sim, a, b } = twoPlayers(['mend', 'seal', 'blink']);
+    a.health = 90;
+    sim.step({ a: press(2) });
+    expect(a.health).toBe(100);
+    const healed = sim.step({ a: idle() });
+    expect(healed.some((e) => e.type === 'healed')).toBe(false);
+    expect(b.health).toBe(100);
+  });
+
+  it('heals the caster by the amount when there is room', () => {
+    const { sim, a } = twoPlayers(['mend', 'seal', 'blink']);
+    a.health = 50;
+    const events = sim.step({ a: press(2) });
+    expect(a.health).toBe(70);
+    expect(events.find((e) => e.type === 'healed')).toMatchObject({
+      targetId: 'a',
+      sourceId: 'a',
+      amount: 20,
+      remainingHealth: 70,
+    });
+  });
+});
+
+describe('status on self', () => {
+  it('applies the status to the caster instead of a hit target', () => {
+    const { sim, a, b } = twoPlayers(['haste', 'seal', 'blink']);
+    sim.step({ a: press(2) });
+    expect(a.statuses.find((s) => s.type === 'HASTED')?.magnitude).toBe(1.5);
+    expect(b.statuses.some((s) => s.type === 'HASTED')).toBe(false);
+  });
+
+  it('makes a hasted player move faster', () => {
+    const { sim, a } = twoPlayers(['haste', 'seal', 'blink']);
+    sim.step({ a: press(2) });
+    for (let i = 0; i < 4; i++) sim.step({ a: idle() });
+    const before = a.position.x;
+    sim.step({ a: { ...idle(), move: { x: 1, y: 0 } } });
+    // 140 × 1,5 sur un tick de 1/60 s: 3,5 unités au lieu de 2,33.
+    expect(a.position.x - before).toBeCloseTo(3.5, 2);
+  });
+});
+
+describe('projectile fan', () => {
+  it('spawns every projectile of the fan around the aim', () => {
+    const { sim } = twoPlayers(['fan', 'seal', 'blink']);
+    // La visée d'un tick sert au cast du suivant: les capacités partent avant le mouvement.
+    sim.step({ a: { ...idle(), aim: { x: 0, y: 1 } } });
+    sim.step({ a: { ...press(2), aim: { x: 0, y: 1 } } });
+    const projectiles = Object.values(sim.world.projectiles);
+    expect(projectiles).toHaveLength(3);
+    const angles = projectiles
+      .map((p) => (Math.atan2(p.velocity.y, p.velocity.x) * 180) / Math.PI)
+      .sort((x, y) => x - y);
+    expect(angles.map((a) => Math.round(a))).toEqual([60, 90, 120]);
+  });
+});

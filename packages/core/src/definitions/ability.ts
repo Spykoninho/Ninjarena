@@ -11,6 +11,7 @@ export const TelegraphKindSchema = z.enum([
   'ground-circle',
   'ground-mark',
   'charge',
+  'sky-mark',
 ]);
 
 const ColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -26,6 +27,8 @@ export const VisualSchema = z.object({
   color: ColorSchema,
   size: z.number().positive(),
   trail: z.boolean().default(false),
+  // Le style nomme la forme dessinée par le client; sans lui, la famille de la capacité décide.
+  style: z.string().min(1).optional(),
 });
 
 export const TerrainRuleSchema = z.object({
@@ -35,6 +38,8 @@ export const TerrainRuleSchema = z.object({
 });
 
 export const DamageScalingSchema = z.enum(['physical', 'technique', 'none']);
+export const HealScalingSchema = z.enum(['technique', 'none']);
+export const StatusTargetSchema = z.enum(['hit', 'self']);
 
 export type AbilityKind = z.infer<typeof AbilityKindSchema>;
 export type TelegraphKind = z.infer<typeof TelegraphKindSchema>;
@@ -42,6 +47,8 @@ export type Telegraph = z.infer<typeof TelegraphSchema>;
 export type Visual = z.infer<typeof VisualSchema>;
 export type TerrainRule = z.infer<typeof TerrainRuleSchema>;
 export type DamageScaling = z.infer<typeof DamageScalingSchema>;
+export type HealScaling = z.infer<typeof HealScalingSchema>;
+export type StatusTarget = z.infer<typeof StatusTargetSchema>;
 
 export type Effect =
   | {
@@ -49,6 +56,8 @@ export type Effect =
       speed: number;
       radius: number;
       lifetimeMs: number;
+      count: number;
+      spreadDegrees: number;
       visual: Visual;
       onHit: Effect[];
       onExpire: Effect[];
@@ -71,7 +80,7 @@ export type Effect =
       invulnerableTicks: number;
       onContact: Effect[];
     }
-  | { type: 'melee'; range: number; arcDegrees: number; onHit: Effect[] }
+  | { type: 'melee'; range: number; arcDegrees: number; color?: string; onHit: Effect[] }
   | { type: 'teleport'; distance: number }
   | {
       type: 'spawnEntity';
@@ -83,11 +92,18 @@ export type Effect =
       visual: Visual;
     }
   | { type: 'shield'; amount: number; durationMs: number }
+  | { type: 'heal'; amount: number; scaling: HealScaling }
   | { type: 'delayedTrigger'; delayMs: number; effects: Effect[] }
   | { type: 'damage'; amount: number; scaling: DamageScaling; terrain: TerrainRule[] }
   | { type: 'knockback'; speed: number; durationMs: number }
   | { type: 'stun'; durationMs: number }
-  | { type: 'applyStatus'; status: StatusEffectType; durationMs: number; magnitude?: number };
+  | {
+      type: 'applyStatus';
+      status: StatusEffectType;
+      durationMs: number;
+      magnitude?: number;
+      target: StatusTarget;
+    };
 
 export type EffectOfType<K extends Effect['type']> = Extract<Effect, { type: K }>;
 
@@ -99,6 +115,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       speed: z.number().positive(),
       radius: z.number().positive(),
       lifetimeMs: z.number().positive(),
+      // Plusieurs tirs partent en éventail centré sur la visée, espacés de spreadDegrees.
+      count: z.number().int().positive().default(1),
+      spreadDegrees: z.number().nonnegative().default(0),
       visual: VisualSchema,
       onHit: z.array(EffectSchema),
       onExpire: z.array(EffectSchema).default([]),
@@ -126,6 +145,7 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       type: z.literal('melee'),
       range: z.number().positive(),
       arcDegrees: z.number().positive().max(360),
+      color: ColorSchema.optional(),
       onHit: z.array(EffectSchema),
     }),
     z.object({ type: z.literal('teleport'), distance: z.number().positive() }),
@@ -142,6 +162,11 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       type: z.literal('shield'),
       amount: z.number().positive(),
       durationMs: z.number().positive(),
+    }),
+    z.object({
+      type: z.literal('heal'),
+      amount: z.number().positive(),
+      scaling: HealScalingSchema.default('technique'),
     }),
     z.object({
       type: z.literal('delayedTrigger'),
@@ -165,6 +190,8 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       status: StatusEffectTypeSchema,
       durationMs: z.number().positive(),
       magnitude: z.number().positive().optional(),
+      // Sur soi, le statut est un renfort du lanceur; sur la cible, il accompagne un coup.
+      target: StatusTargetSchema.default('hit'),
     }),
   ]),
 );

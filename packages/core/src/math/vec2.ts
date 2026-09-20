@@ -57,6 +57,12 @@ export function lerp(a: Vec2, b: Vec2, t: number): Vec2 {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
+export function rotate(v: Vec2, radians: number): Vec2 {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return { x: v.x * cos - v.y * sin, y: v.x * sin + v.y * cos };
+}
+
 export function fromAngle(radians: number): Vec2 {
   return { x: Math.cos(radians), y: Math.sin(radians) };
 }

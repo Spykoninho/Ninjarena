@@ -30,6 +30,14 @@ describe('player rules', () => {
     expect(statusSpeedMultiplier(p)).toBe(0.4);
   });
 
+  it('HASTED multiplies speed and stacks with a slow', () => {
+    const p = player();
+    upsertStatus(p, { type: 'HASTED', expiresAt: 100, magnitude: 1.5 });
+    expect(statusSpeedMultiplier(p)).toBe(1.5);
+    upsertStatus(p, { type: 'SLOWED', expiresAt: 100, magnitude: 0.5 });
+    expect(statusSpeedMultiplier(p)).toBe(0.75);
+  });
+
   it('INVULNERABLE players are alive but not damageable', () => {
     const p = player();
     upsertStatus(p, { type: 'INVULNERABLE', expiresAt: 100 });

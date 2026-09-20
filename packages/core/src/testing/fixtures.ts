@@ -326,6 +326,49 @@ export const TEST_ABILITIES: readonly AbilityDefinition[] = [
       },
     ],
   }),
+  AbilityDefinitionSchema.parse({
+    id: 'mend',
+    name: 'Mend',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [{ type: 'heal', amount: 20, scaling: 'none' }],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'haste',
+    name: 'Haste',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      { type: 'applyStatus', status: 'HASTED', durationMs: 1000, magnitude: 1.5, target: 'self' },
+    ],
+  }),
+  AbilityDefinitionSchema.parse({
+    id: 'fan',
+    name: 'Fan',
+    kind: 'technique',
+    cooldownMs: 1000,
+    chakraCost: 0,
+    startupMs: 0,
+    recoveryMs: 0,
+    effects: [
+      {
+        type: 'projectile',
+        speed: 300,
+        radius: 3,
+        lifetimeMs: 1000,
+        count: 3,
+        spreadDegrees: 30,
+        visual: { color: '#d0d0d0', size: 3 },
+        onHit: [{ type: 'damage', amount: 8, scaling: 'physical' }],
+      },
+    ],
+  }),
 ];
 
 const RANGE = { min: 0, max: 5 };

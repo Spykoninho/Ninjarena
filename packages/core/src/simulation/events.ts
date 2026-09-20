@@ -38,6 +38,14 @@ export type WorldEvent =
       scaling: DamageScaling;
       position: Vec2;
     }
+  | {
+      type: 'healed';
+      tick: Tick;
+      targetId: PlayerId;
+      sourceId: PlayerId | null;
+      amount: number;
+      remainingHealth: number;
+    }
   | { type: 'shieldAbsorbed'; tick: Tick; playerId: PlayerId; amount: number; remaining: number }
   | { type: 'shieldBroken'; tick: Tick; playerId: PlayerId }
   | { type: 'teleported'; tick: Tick; playerId: PlayerId; from: Vec2; to: Vec2 }

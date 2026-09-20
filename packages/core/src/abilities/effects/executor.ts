@@ -14,6 +14,7 @@ import { areaHandler } from './handlers/area';
 import { damageHandler } from './handlers/damage';
 import { dashHandler } from './handlers/dash';
 import { delayedTriggerHandler } from './handlers/delayedTrigger';
+import { healHandler } from './handlers/heal';
 import { knockbackHandler } from './handlers/knockback';
 import { meleeHandler } from './handlers/melee';
 import { projectileHandler } from './handlers/projectile';
@@ -46,6 +47,7 @@ export const effectHandlers: EffectHandlers = {
   dash: dashHandler,
   teleport: teleportHandler,
   shield: shieldHandler,
+  heal: healHandler,
   damage: damageHandler,
   knockback: knockbackHandler,
   stun: stunHandler,
