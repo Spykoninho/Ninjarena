@@ -74,6 +74,8 @@ const projectileOf = (
   expiresAt: 60,
   visual: { color: '#ff6a3d', size: 5, trail: true },
   source: { abilityId: 'fireball', path: '0' },
+  pierce: false,
+  hitPlayerIds: [],
 });
 
 const pendingOf = (id: string, ownerId: string, radius: number | null): PendingEffect => ({
@@ -88,6 +90,8 @@ const pendingOf = (id: string, ownerId: string, radius: number | null): PendingE
   source: { abilityId: 'seismic-slam', path: '0' },
   radius,
   visual: { color: '#c9a26b', size: 40, trail: false },
+  group: null,
+  fragile: false,
 });
 
 const obstacleOf = (id: string, ownerId: string, expiresAt: number): ObstacleState => ({
@@ -252,7 +256,7 @@ describe('buildRenderFrame', () => {
     me.phase = {
       kind: 'CASTING',
       slot: 3,
-      abilityId: 'seismic-slam',
+      abilityId: 'sky-strike',
       startedAt: 0,
       activatesAt: 12,
       activeUntil: 12,
@@ -261,11 +265,15 @@ describe('buildRenderFrame', () => {
     };
     const frame = buildRenderFrame(inputFor(sim, { tick: 3 }));
     expect(frame.players[0]?.telegraph).toMatchObject({
-      kind: 'ground-circle',
-      size: 40,
+      kind: 'sky-mark',
+      size: 36,
       progress: 0.25,
-      anchor: { x: 150, y: 20 },
+      anchor: { x: 190, y: 20 },
     });
+    // Sous le curseur quand il est plus près que la portée: la marque s'y arrête.
+    me.aimDistance = 60;
+    const closer = buildRenderFrame(inputFor(sim, { tick: 3 }));
+    expect(closer.players[0]?.telegraph?.anchor).toEqual({ x: 70, y: 20 });
   });
 
   it('anchors a ground telegraph where a spawned wall will stand', () => {

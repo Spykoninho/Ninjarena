@@ -140,43 +140,69 @@ const PAINTERS: Record<string, IconPainter> = {
     ellipse(c, 12, 15, 2, 2, P.ivory);
   },
   'seismic-slam': (c) => {
-    rect(c, 2, 13, 20, 9, P.wood[0]);
-    rect(c, 2, 13, 20, 2, P.stone[1]);
-    line(c, 12, 13, 9, 21, P.ink);
-    line(c, 12, 15, 15, 21, P.ink);
-    line(c, 5, 15, 3, 19, P.ink);
-    line(c, 19, 15, 21, 19, P.ink);
-    rect(c, 6, 4, 2, 7, P.gold);
-    rect(c, 16, 4, 2, 7, P.gold);
+    // Une vague de terre qui avance vers la droite: crête de sol, éclats devant, sol fissuré derrière.
+    rect(c, 2, 17, 20, 5, P.wood[0]);
+    rect(c, 2, 17, 20, 1, P.stone[1]);
+    line(c, 5, 18, 4, 21, P.ink);
+    line(c, 9, 18, 10, 21, P.ink);
     poly(
       c,
       [
-        [7, 1],
-        [10, 5],
-        [4, 5],
+        [8, 17],
+        [10, 9],
+        [13, 4],
+        [17, 6],
+        [19, 11],
+        [20, 17],
       ],
-      P.gold,
+      P.wood[1],
     );
     poly(
       c,
       [
-        [17, 1],
-        [20, 5],
-        [14, 5],
+        [11, 17],
+        [12, 11],
+        [14, 7],
+        [16, 9],
+        [17, 13],
+        [17, 17],
       ],
-      P.gold,
+      P.stone[2],
     );
-    rect(c, 11, 8, 2, 2, P.ivory);
+    for (const [x, y] of [
+      [21, 8],
+      [22, 12],
+      [21, 15],
+    ] as const)
+      rect(c, x, y, 1, 1, P.stone[1]);
+    for (const x of [3, 5, 7]) rect(c, x, 12, 1, 1, P.cyan);
+    rect(c, 2, 9, 3, 1, P.cyan);
   },
   'explosive-mine': (c) => {
-    ellipse(c, 12, 14, 8, 6, P.ink);
-    ellipse(c, 12, 14, 8, 6, P.danger, true);
-    ellipse(c, 12, 14, 4, 3, P.stone[0]);
-    rect(c, 11, 13, 2, 2, P.danger);
-    line(c, 12, 8, 15, 4, P.stone[1]);
-    rect(c, 15, 2, 2, 2, P.gold);
-    rect(c, 14, 1, 1, 1, P.ivory);
-    rect(c, 17, 4, 1, 1, P.ivory);
+    // Une grappe de petites mines: chacune un disque d'encre à pointes et un voyant rouge.
+    for (const [x, y] of [
+      [12, 12],
+      [4, 6],
+      [20, 6],
+      [4, 19],
+      [20, 19],
+    ] as const) {
+      ellipse(c, x, y, 3, 2, P.ink);
+      ellipse(c, x, y - 1, 2, 1, P.stone[0]);
+      for (const [dx, dy] of [
+        [-4, 0],
+        [4, 0],
+        [0, -3],
+        [-3, -2],
+        [3, -2],
+      ] as const)
+        rect(c, x + dx, y + dy, 1, 1, P.stone[2]);
+      rect(c, x, y - 1, 1, 1, P.danger);
+    }
+    line(c, 7, 9, 10, 11, P.danger);
+    line(c, 17, 9, 14, 11, P.danger);
+    line(c, 7, 16, 10, 13, P.danger);
+    line(c, 17, 16, 14, 13, P.danger);
   },
   'blade-whirlwind': (c) => {
     ellipse(c, 12, 12, 9, 9, P.cyan, true);

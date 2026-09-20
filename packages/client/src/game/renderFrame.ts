@@ -174,6 +174,7 @@ function toPlayerView(
               ...Object.values(input.predicted.obstacles),
               ...Object.values(input.remotes?.obstacles ?? {}),
             ].map((o) => o.shape),
+            player.aimDistance,
           ),
     activeArc: casting === null || ability === null ? null : toArcView(casting, ability, tick),
     isDashing: player.phase.kind === 'DASHING',
@@ -201,13 +202,15 @@ function toTelegraphView(
   dangerous = true,
   colliderRadius = 5,
   obstacles: readonly Shape[] = [],
+  aimDistance: number | null = null,
 ): TelegraphView | null {
   const telegraph = ability.telegraph;
   if (telegraph === null) return null;
   // Le télégraphe annonce le coup: il disparaît dès que la capacité part.
   if (casting.activated || tick >= casting.activatesAt) return null;
   const direction = normalize(aim);
-  const distance = telegraph.anchor === 'aim' ? aimedDistance(ability, telegraph.size) : 0;
+  const distance =
+    telegraph.anchor === 'aim' ? aimedDistance(ability, telegraph.size, aimDistance) : 0;
   const first = ability.effects[0];
   let anchor = add(position, scale(direction, distance));
   if (first?.type === 'area' && map)
@@ -234,7 +237,9 @@ function toTelegraphView(
         ? first.thickness
         : first?.type === 'dash'
           ? colliderRadius
-          : undefined,
+          : first?.type === 'projectile' && first.pierce
+            ? first.radius
+            : undefined,
     kind: telegraph.kind,
     color: telegraph.color,
     size:
@@ -262,10 +267,16 @@ function toTelegraphView(
   };
 }
 
-function aimedDistance(ability: AbilityDefinition, size: number): number {
+function aimedDistance(
+  ability: AbilityDefinition,
+  size: number,
+  aimDistance: number | null,
+): number {
   const first = ability.effects[0];
   // Une zone visée frappe à sa portée: le télégraphe annonce ce point, pas le bout de la visée.
   if (first?.type === 'area' && first.origin === 'aim') return first.range;
+  if (first?.type === 'area' && first.origin === 'cursor')
+    return Math.min(first.range, aimDistance ?? first.range);
   // Un mur apparaît à son décalage: sa marque au sol annonce l'endroit exact où il se dressera.
   if (first?.type === 'spawnEntity') return first.offset;
   return size;
@@ -317,6 +328,7 @@ function toZoneView(pending: PendingEffect, tick: number): ZoneView | null {
     radius: pending.radius,
     color: pending.visual.color,
     ...(style === undefined ? {} : { style }),
+    ...(pending.triggerRadius > 0 ? { trap: pending.triggerRadius } : {}),
     progress: progressOf(tick - pending.createdAt, pending.fireAt - pending.createdAt),
   };
 }

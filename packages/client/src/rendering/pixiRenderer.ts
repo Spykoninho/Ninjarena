@@ -172,6 +172,10 @@ export class PixiRenderer implements Renderer {
     };
   }
 
+  pixelsPerUnit(): number {
+    return ART_SCALE * this.screenScale;
+  }
+
   dispose(): void {
     for (const name of ['--combat-top', '--combat-bottom', '--combat-side'])
       this.host?.style.removeProperty(name);

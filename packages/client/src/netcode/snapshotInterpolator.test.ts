@@ -36,6 +36,8 @@ const projectileAt = (id: string, x: number): ProjectileState => ({
   expiresAt: 100,
   visual: { color: '#d0d0d0', size: 4, trail: false },
   source: { abilityId: 'shuriken', path: '0' },
+  pierce: false,
+  hitPlayerIds: [],
 });
 
 const pendingAt = (id: string, x: number): PendingEffect => ({
@@ -50,6 +52,8 @@ const pendingAt = (id: string, x: number): PendingEffect => ({
   source: { abilityId: 'seismic-slam', path: '0' },
   radius: 40,
   visual: { color: '#c9a26b', size: 40, trail: false },
+  group: null,
+  fragile: false,
 });
 
 const obstacleAt = (id: string, x: number): ObstacleState => ({

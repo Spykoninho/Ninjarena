@@ -156,10 +156,12 @@ export function abilityFacts(ability: AbilityDefinition): string {
 function describeEffect(effect: Effect): string {
   switch (effect.type) {
     case 'projectile':
-      return `tire ${projectiles(effect.count)}${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
+      return `${effect.pierce ? 'lance une vague qui traverse les cibles' : `tire ${projectiles(effect.count)}`}${onHit(effect.onHit)}${expiry(effect.onExpire)}`;
     case 'area':
       if (effect.triggerRadius > 0) {
-        return `arme une mine${where(effect)} qui explose au passage d’un ennemi ou après ${seconds(effect.delayMs)} s sur ${tiles(effect.radius)} cases${onHit(effect.onHit)}`;
+        const mines = effect.count > 1 ? `${effect.count} mines` : 'une mine';
+        const chain = effect.count > 1 ? ' ; quand l’une saute, toutes suivent' : '';
+        return `arme ${mines}${where(effect)} qui explose${effect.count > 1 ? 'nt' : ''} au passage d’un ennemi${effect.fragile ? ', sous une attaque' : ''} ou après ${seconds(effect.delayMs)} s sur ${tiles(effect.radius)} cases${onHit(effect.onHit)}${chain}`;
       }
       return `${delay(effect.delayMs)}frappe une zone de ${tiles(effect.radius)} cases${where(effect)}${onHit(effect.onHit)}`;
     case 'dash':
@@ -172,6 +174,8 @@ function describeEffect(effect: Effect): string {
       return `dresse un mur de ${tiles(effect.width)} cases de large pendant ${seconds(effect.lifetimeMs)} s`;
     case 'shield':
       return `absorbe ${effect.amount} dégâts pendant ${seconds(effect.durationMs)} s`;
+    case 'sacrificeChakra':
+      return `réduit ta réserve de chakra maximale de ${Math.round(effect.fraction * PERCENT)} % jusqu’à la fin de la manche`;
     case 'heal':
       return `rend ${effect.amount} points de vie${effect.scaling === 'technique' ? ' (renforcés par la puissance)' : ''}`;
     case 'delayedTrigger':
@@ -201,6 +205,7 @@ function expiry(effects: Effect[]): string {
 
 function where(effect: Extract<Effect, { type: 'area' }>): string {
   if (effect.origin === 'aim') return ` à la visée (jusqu’à ${tiles(effect.range)} cases)`;
+  if (effect.origin === 'cursor') return ` sous le curseur (jusqu’à ${tiles(effect.range)} cases)`;
   return effect.origin === 'caster' ? ' autour de toi' : '';
 }
 

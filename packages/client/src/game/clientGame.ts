@@ -311,7 +311,12 @@ export class ClientGame {
     this.previousLocalPosition = local === undefined ? null : { ...local.position };
     // La visée part de l'endroit où le joueur est dessiné, pas de sa position simulée.
     const screenPosition = this.deps.renderer.worldToScreen(this.localRenderPosition);
-    const input = buildPlayerInput(this.deps.inputState, this.deps.bindings, screenPosition);
+    const input = buildPlayerInput(
+      this.deps.inputState,
+      this.deps.bindings,
+      screenPosition,
+      this.deps.renderer.pixelsPerUnit(),
+    );
     this.seq += 1;
     // Un spectateur n'a personne à piloter: il ne pousse rien vers le serveur.
     if (!this.watching) {

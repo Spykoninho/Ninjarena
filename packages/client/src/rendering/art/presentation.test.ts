@@ -10,7 +10,8 @@ import { dashPreviewDistance } from './telegraphGeometry';
 describe('pixel presentation contract', () => {
   it('describes area control, ranged control and walls with distinct HUD families', () => {
     const abilities = loadContent().abilities;
-    expect(abilityFamily(abilities.get('seismic-slam'))).toBe('area');
+    expect(abilityFamily(abilities.get('sky-strike'))).toBe('area');
+    expect(abilityFamily(abilities.get('seismic-slam'))).toBe('control');
     expect(abilityFamily(abilities.get('paralysis-seal'))).toBe('control');
     expect(abilityFamily(abilities.get('earth-wall'))).toBe('wall');
   });

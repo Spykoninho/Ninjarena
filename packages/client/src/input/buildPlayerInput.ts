@@ -10,6 +10,7 @@ export function buildPlayerInput(
   state: InputState,
   bindings: InputBindings,
   playerScreenPosition: Vec2,
+  pixelsPerUnit = 1,
 ): PlayerInput {
   const move = clampLength(
     {
@@ -18,13 +19,21 @@ export function buildPlayerInput(
     },
     1,
   );
-  const aim = normalize(sub(state.mouseScreen, playerScreenPosition));
+  const offset = sub(state.mouseScreen, playerScreenPosition);
+  const aim = normalize(offset);
+  // La distance du curseur part en unités monde: une zone visée peut s'arrêter sous lui.
+  const aimDistance = Math.hypot(offset.x, offset.y) / Math.max(1e-6, pixelsPerUnit);
   const heldSlots: number[] = [];
   for (let slot = 0; slot < bindings.abilities.length; slot++) {
     const binding = bindings.abilities[slot];
     if (binding !== undefined && isBindingDown(state, binding)) heldSlots.push(slot);
   }
-  return { move, aim: isZero(aim) ? FORWARD_AIM : aim, abilityHeld: abilityMask(heldSlots) };
+  return {
+    move,
+    aim: isZero(aim) ? FORWARD_AIM : aim,
+    aimDistance,
+    abilityHeld: abilityMask(heldSlots),
+  };
 }
 
 function axis(state: InputState, binding: string): number {

@@ -75,6 +75,8 @@ export interface ZoneView {
   radius: number;
   color: string;
   style?: string;
+  // Rayon de déclenchement d'une mine: la vue dessine l'engin, pas seulement son souffle.
+  trap?: number;
   progress: number;
 }
 
@@ -101,5 +103,6 @@ export interface Renderer {
   showCue(cue: VisualCue): void;
   setShake(offset: Vec2): void;
   worldToScreen(position: Vec2): Vec2;
+  pixelsPerUnit(): number;
   dispose(): void;
 }

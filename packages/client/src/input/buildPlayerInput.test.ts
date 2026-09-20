@@ -34,4 +34,11 @@ describe('buildPlayerInput', () => {
     const input = buildPlayerInput(state, DEFAULT_BINDINGS, { x: 0, y: 0 });
     expect(input.abilityHeld).toBe(0b10000);
   });
+
+  it('measures the cursor distance in world units', () => {
+    const state = createInputState();
+    state.mouseScreen = { x: 160, y: 100 };
+    const input = buildPlayerInput(state, DEFAULT_BINDINGS, { x: 100, y: 100 }, 4);
+    expect(input.aimDistance).toBe(15);
+  });
 });

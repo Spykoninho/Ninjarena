@@ -237,8 +237,41 @@ function skyMarkDetail(g: Graphics, size: number, color: string, progress: numbe
 
 export function drawZone(g: Graphics, v: ZoneView): void {
   g.clear();
+  if (v.style === 'mine' && v.trap !== undefined) {
+    drawMine(g, v);
+    return;
+  }
   perimeter(g, v.radius, v.color, v.progress, v.dangerous ?? true);
   if (v.style === 'column') skyMarkDetail(g, v.radius, v.color, v.progress);
+}
+
+// Une mine est un petit engin posé au sol; son souffle ne se devine qu'à un contour discret.
+function drawMine(g: Graphics, v: ZoneView): void {
+  const dangerous = v.dangerous !== false;
+  g.circle(0, 0, v.radius).stroke({
+    color: dangerous ? P.danger : P.ivory,
+    width: PX,
+    alpha: 0.18,
+  });
+  g.ellipse(0, 1, 4, 2.5).fill({ color: P.ink, alpha: 0.35 });
+  g.ellipse(0, 0, 3.5, 2.5).fill(P.ink);
+  g.ellipse(0, -0.5, 2.5, 1.5).fill(P.stone[0]);
+  for (const [dx, dy] of [
+    [-3.5, 0],
+    [3.5, 0],
+    [0, -2.5],
+    [-2.5, -1.8],
+    [2.5, -1.8],
+  ] as const)
+    g.rect(dx - 0.25, dy - 0.25, 0.5, 0.5).fill(P.stone[2]);
+  // Le voyant clignote de plus en plus vite à l'approche de l'explosion.
+  const blink = Math.floor(v.progress * 30) % 2 === 0 || v.progress > 0.9;
+  g.rect(-0.5, -1.5, 1, 1).fill(blink ? (dangerous ? P.danger : v.color) : P.ui);
+  g.circle(0, 0, v.trap ?? 0).stroke({
+    color: dangerous ? P.danger : P.ivory,
+    width: PX,
+    alpha: 0.45,
+  });
 }
 export function drawWall(g: Graphics, v: ObstacleView): void {
   g.clear();
@@ -271,6 +304,40 @@ export function drawProjectile(g: Graphics, v: ProjectileView, time: number): vo
       y: Math.round((Math.sin(a) * x + Math.cos(a) * y) * 2) / 2,
     }));
   const style = v.style ?? v.family;
+  if (style === 'wave') {
+    // Vague de terre: un croissant de sol soulevé, large comme le rayon, éclats qui roulent devant.
+    const w = r;
+    g.poly(
+      points([
+        [-4, -w],
+        [2, -w * 0.6],
+        [4, 0],
+        [2, w * 0.6],
+        [-4, w],
+        [-1, w * 0.5],
+        [0, 0],
+        [-1, -w * 0.5],
+      ]),
+    )
+      .fill(v.color)
+      .stroke({ color: P.ink, width: PX });
+    g.poly(
+      points([
+        [-2, -w * 0.7],
+        [1, -w * 0.4],
+        [2, 0],
+        [1, w * 0.4],
+        [-2, w * 0.7],
+        [-1, 0],
+      ]),
+    ).fill({ color: P.stone[2], alpha: 0.8 });
+    const roll = Math.floor(time / 60) % 3;
+    for (let i = -2; i <= 2; i++) {
+      const p = points([[5 + ((i + roll) % 3), (i * w) / 2.5]])[0] ?? { x: 0, y: 0 };
+      g.rect(p.x - 0.5, p.y - 0.5, 1, 1).fill(i % 2 ? P.wood[0] : P.stone[1]);
+    }
+    return;
+  }
   if (style === 'needle') {
     const tail = points([[-r * 3, 0]])[0] ?? { x: 0, y: 0 };
     const tip = points([[r * 2, 0]])[0] ?? { x: 0, y: 0 };
