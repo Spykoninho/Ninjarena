@@ -29,4 +29,13 @@ describe('sanitizePlayerInput', () => {
     expect(isAbilityHeld(abilityMask([0, 2]), 2)).toBe(true);
     expect(isAbilityHeld(abilityMask([0, 2]), 1)).toBe(false);
   });
+
+  it('clamps the aim distance and drops it when it is not finite', () => {
+    const base = { move: { x: 0, y: 0 }, aim: { x: 1, y: 0 }, abilityHeld: 0 };
+    expect(sanitizePlayerInput({ ...base, aimDistance: 120 }).aimDistance).toBe(120);
+    expect(sanitizePlayerInput({ ...base, aimDistance: -5 }).aimDistance).toBe(0);
+    expect(sanitizePlayerInput({ ...base, aimDistance: 1e9 }).aimDistance).toBe(2000);
+    expect(sanitizePlayerInput({ ...base, aimDistance: Number.NaN }).aimDistance).toBeUndefined();
+    expect(sanitizePlayerInput(base).aimDistance).toBeUndefined();
+  });
 });

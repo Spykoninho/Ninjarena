@@ -9,6 +9,7 @@ import type { PlayerState } from '../../player/state';
 import type { ProjectileState } from '../../projectile/state';
 import { collidersNear } from '../colliders';
 import type { SimulationContext } from '../context';
+import { firePending, fragilePendingHit } from '../entities/pendingEffect';
 import { playersOf } from '../world';
 
 type DestroyReason = 'hit' | 'wall' | 'expired';
@@ -39,9 +40,20 @@ function advance(ctx: SimulationContext, projectile: ProjectileState): void {
       destroy(ctx, projectile, 'wall');
       return;
     }
+    const mine = fragilePendingHit(ctx, projectile.teamId, projectile.position, projectile.radius);
+    if (mine !== undefined) {
+      firePending(ctx, mine);
+      destroy(ctx, projectile, 'hit');
+      return;
+    }
     const target = nearestPlayerHit(ctx, projectile, owner);
     if (target === undefined) continue;
     runEffects(ctx, projectile, 'onHit', target);
+    // Un tir perforant garde sa course: la cible touchée est notée pour ne plus l'être.
+    if (projectile.pierce) {
+      projectile.hitPlayerIds.push(target.id);
+      continue;
+    }
     destroy(ctx, projectile, 'hit');
     return;
   }
@@ -88,6 +100,7 @@ function nearestPlayerHit(
   let nearest: PlayerState | undefined;
   let nearestGapSq = Infinity;
   for (const player of playersOf(ctx.world)) {
+    if (projectile.hitPlayerIds.includes(player.id)) continue;
     if (!canBeHit(ctx, projectile, owner, player)) continue;
     const reach = projectile.radius + player.stats.colliderRadius;
     const gapSq = distanceSq(projectile.position, player.position);

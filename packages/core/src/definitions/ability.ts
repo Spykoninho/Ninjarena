@@ -58,6 +58,7 @@ export type Effect =
       lifetimeMs: number;
       count: number;
       spreadDegrees: number;
+      pierce: boolean;
       visual: Visual;
       onHit: Effect[];
       onExpire: Effect[];
@@ -67,8 +68,11 @@ export type Effect =
       radius: number;
       delayMs: number;
       triggerRadius: number;
-      origin: 'caster' | 'aim' | 'here';
+      origin: 'caster' | 'aim' | 'cursor' | 'here';
       range: number;
+      count: number;
+      scatterRadius: number;
+      fragile: boolean;
       visual: Visual;
       onHit: Effect[];
       terrain: TerrainRule[];
@@ -93,6 +97,7 @@ export type Effect =
     }
   | { type: 'shield'; amount: number; durationMs: number }
   | { type: 'heal'; amount: number; scaling: HealScaling }
+  | { type: 'sacrificeChakra'; fraction: number }
   | { type: 'delayedTrigger'; delayMs: number; effects: Effect[] }
   | { type: 'damage'; amount: number; scaling: DamageScaling; terrain: TerrainRule[] }
   | { type: 'knockback'; speed: number; durationMs: number }
@@ -118,6 +123,8 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       // Plusieurs tirs partent en éventail centré sur la visée, espacés de spreadDegrees.
       count: z.number().int().positive().default(1),
       spreadDegrees: z.number().nonnegative().default(0),
+      // Un tir perforant traverse chaque cible une fois et ne s'arrête qu'au mur ou en fin de course.
+      pierce: z.boolean().default(false),
       visual: VisualSchema,
       onHit: z.array(EffectSchema),
       onExpire: z.array(EffectSchema).default([]),
@@ -128,8 +135,14 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       delayMs: z.number().nonnegative().default(0),
       // Une zone armée part avant son délai dès qu'une cible passe à cette distance: une mine.
       triggerRadius: z.number().nonnegative().default(0),
-      origin: z.enum(['caster', 'aim', 'here']).default('here'),
+      // `cursor` s'arrête sous le curseur, `aim` va toujours au bout de la portée.
+      origin: z.enum(['caster', 'aim', 'cursor', 'here']).default('here'),
       range: z.number().nonnegative().default(0),
+      // Plusieurs zones posées en grappe: la première au centre, les autres en anneau autour.
+      count: z.number().int().positive().default(1),
+      scatterRadius: z.number().nonnegative().default(0),
+      // Une zone fragile part dès qu'une attaque adverse la touche, et emporte toute sa grappe.
+      fragile: z.boolean().default(false),
       visual: VisualSchema,
       onHit: z.array(EffectSchema),
       terrain: z.array(TerrainRuleSchema).default([]),
@@ -167,6 +180,10 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       type: z.literal('heal'),
       amount: z.number().positive(),
       scaling: HealScalingSchema.default('technique'),
+    }),
+    z.object({
+      type: z.literal('sacrificeChakra'),
+      fraction: z.number().positive().max(1),
     }),
     z.object({
       type: z.literal('delayedTrigger'),

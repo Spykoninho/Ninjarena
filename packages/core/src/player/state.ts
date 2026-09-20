@@ -30,6 +30,7 @@ export interface PlayerState {
   position: Vec2;
   velocity: Vec2;
   aim: Vec2;
+  aimDistance: number | null;
   health: number;
   chakra: number;
   stats: PlayerStats;
@@ -60,6 +61,7 @@ export function createPlayerState(params: CreatePlayerParams): PlayerState {
     position: { x: params.position.x, y: params.position.y },
     velocity: { x: 0, y: 0 },
     aim: { x: 1, y: 0 },
+    aimDistance: null,
     health: stats.maxHealth,
     chakra: stats.maxChakra,
     stats,

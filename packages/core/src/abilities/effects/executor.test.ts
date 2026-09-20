@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { abilityMask, neutralInput } from '../../simulation/input';
-import { TEST_ABILITIES, createTestSimulation } from '../../testing/fixtures';
+import { resetWorldForRound } from '../../match/reset';
+import { TEST_ABILITIES, contextOf, createTestSimulation } from '../../testing/fixtures';
 import { childPath, resolveEffect, rootPath } from '../effectRef';
 
 const press = (slot: number) => ({ ...neutralInput(), abilityHeld: abilityMask([slot]) });
@@ -178,5 +179,120 @@ describe('projectile fan', () => {
       .map((p) => (Math.atan2(p.velocity.y, p.velocity.x) * 180) / Math.PI)
       .sort((x, y) => x - y);
     expect(angles.map((a) => Math.round(a))).toEqual([60, 90, 120]);
+  });
+});
+
+describe('piercing projectile', () => {
+  it('crosses every player once and keeps going', () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 100, y: 200 },
+      techniqueIds: ['wave', 'seal', 'blink'],
+    });
+    const near = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 150, y: 200 },
+    });
+    const far = sim.addPlayer({
+      id: 'c',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 230, y: 200 },
+    });
+    sim.step({ a: press(2) });
+    for (let i = 0; i < 40; i++) sim.step({});
+    expect(near.health).toBe(90);
+    expect(far.health).toBe(90);
+    expect(Object.keys(sim.world.projectiles)).toHaveLength(1);
+  });
+});
+
+describe('cursor area', () => {
+  it('lands under the cursor when it is closer than the range', () => {
+    const { sim } = twoPlayers(['cursor-quake', 'seal', 'blink']);
+    sim.step({ a: { ...idle(), aim: { x: 1, y: 0 }, aimDistance: 40 } });
+    sim.step({ a: { ...press(2), aim: { x: 1, y: 0 }, aimDistance: 40 } });
+    expect(Object.values(sim.world.pending)[0]?.position).toEqual({ x: 240, y: 200 });
+  });
+
+  it('stops at the range when the cursor is beyond it or unknown', () => {
+    const { sim } = twoPlayers(['cursor-quake', 'seal', 'blink']);
+    sim.step({ a: { ...idle(), aim: { x: 1, y: 0 }, aimDistance: 500 } });
+    sim.step({ a: { ...press(2), aim: { x: 1, y: 0 }, aimDistance: 500 } });
+    expect(Object.values(sim.world.pending)[0]?.position).toEqual({ x: 300, y: 200 });
+  });
+});
+
+describe('chakra sacrifice', () => {
+  it('halves the maximum chakra for the round and restores it on respawn', () => {
+    const { sim, a } = twoPlayers(['sacrifice', 'seal', 'blink']);
+    a.health = 50;
+    sim.step({ a: press(2) });
+    expect(a.health).toBe(70);
+    expect(a.stats.maxChakra).toBe(50);
+    expect(a.chakra).toBeLessThanOrEqual(50);
+    resetWorldForRound(contextOf(sim));
+    expect(a.stats.maxChakra).toBe(100);
+    expect(a.chakra).toBe(100);
+  });
+});
+
+describe('mine cluster', () => {
+  const armed = () => {
+    const sim = createTestSimulation();
+    sim.startMatch();
+    const a = sim.addPlayer({
+      id: 'a',
+      teamId: 'team-0',
+      characterId: 'ninja',
+      position: { x: 200, y: 200 },
+      techniqueIds: ['cluster', 'shuriken', 'mend'],
+    });
+    const b = sim.addPlayer({
+      id: 'b',
+      teamId: 'team-1',
+      characterId: 'ninja',
+      position: { x: 300, y: 200 },
+      techniqueIds: ['shuriken', 'seal', 'blink'],
+    });
+    sim.step({ a: { ...idle(), aim: { x: 1, y: 0 } } });
+    sim.step({ a: { ...press(2), aim: { x: 1, y: 0 } } });
+    return { sim, a, b };
+  };
+
+  it('scatters the mines around the caster, the first one ahead', () => {
+    const { sim } = armed();
+    const mines = Object.values(sim.world.pending);
+    expect(mines).toHaveLength(5);
+    expect(mines[0]?.position).toEqual({ x: 200, y: 200 });
+    expect(mines[1]?.position.x).toBeCloseTo(224);
+    expect(new Set(mines.map((m) => m.group)).size).toBe(1);
+    expect(mines.every((m) => m.fragile)).toBe(true);
+  });
+
+  it('blows the whole cluster when an enemy projectile hits one mine', () => {
+    const { sim } = armed();
+    // b tire vers la gauche: le shuriken touche la mine posée devant a, en x = 224.
+    sim.step({ b: { ...idle(), aim: { x: -1, y: 0 } } });
+    const events = [];
+    sim.step({ b: { ...press(2), aim: { x: -1, y: 0 } } });
+    for (let i = 0; i < 20; i++)
+      events.push(...sim.step({ b: { ...idle(), aim: { x: -1, y: 0 } } }));
+    expect(Object.keys(sim.world.pending)).toHaveLength(0);
+    expect(events.filter((e) => e.type === 'zoneTriggered')).toHaveLength(5);
+    expect(events.some((e) => e.type === 'projectileDestroyed' && e.reason === 'hit')).toBe(true);
+  });
+
+  it('is not set off by its owner walking or attacking over it', () => {
+    const { sim } = armed();
+    sim.step({ a: { ...press(0), aim: { x: 1, y: 0 } } });
+    for (let i = 0; i < 10; i++) sim.step({ a: { ...idle(), move: { x: 1, y: 0 } } });
+    expect(Object.keys(sim.world.pending)).toHaveLength(5);
   });
 });

@@ -2,6 +2,7 @@ import type { Vec2 } from '../math/vec2';
 import { normalPhase } from '../player/phase';
 import type { PlayerState } from '../player/state';
 import type { SimulationContext } from '../simulation/context';
+import { computeStats } from '../stats/formulas';
 import { removeObstacle } from '../simulation/entities/obstacle';
 import { playersOf } from '../simulation/world';
 import { spawnPositionFor } from './spawns';
@@ -9,6 +10,12 @@ import { spawnPositionFor } from './spawns';
 export function respawnPlayer(ctx: SimulationContext, player: PlayerState, position: Vec2): void {
   player.position = { x: position.x, y: position.y };
   player.velocity = { x: 0, y: 0 };
+  // Les stats repartent de la répartition: un sacrifice de chakra ne dure que la manche.
+  player.stats = computeStats(
+    ctx.characters.get(player.characterId).baseStats,
+    player.build,
+    ctx.rules,
+  );
   player.health = player.stats.maxHealth;
   player.chakra = player.stats.maxChakra;
   player.statuses = [];

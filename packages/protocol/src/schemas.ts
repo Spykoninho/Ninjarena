@@ -47,6 +47,7 @@ const Vec2Schema = z.strictObject({ x: z.number(), y: z.number() });
 const PlayerInputSchema = z.strictObject({
   move: Vec2Schema,
   aim: Vec2Schema,
+  aimDistance: z.number().optional(),
   abilityHeld: z.number(),
 });
 

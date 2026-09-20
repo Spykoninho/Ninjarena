@@ -16,6 +16,8 @@ export interface ProjectileState {
   expiresAt: Tick;
   visual: Visual;
   source: EffectRef;
+  pierce: boolean;
+  hitPlayerIds: PlayerId[];
 }
 
 export interface SpawnProjectileParams {
@@ -26,6 +28,7 @@ export interface SpawnProjectileParams {
   lifetimeMs: number;
   visual: Visual;
   source: EffectRef;
+  pierce?: boolean;
 }
 
 export function spawnProjectile(
@@ -46,6 +49,8 @@ export function spawnProjectile(
     expiresAt: ctx.now + ctx.ticks(params.lifetimeMs),
     visual: { ...params.visual },
     source: { abilityId: params.source.abilityId, path: params.source.path },
+    pierce: params.pierce ?? false,
+    hitPlayerIds: [],
   };
   ctx.world.projectiles[id] = projectile;
   return projectile;

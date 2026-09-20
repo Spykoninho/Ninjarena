@@ -18,6 +18,7 @@ export const projectileHandler: EffectHandler<'projectile'> = (effect, context, 
       lifetimeMs: effect.lifetimeMs,
       visual: effect.visual,
       source: { abilityId: context.source.abilityId, path },
+      pierce: effect.pierce,
     });
     context.ctx.events.push({
       type: 'projectileSpawned',

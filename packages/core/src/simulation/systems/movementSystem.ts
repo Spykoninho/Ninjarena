@@ -22,7 +22,10 @@ export function movementSystem(ctx: SimulationContext, inputs: PlayerInputs): vo
   for (const player of playersOf(ctx.world)) {
     if (!isAlive(player)) continue;
     const input = inputs[player.id];
-    if (input !== undefined && !isZero(input.aim)) player.aim = { x: input.aim.x, y: input.aim.y };
+    if (input !== undefined && !isZero(input.aim)) {
+      player.aim = { x: input.aim.x, y: input.aim.y };
+      player.aimDistance = input.aimDistance ?? null;
+    }
     const from = { x: player.position.x, y: player.position.y };
     const velocity = velocityOf(ctx, player, input);
     player.position = settle(ctx, moveBy(from, velocity, ctx.dt), player.stats.colliderRadius);

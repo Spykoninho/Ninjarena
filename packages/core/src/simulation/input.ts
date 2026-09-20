@@ -5,8 +5,12 @@ import type { PlayerId } from './ids';
 export interface PlayerInput {
   move: Vec2;
   aim: Vec2;
+  // Distance du curseur en unités monde; absente, une capacité visée part à sa portée maximale.
+  aimDistance?: number;
   abilityHeld: number;
 }
+
+export const MAX_AIM_DISTANCE = 2000;
 
 export const MAX_ABILITY_SLOTS = 5;
 
@@ -36,9 +40,13 @@ export function sanitizePlayerInput(raw: PlayerInput): PlayerInput {
     return neutralInput();
   }
   const aim = normalize(raw.aim);
+  const distance = raw.aimDistance;
   return {
     move: clampLength(raw.move, 1),
     aim: isZero(aim) ? { x: 1, y: 0 } : aim,
+    ...(distance !== undefined && Number.isFinite(distance)
+      ? { aimDistance: Math.min(MAX_AIM_DISTANCE, Math.max(0, distance)) }
+      : {}),
     abilityHeld: raw.abilityHeld & ABILITY_BITS,
   };
 }

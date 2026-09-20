@@ -18,6 +18,7 @@ import { healHandler } from './handlers/heal';
 import { knockbackHandler } from './handlers/knockback';
 import { meleeHandler } from './handlers/melee';
 import { projectileHandler } from './handlers/projectile';
+import { sacrificeChakraHandler } from './handlers/sacrificeChakra';
 import { shieldHandler } from './handlers/shield';
 import { spawnEntityHandler } from './handlers/spawnEntity';
 import { stunHandler } from './handlers/stun';
@@ -48,6 +49,7 @@ export const effectHandlers: EffectHandlers = {
   teleport: teleportHandler,
   shield: shieldHandler,
   heal: healHandler,
+  sacrificeChakra: sacrificeChakraHandler,
   damage: damageHandler,
   knockback: knockbackHandler,
   stun: stunHandler,

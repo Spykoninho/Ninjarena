@@ -13,5 +13,7 @@ export const delayedTriggerHandler: EffectHandler<'delayedTrigger'> = (effect, c
     radius: null,
     triggerRadius: 0,
     visual: null,
+    group: null,
+    fragile: false,
   });
 };
