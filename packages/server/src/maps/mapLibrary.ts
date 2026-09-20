@@ -82,12 +82,11 @@ export class MapLibrary {
       );
     }
 
-    if (this.content.maps.has(document.id)) {
-      return invalidMap(`"${document.id}" is a built-in map`);
-    }
-
-    // Un id inconnu du dépôt désigne une nouvelle carte: le sien n'est qu'une suggestion.
-    const existing = await this.repository.get(document.id);
+    // Une carte intégrée est en lecture seule: l'enregistrer en crée une copie sous un id neuf.
+    // Sinon un id inconnu du dépôt désigne une nouvelle carte: le sien n'est qu'une suggestion.
+    const existing = this.content.maps.has(document.id)
+      ? null
+      : await this.repository.get(document.id);
     const isNew = existing === null;
     const id = isNew ? await this.generateId(document.name) : document.id;
 

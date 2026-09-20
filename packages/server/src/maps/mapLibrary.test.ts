@@ -71,7 +71,7 @@ describe('MapLibrary', () => {
     expect(summaries.at(-1)).toMatchObject({ name: 'Aardvark', builtin: false });
   });
 
-  it('refuses to save a document under a built-in id', async () => {
+  it('saves a document submitted under a built-in id as a copy with a fresh id', async () => {
     const library = new MapLibrary({
       content,
       repository: new InMemoryMapRepository(),
@@ -79,10 +79,14 @@ describe('MapLibrary', () => {
     });
 
     const result = await library.save(tinyMap({ id: 'arena', name: 'Arena' }), 'kunoichi');
-    expect(result).toEqual({
-      ok: false,
-      code: 'INVALID_MAP',
-      message: '"arena" is a built-in map',
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected save to succeed');
+    expect(result.id).toMatch(/^arena-[a-z0-9]{4}$/);
+
+    expect(await library.get('arena')).toBe(content.maps.get('arena'));
+    expect(library.summaryOf((await library.get(result.id))!)).toMatchObject({
+      id: result.id,
+      builtin: false,
     });
   });
 

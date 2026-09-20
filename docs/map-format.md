@@ -161,13 +161,13 @@ an `InMemoryMapRepository` instead; both implement the same `MapRepository` port
    is rejected.
 2. Checks the tileset is known and runs `validateMapDocument`; the first three issues are reported
    as the error message (`INVALID_MAP`).
-3. Refuses a document whose `id` names a built-in map — **built-in maps are read-only**.
-4. Decides the id: if the submitted `id` matches an existing stored map, this is an **overwrite**
+3. Decides the id: if the submitted `id` matches an existing stored map, this is an **overwrite**
    of that map; otherwise a fresh id is generated as `slug(name)-xxxx` (a 4-character random
    suffix, retried until it collides with neither a built-in nor a stored id) and the submitted id
-   is discarded. A brand-new map counts against `NINJARENA_MAX_STORED_MAPS` (default 100) and is
+   is discarded. A document whose `id` names a built-in map always takes this second path —
+   **built-in maps are read-only**, so saving or testing one from the editor stores a copy. A brand-new map counts against `NINJARENA_MAX_STORED_MAPS` (default 100) and is
    refused with `MAP_STORE_FULL` once the store is full; overwriting an existing map never is.
-5. Stamps `author` (the session's display name) and `createdAt`. An overwrite **keeps the original
+4. Stamps `author` (the session's display name) and `createdAt`. An overwrite **keeps the original
    `createdAt`** — only a document with no existing stored copy gets a fresh timestamp.
 
 Because the id is reassigned server-side for a new map, and an overwrite is only possible by

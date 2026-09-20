@@ -283,8 +283,9 @@ Passwords are hashed (`sha256`) and compared with `timingSafeEqual` in `lobby/pa
 - `InMemoryMapRepository` for tests.
 - `MapLibrary` merges bundled content maps (`builtin: true`, read-only) with the repository:
   `list()`, `get(id)`, `save(doc, author)`; `save` runs `migrateMapDocument`, `validateMapDocument`,
-  refuses builtin ids and the store cap (`MAP_STORE_FULL`), assigns `id = slug(name)-<4 random>`
-  when the document has no id or an unknown one, stamps `author`, and stamps `createdAt` **only**
+  refuses the store cap (`MAP_STORE_FULL`), assigns `id = slug(name)-<4 random>` when the
+  document has no id, an unknown one or a builtin one (a builtin map is saved as a copy), stamps
+  `author`, and stamps `createdAt` **only**
   when the stored copy being overwritten has none (a brand-new map) — overwriting an existing one
   keeps its original `createdAt`.
 - The bundled map moves to the same document format so there is one loader.
