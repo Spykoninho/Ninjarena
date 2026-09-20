@@ -82,11 +82,15 @@ export class MapLibrary {
       );
     }
 
-    // Une carte intégrée est en lecture seule: l'enregistrer en crée une copie sous un id neuf.
-    // Sinon un id inconnu du dépôt désigne une nouvelle carte: le sien n'est qu'une suggestion.
-    const existing = this.content.maps.has(document.id)
-      ? null
-      : await this.repository.get(document.id);
+    // Une carte intégrée est en lecture seule: renvoyée telle quelle elle se joue directement,
+    // modifiée elle devient une copie sous un id neuf.
+    const builtin = this.content.maps.has(document.id);
+    if (builtin && sameMap(document, this.content.maps.get(document.id))) {
+      return { ok: true, id: document.id };
+    }
+
+    // Un id inconnu du dépôt désigne une nouvelle carte: le sien n'est qu'une suggestion.
+    const existing = builtin ? null : await this.repository.get(document.id);
     const isNew = existing === null;
     const id = isNew ? await this.generateId(document.name) : document.id;
 
@@ -121,6 +125,15 @@ export class MapLibrary {
     }
     return suffix;
   }
+}
+
+// Auteur et date ne font pas la carte: seul le contenu jouable compte.
+function sameMap(a: MapDocument, b: MapDocument): boolean {
+  return JSON.stringify(withoutStamps(a)) === JSON.stringify(withoutStamps(b));
+}
+
+function withoutStamps(document: MapDocument): MapDocument {
+  return { ...document, author: undefined, createdAt: undefined };
 }
 
 function invalidMap(message: string): SaveMapResult {

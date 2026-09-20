@@ -71,7 +71,16 @@ describe('MapLibrary', () => {
     expect(summaries.at(-1)).toMatchObject({ name: 'Aardvark', builtin: false });
   });
 
-  it('saves a document submitted under a built-in id as a copy with a fresh id', async () => {
+  it('plays an unmodified built-in map as is instead of storing a copy', async () => {
+    const repository = new InMemoryMapRepository();
+    const library = new MapLibrary({ content, repository, maxStoredMaps: 10 });
+
+    const arena = { ...content.maps.get('arena'), author: 'kunoichi' };
+    expect(await library.save(arena, 'kunoichi')).toEqual({ ok: true, id: 'arena' });
+    expect(await repository.count()).toBe(0);
+  });
+
+  it('saves a modified built-in map as a copy with a fresh id', async () => {
     const library = new MapLibrary({
       content,
       repository: new InMemoryMapRepository(),

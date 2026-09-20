@@ -164,8 +164,10 @@ an `InMemoryMapRepository` instead; both implement the same `MapRepository` port
 3. Decides the id: if the submitted `id` matches an existing stored map, this is an **overwrite**
    of that map; otherwise a fresh id is generated as `slug(name)-xxxx` (a 4-character random
    suffix, retried until it collides with neither a built-in nor a stored id) and the submitted id
-   is discarded. A document whose `id` names a built-in map always takes this second path —
-   **built-in maps are read-only**, so saving or testing one from the editor stores a copy. A brand-new map counts against `NINJARENA_MAX_STORED_MAPS` (default 100) and is
+   is discarded. **Built-in maps are read-only**: a document whose `id` names one is answered
+   with that id and nothing stored when its content is unchanged (author and `createdAt` aside),
+   so testing a built-in map plays the original; a modified one takes this second path and is
+   stored as a copy. A brand-new map counts against `NINJARENA_MAX_STORED_MAPS` (default 100) and is
    refused with `MAP_STORE_FULL` once the store is full; overwriting an existing map never is.
 4. Stamps `author` (the session's display name) and `createdAt`. An overwrite **keeps the original
    `createdAt`** — only a document with no existing stored copy gets a fresh timestamp.
