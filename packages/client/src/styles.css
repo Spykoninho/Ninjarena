@@ -1482,8 +1482,7 @@ body {
   color: var(--ui-mute);
 }
 
-.home-account-action,
-.home-register {
+.home-account-action {
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--ui-edge);
@@ -1491,9 +1490,24 @@ body {
   font-size: 11px;
 }
 
-.home-account-action:hover,
-.home-register:hover {
+.home-account-action:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.home-switch {
+  align-self: center;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  color: var(--ui-mute);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.home-switch:hover,
+.home-switch:focus-visible {
+  color: var(--hud-text);
 }
 
 .home-form-hint {

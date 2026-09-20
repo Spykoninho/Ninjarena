@@ -22,6 +22,27 @@ export interface HomeActions {
 type HomeMode =
   'menu' | 'create' | 'custom' | 'tournament' | 'queue' | 'join' | 'login' | 'leaderboard';
 
+// Un seul formulaire de compte: la connexion par défaut, la création derrière un lien.
+type AccountMode = 'login' | 'register';
+
+const ACCOUNT_TEXTS: Record<
+  AccountMode,
+  { title: string; submit: string; switchTo: string; password: AutoFill }
+> = {
+  login: {
+    title: 'Connexion',
+    submit: 'Se connecter',
+    switchTo: 'Pas encore de compte ? En créer un',
+    password: 'current-password',
+  },
+  register: {
+    title: 'Créer un compte',
+    submit: 'Créer le compte',
+    switchTo: 'Déjà un compte ? Se connecter',
+    password: 'new-password',
+  },
+};
+
 const NAME_MODES: HomeMode[] = ['create', 'custom', 'tournament', 'join'];
 const RANKED_NEEDS_ACCOUNT = 'Connecte-toi à un compte pour jouer en classé';
 
@@ -49,6 +70,9 @@ export class HomeScreen implements Screen {
   private readonly queueCount: HTMLElement;
   private readonly joinForm: HTMLFormElement;
   private readonly loginForm: HTMLFormElement;
+  private readonly accountTitle: HTMLElement;
+  private readonly accountSubmit: HTMLButtonElement;
+  private readonly accountSwitch: HTMLButtonElement;
   private readonly createPasswordInput: HTMLInputElement;
   private readonly codeInput: HTMLInputElement;
   private readonly joinPasswordInput: HTMLInputElement;
@@ -62,6 +86,7 @@ export class HomeScreen implements Screen {
   private readonly onKeyDown: (event: KeyboardEvent) => void;
   private mode: HomeMode = 'menu';
   private account: AccountView | null = null;
+  private accountMode: AccountMode = 'login';
   private tournamentSize: TournamentSize = 4;
   private mountedOnce = false;
 
@@ -192,23 +217,23 @@ export class HomeScreen implements Screen {
     this.joinPasswordInput = field(this.joinForm, 'Mot de passe (si la salle en a un)', 'password');
     this.joinForm.appendChild(this.formActions(this.joinForm, 'Rejoindre'));
 
-    this.loginForm = this.form('Compte', () => this.onLogin());
+    this.accountTitle = formTitle(ACCOUNT_TEXTS.login.title);
+    this.loginForm = this.form(this.accountTitle, () => this.onAccountSubmit());
     element('p', 'home-form-hint', this.loginForm).textContent =
       'Un compte garde ton score et ton rang : il faut en avoir un pour jouer en classé.';
-    this.accountNameInput = field(this.loginForm, 'Pseudo (unique)', 'text');
+    this.accountNameInput = field(this.loginForm, 'Pseudo', 'text');
     this.accountNameInput.maxLength = NAME_MAX_LENGTH;
     this.accountNameInput.autocomplete = 'username';
     this.accountPasswordInput = field(this.loginForm, 'Mot de passe', 'password');
     this.accountPasswordInput.maxLength = PASSWORD_MAX_LENGTH;
-    this.accountPasswordInput.autocomplete = 'current-password';
-    const loginActions = this.formActions(this.loginForm, 'Se connecter');
-    const register = document.createElement('button');
-    register.type = 'button';
-    register.className = 'home-register';
-    register.textContent = 'Créer un compte';
-    register.addEventListener('click', () => this.onRegister());
-    loginActions.insertBefore(register, loginActions.lastChild);
-    this.loginForm.appendChild(loginActions);
+    this.accountSubmit = submitButton(ACCOUNT_TEXTS.login.submit);
+    this.loginForm.appendChild(this.formActions(this.loginForm, this.accountSubmit));
+    this.accountSwitch = actionButton('', 'home-switch', () => {
+      this.errorList.replaceChildren();
+      this.setAccountMode(this.accountMode === 'login' ? 'register' : 'login');
+    });
+    this.loginForm.appendChild(this.accountSwitch);
+    this.setAccountMode('login');
 
     this.leaderboard = element('section', 'home-leaderboard', this.root);
     this.leaderboard.hidden = true;
@@ -318,6 +343,8 @@ export class HomeScreen implements Screen {
   private setMode(mode: HomeMode): void {
     this.mode = mode;
     this.errorList.replaceChildren();
+    // Le formulaire de compte s'ouvre toujours en connexion: la création est le cas rare.
+    if (mode === 'login') this.setAccountMode('login');
     this.menu.hidden = mode !== 'menu';
     this.accountBar.hidden = mode !== 'menu';
     this.identity.hidden = this.identityHidden();
@@ -389,14 +416,20 @@ export class HomeScreen implements Screen {
     this.actions.joinRoom(this.playerName(), code, this.joinPasswordInput.value);
   }
 
-  private onLogin(): void {
-    const credentials = this.credentials();
-    if (credentials !== null) this.actions.login(credentials.name, credentials.password);
+  private setAccountMode(mode: AccountMode): void {
+    this.accountMode = mode;
+    const texts = ACCOUNT_TEXTS[mode];
+    this.accountTitle.textContent = texts.title;
+    this.accountSubmit.textContent = texts.submit;
+    this.accountSwitch.textContent = texts.switchTo;
+    this.accountPasswordInput.autocomplete = texts.password;
   }
 
-  private onRegister(): void {
+  private onAccountSubmit(): void {
     const credentials = this.credentials();
-    if (credentials !== null) this.actions.register(credentials.name, credentials.password);
+    if (credentials === null) return;
+    if (this.accountMode === 'login') this.actions.login(credentials.name, credentials.password);
+    else this.actions.register(credentials.name, credentials.password);
   }
 
   // Les bornes du serveur sont vérifiées ici pour éviter un aller-retour qui finirait en message générique.
@@ -416,7 +449,7 @@ export class HomeScreen implements Screen {
   }
 
   // Un formulaire soumet sur Entrée depuis n'importe quel champ: le bouton n'est qu'une commodité.
-  private form(title: string, onSubmit: () => void): HTMLFormElement {
+  private form(title: string | HTMLElement, onSubmit: () => void): HTMLFormElement {
     const form = document.createElement('form');
     form.className = 'home-form';
     form.hidden = true;
@@ -424,18 +457,14 @@ export class HomeScreen implements Screen {
       event.preventDefault();
       onSubmit();
     });
-    element('h2', 'home-form-title', form).textContent = title;
+    form.appendChild(typeof title === 'string' ? formTitle(title) : title);
     this.root.appendChild(form);
     return form;
   }
 
-  private formActions(form: HTMLFormElement, submitLabel: string): HTMLElement {
+  private formActions(form: HTMLFormElement, submit: string | HTMLButtonElement): HTMLElement {
     const row = element('div', 'home-form-actions', form);
-    const submit = document.createElement('button');
-    submit.type = 'submit';
-    submit.className = 'home-submit';
-    submit.textContent = submitLabel;
-    row.append(this.backButton(), submit);
+    row.append(this.backButton(), typeof submit === 'string' ? submitButton(submit) : submit);
     return row;
   }
 
@@ -452,6 +481,21 @@ function menuButton(entry: MenuEntry): HTMLButtonElement {
   element('span', 'home-menu-hint', button).textContent = entry.hint;
   button.addEventListener('click', entry.onClick);
   return button;
+}
+
+function formTitle(text: string): HTMLElement {
+  const title = document.createElement('h2');
+  title.className = 'home-form-title';
+  title.textContent = text;
+  return title;
+}
+
+function submitButton(label: string): HTMLButtonElement {
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'home-submit';
+  submit.textContent = label;
+  return submit;
 }
 
 function actionButton(label: string, className: string, onClick: () => void): HTMLButtonElement {

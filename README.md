@@ -177,10 +177,12 @@ how many players are waiting, with **Annuler**, until the server pairs two close
 locked ranked room that starts as soon as both are ready. **Partie personnalisée** is the plain
 room with every setting in the host's hands.
 
-The home menu also carries the account bar: **Se connecter** opens a form where a name and a
-password either log into an existing account or, with **Créer un compte**, create one. A logged-in
-player keeps that name in every room and shows a rank badge next to it; **Classement** lists every
-account by rating. Playing as a guest (no account) is still fine for unranked rooms.
+The home menu also carries the account bar: **Se connecter** opens the login form (a name and a
+password), and its **Pas encore de compte ? En créer un** link turns the same form into the
+registration one. The browser keeps the session afterwards: reloading the page, or coming back the
+next day, lands logged in until **Déconnexion**. A logged-in player keeps that name in every room
+and shows a rank badge next to it; **Classement** lists every account by rating. Playing as a guest
+(no account) is still fine for unranked rooms.
 
 Both tabs now show the lobby, split in tabs. **Salon** is the stage: one column per team,
 each player drawn as their ninja with their name, a rank badge if they are logged in, a HÔTE badge,
