@@ -10,7 +10,7 @@ delay, which is what prediction, reconciliation and interpolation below are for.
 
 ## Authority model
 
-The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 3`.
+The server owns the game state. A client sends **intent**, never outcome. `PROTOCOL_VERSION = 6`.
 
 | The client may send                                                    | The server alone decides                                                                                                     |
 | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -48,9 +48,10 @@ The server sends:
   the one message that carries the whole room, so the client never has to reconstruct it from a
   diff — see [rooms.md](rooms.md) for the shape and every status it can report.
 - `roomLeft` — acknowledges `leaveRoom`.
-- `matchStarted { playerId, tickRate, snapshotRate, matchConfig, map }` — sent once per player when
-  a room's match begins; `map` is the full `MapDocument`, so the client never needs a separate
-  `getMap` round trip to render the room it is about to play in.
+- `matchStarted { playerId, tickRate, snapshotRate, matchConfig, maps }` — sent once per player when
+  a room's match begins; `maps` holds one full `MapDocument` per round, in order (a single one when
+  the room plays a fixed map; round N is played on `maps[(N - 1) % maps.length]`), so the client
+  never needs a separate `getMap` round trip and both sides switch maps at the same tick.
 - `snapshot { tick, lastProcessedSeq, world, events }` — sent only to the sessions seated in the
   room whose `MatchHost` produced it; a session in a different room, or in no room, never sees it.
 - `mapList { maps }`, `mapSaved { id }`, `mapDocument { document }` — replies to `listMaps`,

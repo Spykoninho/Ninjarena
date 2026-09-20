@@ -1,5 +1,12 @@
 import type { GameContent } from '@ninjarena/content';
-import type { PlayerId, PlayerState, Vec2, WorldEvent, WorldState } from '@ninjarena/core';
+import type {
+  PlayerId,
+  PlayerState,
+  TilesetDefinition,
+  Vec2,
+  WorldEvent,
+  WorldState,
+} from '@ninjarena/core';
 import {
   FixedStepAccumulator,
   GameSimulation,
@@ -85,6 +92,9 @@ export class ClientGame {
   private status = '';
   private stage: HTMLElement | null = null;
   private exitAction: HudExitAction | null = null;
+  // Les cartes du match, une par manche, avec leur jeu de tuiles; celle à l'écran suit la manche.
+  private rounds: { map: LoadedMap; tileset: TilesetDefinition }[] = [];
+  private shownMap: LoadedMap | null = null;
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
@@ -137,6 +147,8 @@ export class ClientGame {
     this.setCursor(false);
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
     this.simulation = null;
+    this.rounds = [];
+    this.shownMap = null;
     this.accumulator = null;
     this.clock = null;
     this.localPlayerId = null;
@@ -159,13 +171,18 @@ export class ClientGame {
   }
 
   beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void {
-    const { content, renderer } = this.deps;
-    const tileset = content.tilesets.get(message.map.tileset);
-    const map = LoadedMap.fromDocument(message.map, tileset);
+    const { content } = this.deps;
+    const rounds = message.maps.map((document) => {
+      const tileset = content.tilesets.get(document.tileset);
+      return { map: LoadedMap.fromDocument(document, tileset), tileset };
+    });
+    const map = rounds[0]?.map;
+    if (map === undefined) throw new Error('a match needs at least one map');
     this.endMatch();
+    this.rounds = rounds;
     this.roomPlayers = roomPlayers;
     this.simulation = new GameSimulation({
-      map,
+      maps: rounds.map((round) => round.map),
       abilities: content.abilities,
       characters: content.characters,
       matchConfig: message.matchConfig,
@@ -185,10 +202,19 @@ export class ClientGame {
     // Avant le premier snapshot le joueur local n'existe pas: la caméra vise le centre de la carte.
     this.cameraPosition = { x: map.widthInUnits / 2, y: map.heightInUnits / 2 };
     this.localRenderPosition = { ...this.cameraPosition };
-    renderer.setMap(map, tileset);
+    this.showMap(map);
     this.setCursor(true);
     this.startPing();
     this.startLoop();
+  }
+
+  // Une nouvelle manche peut changer de carte: le décor suit la simulation dès qu'elle en change.
+  private showMap(map: LoadedMap): void {
+    if (map === this.shownMap) return;
+    const round = this.rounds.find((candidate) => candidate.map === map);
+    if (round === undefined) return;
+    this.deps.renderer.setMap(map, round.tileset);
+    this.shownMap = map;
   }
 
   // La flèche du système n'a rien à faire sur un champ de bataille: le réticule la remplace.
@@ -246,6 +272,7 @@ export class ClientGame {
     // Une pression ne vaut que pour l'image qui la lit: elle est consommée à la fin de celle-ci.
     this.deps.inputState.pressedOnce.clear();
     const offset = this.smoother.advance(elapsed);
+    if (this.simulation !== null) this.showMap(this.simulation.map);
     // Un gel de coup arrête l'image sans arrêter la simulation ni les entrées envoyées.
     if (!this.feedback.advance(elapsed).frozen) {
       this.renderFrame(accumulator.alpha, offset, elapsed);

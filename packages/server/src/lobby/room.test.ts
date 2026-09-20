@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Build, MapDocument, RoomSettings } from '@ninjarena/core';
-import { defaultRoomSettings, emptyBuild, migrateMapDocument } from '@ninjarena/core';
+import {
+  RANDOM_MAP_ID,
+  defaultRoomSettings,
+  emptyBuild,
+  migrateMapDocument,
+} from '@ninjarena/core';
 import { loadContent } from '@ninjarena/content';
 import type { RoomView, ServerMessage } from '@ninjarena/protocol';
 import { serverMessageCodec } from '@ninjarena/protocol';
@@ -432,6 +437,52 @@ describe('Room start blockers', () => {
   });
 });
 
+describe('Room random map', () => {
+  it('shows no map in the lobby and draws one per round from every map that fits', async () => {
+    const { room, repository } = createRoom({ mapId: RANDOM_MAP_ID, bestOf: 5 });
+    await repository.save(smallMap());
+    await room.refreshMap();
+    expect(room.view().map).toBeNull();
+    const { one, two } = seatReadyPair(room);
+    expect(room.startBlockers()).toEqual([]);
+
+    expect(room.start(one.session)).toEqual({ ok: true });
+    const started = messagesOfType(two.connection, 'matchStarted');
+    // Le tirage de la salle de test prend toujours la dernière carte qui n'est pas la précédente.
+    expect(started[0]?.maps.map((map) => map.id)).toEqual([
+      'pocket',
+      'cour-des-berges',
+      'pocket',
+      'cour-des-berges',
+      'pocket',
+    ]);
+  });
+
+  it('leaves out the maps that do not fit the format and blocks when none does', async () => {
+    const { room, repository } = createRoom({ mapId: RANDOM_MAP_ID, mode: 'ffa', teamCount: 4 });
+    await repository.save(smallMap());
+    await room.refreshMap();
+    const host = createSession('c1');
+    room.join(host.session, undefined);
+    room.join(createSession('c2').session, undefined);
+    expect(room.startBlockers()).not.toContain('MAP_INVALID');
+
+    room.updateSettings(host.session, { teamCount: 8 });
+    expect(room.startBlockers()).toContain('MAP_INVALID');
+  });
+
+  it('plays a practice room on a single drawn map', async () => {
+    const { room } = createRoom({ mapId: RANDOM_MAP_ID, practice: true });
+    await room.refreshMap();
+    const one = createSession('c1');
+    room.join(one.session, undefined);
+    room.setLoadout(one.session, loadoutOf());
+    room.setReady(one.session, true);
+    expect(room.start(one.session)).toEqual({ ok: true });
+    expect(messagesOfType(one.connection, 'matchStarted')[0]?.maps).toHaveLength(1);
+  });
+});
+
 describe('Room practice', () => {
   it('lets a lone player start a practice room and keeps the round open', async () => {
     const { room } = createRoom({ practice: true });
@@ -605,7 +656,7 @@ describe('Room match lifecycle', () => {
       const started = messagesOfType(seat.connection, 'matchStarted');
       expect(started).toHaveLength(1);
       expect(started[0]?.playerId).toBe(seat.session.id);
-      expect(started[0]?.map.id).toBe('arena');
+      expect(started[0]?.maps.map((map) => map.id)).toEqual(['arena']);
       expect(started[0]?.tickRate).toBe(TICK_RATE);
     }
 

@@ -40,6 +40,11 @@ export class MapLibrary {
     return [...sortByName(builtin), ...sortByName(stored)];
   }
 
+  // Toutes les cartes jouables, intégrées d'abord: le tirage d'une salle en carte aléatoire.
+  async documents(): Promise<MapDocument[]> {
+    return [...this.content.maps.all(), ...(await this.repository.list())];
+  }
+
   async get(id: string): Promise<MapDocument | null> {
     if (this.content.maps.has(id)) return this.content.maps.get(id);
     return this.repository.get(id);

@@ -8,7 +8,7 @@ import { reconcile } from './reconcile';
 const makeSim = () => {
   const content = loadContent();
   const sim = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: { ...duelConfig(content), countdownMs: 0 },

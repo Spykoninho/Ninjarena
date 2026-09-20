@@ -9,7 +9,7 @@ import { buildHudView } from './hudView';
 const content = loadContent();
 const makePlayer = (): PlayerState => {
   const sim = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: duelConfig(content),

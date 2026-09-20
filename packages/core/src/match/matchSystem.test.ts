@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addTestPlayer, createTestSimulation, contextOf } from '../testing/fixtures';
+import { addTestPlayer, createTestMap, createTestSimulation, contextOf } from '../testing/fixtures';
 import { applyDamage } from '../combat/damage';
 import { abilityMask, neutralInput } from '../simulation/input';
 import { pickTeamForNewPlayer } from './teams';
@@ -45,6 +45,42 @@ describe('match rules', () => {
     expect(sim.world.match.phase).toBe('IN_ROUND');
     expect(b.health).toBe(100);
     expect(b.phase.kind).toBe('NORMAL');
+  });
+
+  it('plays each round on its own map and loops over the list', () => {
+    const mirrored = createTestMap({
+      id: 'mirror',
+      spawns: [
+        { x: 27, y: 7, team: 0 },
+        { x: 3, y: 7, team: 1 },
+      ],
+    });
+    const sim = createTestSimulation({
+      matchConfig: { roundsToWin: 3, roundEndDelayMs: 0, countdownMs: 0 },
+      maps: [createTestMap(), mirrored],
+    });
+    const a = addTestPlayer(sim, { id: 'a', teamId: 'team-0', characterId: 'ninja' });
+    const b = addTestPlayer(sim, { id: 'b', teamId: 'team-1', characterId: 'ninja' });
+    sim.startMatch();
+    expect(sim.map.id).toBe('test-arena');
+    expect(a.position).toEqual({ x: 56, y: 120 });
+
+    const winRound = (): void => {
+      sim.step({});
+      applyDamage(contextOf(sim), b, 999, 'a');
+      sim.step({}); // fin de la manche
+      sim.step({}); // début de la manche suivante
+    };
+    winRound();
+    expect(sim.world.match.round).toBe(2);
+    expect(sim.map.id).toBe('mirror');
+    expect(a.position).toEqual({ x: 440, y: 120 });
+    expect(b.position).toEqual({ x: 56, y: 120 });
+
+    winRound();
+    expect(sim.world.match.round).toBe(3);
+    expect(sim.map.id).toBe('test-arena');
+    expect(a.position).toEqual({ x: 56, y: 120 });
   });
 
   it('ends the match when a team reaches roundsToWin', () => {

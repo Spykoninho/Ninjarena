@@ -185,7 +185,8 @@ account by rating. Playing as a guest (no account) is still fine for unranked ro
 Both tabs now show the lobby, split in tabs. **Salon** is the stage: one column per team,
 each player drawn as their ninja with their name, a rank badge if they are logged in, a HÔTE badge,
 a PRÊT / PAS PRÊT pill and the icons of the attacks they picked; open seats carry a **Rejoindre
-cette équipe** button. **Réglages de la partie** holds the host-only form (mode, map, teams,
+cette équipe** button. **Réglages de la partie** holds the host-only form (mode, map — **Aléatoire**
+by default, a different map for every round, or any one map of the library — teams,
 players per team, build points, rounds, round duration, friendly fire, ranked, tournament); with
 **Partie classée** ticked, a table under the form shows every player's rating and what a win earns
 and a loss costs them, and with **Tournoi** ticked the format rows fold away behind the bracket

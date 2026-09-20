@@ -1,6 +1,7 @@
 import type {
   AbilityDefinition,
   CharacterDefinition,
+  MapDocument,
   MatchConfig,
   StatRulesDefinition,
 } from '../definitions';
@@ -70,8 +71,8 @@ const MAP = migrateMapDocument({
   ],
 });
 
-export function createTestMap(): LoadedMap {
-  return LoadedMap.fromDocument(MAP, TILESET);
+export function createTestMap(overrides: Partial<MapDocument> = {}): LoadedMap {
+  return LoadedMap.fromDocument({ ...MAP, ...overrides }, TILESET);
 }
 
 export const TEST_ABILITIES: readonly AbilityDefinition[] = [
@@ -383,9 +384,10 @@ const CHARACTER_CATALOG = new DefinitionCatalog([NINJA]);
 
 export function createTestSimulation(overrides?: {
   matchConfig?: Partial<MatchConfig>;
+  maps?: readonly LoadedMap[];
 }): GameSimulation {
   return new GameSimulation({
-    map: createTestMap(),
+    maps: overrides?.maps ?? [createTestMap()],
     abilities: ABILITY_CATALOG,
     characters: CHARACTER_CATALOG,
     matchConfig: MatchConfigSchema.parse({ ...DUEL_CONFIG, ...overrides?.matchConfig }),
@@ -401,7 +403,7 @@ export function addTestPlayer(sim: GameSimulation, params: AddPlayerParams): Pla
 export function contextOf(sim: GameSimulation): SimulationContext {
   return createSimulationContext({
     world: sim.world,
-    map: sim.map,
+    maps: sim.maps,
     abilities: ABILITY_CATALOG,
     characters: CHARACTER_CATALOG,
     config: sim.config,

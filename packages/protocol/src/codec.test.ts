@@ -122,7 +122,7 @@ const SERVER_MESSAGES: ServerMessage[] = [
     tickRate: 60,
     snapshotRate: 30,
     matchConfig: DUEL,
-    map: MAP,
+    maps: [MAP],
   },
   {
     type: 'snapshot',
@@ -220,6 +220,11 @@ describe('protocol codec', () => {
         JSON.stringify({ type: 'register', name: 'kage', password: 'abc' }),
       ),
     ).toBeNull();
+  });
+
+  it('rejects a matchStarted without any map', () => {
+    const started = SERVER_MESSAGES.find((message) => message.type === 'matchStarted');
+    expect(serverMessageCodec.decode(JSON.stringify({ ...started, maps: [] }))).toBeNull();
   });
 
   it('rejects a welcome carrying an empty sessionId', () => {

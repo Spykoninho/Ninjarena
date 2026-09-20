@@ -103,7 +103,7 @@ const matchStarted: MatchStartedMessage = {
   tickRate: 30,
   snapshotRate: 15,
   matchConfig,
-  map: mapDocument,
+  maps: [mapDocument],
 };
 
 const snapshot: SnapshotMessage = {
@@ -359,7 +359,7 @@ beforeEach(async () => {
 
 describe('ClientApp.start', () => {
   it('introduces the session with the configured name', () => {
-    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 5, name: 'kage' }]);
+    expect(h.network.sent).toEqual([{ type: 'hello', protocolVersion: 6, name: 'kage' }]);
     expect(h.game.calls).toContain('init');
     expect(h.home.mounted).toBe(true);
   });

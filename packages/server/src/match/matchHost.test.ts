@@ -18,7 +18,7 @@ const TECHNIQUE_IDS = ['blink', 'chakra-shield', 'lightning-dash'];
 const setup = () => {
   const content = loadContent();
   const simulation = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: toMatchConfig(

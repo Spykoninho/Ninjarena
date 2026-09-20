@@ -35,6 +35,8 @@ const MIN_ACCOUNT_PASSWORD_LENGTH = 4;
 const MAX_ACCOUNT_PASSWORD_LENGTH = 64;
 const MAX_LEADERBOARD_ENTRIES = 200;
 const MAX_MAP_STRING_LENGTH = 40;
+// Au plus une carte par manche: un match au meilleur des 7 en compte 7.
+const MAX_ROUND_MAPS = Math.max(...BEST_OF_OPTIONS);
 const MAX_BASIC_ATTACK_ID_LENGTH = 64;
 const MAX_BUILD_POINTS = 50;
 const MAX_TEAM_INDEX = MAX_TEAM_COUNT - 1;
@@ -280,7 +282,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.discriminatedUnio
     tickRate: z.number().positive(),
     snapshotRate: z.number().positive(),
     matchConfig: MatchConfigSchema,
-    map: MapDocumentSchema,
+    maps: z.array(MapDocumentSchema).min(1).max(MAX_ROUND_MAPS),
   }),
   z.object({
     type: z.literal('snapshot'),

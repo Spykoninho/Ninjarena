@@ -6,6 +6,7 @@ import type {
 } from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
 import { matchPostStep, matchPreStep, startMatch } from '../match/matchSystem';
+import { mapForRound } from '../match/roundMap';
 import { spawnPositionFor } from '../match/spawns';
 import type { Vec2 } from '../math/vec2';
 import type { PlayerState } from '../player/state';
@@ -33,7 +34,8 @@ import type { WorldState } from './world';
 import { createWorldState, playersOf } from './world';
 
 export interface GameSimulationOptions {
-  map: LoadedMap;
+  // Une carte par manche, dans l'ordre; une seule carte sert à toutes les manches.
+  maps: readonly LoadedMap[];
   abilities: DefinitionCatalog<AbilityDefinition>;
   characters: DefinitionCatalog<CharacterDefinition>;
   matchConfig: MatchConfig;
@@ -54,7 +56,7 @@ export interface AddPlayerParams {
 export class GameSimulation {
   private worldState: WorldState;
   private pendingEvents: WorldEvent[] = [];
-  private readonly loadedMap: LoadedMap;
+  private readonly loadedMaps: readonly LoadedMap[];
   private readonly abilityCatalog: DefinitionCatalog<AbilityDefinition>;
   private readonly characterCatalog: DefinitionCatalog<CharacterDefinition>;
   private readonly match: MatchConfig;
@@ -63,7 +65,8 @@ export class GameSimulation {
 
   constructor(options: GameSimulationOptions) {
     this.worldState = createWorldState();
-    this.loadedMap = options.map;
+    if (options.maps.length === 0) throw new Error('a simulation needs at least one map');
+    this.loadedMaps = options.maps;
     this.abilityCatalog = options.abilities;
     this.characterCatalog = options.characters;
     this.match = options.matchConfig;
@@ -83,8 +86,13 @@ export class GameSimulation {
     return this.match;
   }
 
+  get maps(): readonly LoadedMap[] {
+    return this.loadedMaps;
+  }
+
+  // La carte de la manche en cours.
   get map(): LoadedMap {
-    return this.loadedMap;
+    return mapForRound(this.loadedMaps, this.worldState.match.round);
   }
 
   get rules(): StatRulesDefinition {
@@ -108,7 +116,7 @@ export class GameSimulation {
       rules: this.statRules,
     });
     if (params.position === undefined) {
-      player.position = spawnPositionFor(this.loadedMap, this.match, player, this.worldState);
+      player.position = spawnPositionFor(this.map, this.match, player, this.worldState);
     }
     this.worldState.players[params.id] = player;
     return player;
@@ -155,7 +163,7 @@ export class GameSimulation {
   private createContext(): SimulationContext {
     return createSimulationContext({
       world: this.worldState,
-      map: this.loadedMap,
+      maps: this.loadedMaps,
       abilities: this.abilityCatalog,
       characters: this.characterCatalog,
       config: this.simulationConfig,

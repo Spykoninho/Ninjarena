@@ -12,7 +12,7 @@ const TICK_SECONDS = 1 / 60;
 
 const makeSim = (): GameSimulation => {
   const sim = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: duelConfig(content),

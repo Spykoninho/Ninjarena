@@ -1,8 +1,8 @@
 import { randomInt as cryptoRandomInt } from 'node:crypto';
 import type { GameContent } from '@ninjarena/content';
-import { DEFAULT_CHARACTER_ID, DEFAULT_MAP_ID } from '@ninjarena/content';
+import { DEFAULT_CHARACTER_ID } from '@ninjarena/content';
 import type { RoomSettings } from '@ninjarena/core';
-import { defaultRoomSettings, tickDurationMs } from '@ninjarena/core';
+import { RANDOM_MAP_ID, defaultRoomSettings, tickDurationMs } from '@ninjarena/core';
 import type { ClientMessage, RoomSettingsPatch } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION, clientMessageCodec } from '@ninjarena/protocol';
 import { AccountService } from './accounts/accountService';
@@ -50,7 +50,7 @@ type RoomMessage = Extract<
 
 const MAX_INVALID_MESSAGES = 20;
 
-// Une partie de la file: un duel classé au meilleur des trois, sur la carte par défaut.
+// Une partie de la file: un duel classé au meilleur des trois, sur une carte tirée à chaque manche.
 const QUEUE_ROOM_SETTINGS: RoomSettingsPatch = {
   ranked: true,
   mode: 'team',
@@ -350,7 +350,7 @@ export class GameServer {
 
   // Les deux joueurs appariés atterrissent dans une salle classée verrouillée, prête à partir.
   private seatMatchedPair(one: ClientSession, two: ClientSession): void {
-    const defaults = defaultRoomSettings(this.content.statRules, DEFAULT_MAP_ID);
+    const defaults = defaultRoomSettings(this.content.statRules, RANDOM_MAP_ID);
     const created = this.roomManager.create(
       one,
       { settings: QUEUE_ROOM_SETTINGS, locked: true },
@@ -390,7 +390,7 @@ export class GameServer {
     message: Extract<ClientMessage, { type: 'createRoom' }>,
   ): void {
     this.leaveQueue(session, false);
-    const defaults = defaultRoomSettings(this.content.statRules, DEFAULT_MAP_ID);
+    const defaults = defaultRoomSettings(this.content.statRules, RANDOM_MAP_ID);
     const created = this.roomManager.create(
       session,
       { password: message.password, settings: message.settings },

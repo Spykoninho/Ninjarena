@@ -166,7 +166,8 @@ export type ServerMessage =
       tickRate: number;
       snapshotRate: number;
       matchConfig: MatchConfig;
-      map: MapDocument;
+      // Une carte par manche, dans l'ordre; une seule carte sert à toutes les manches.
+      maps: MapDocument[];
     }
   | {
       type: 'snapshot';

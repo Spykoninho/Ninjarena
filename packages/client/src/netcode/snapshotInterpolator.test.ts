@@ -8,7 +8,7 @@ import { SnapshotInterpolator } from './snapshotInterpolator';
 const makeSim = () => {
   const content = loadContent();
   const sim = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: duelConfig(content),
@@ -74,7 +74,7 @@ describe('SnapshotInterpolator', () => {
   it('interpolates positions between two snapshots', () => {
     const content = loadContent();
     const sim = new GameSimulation({
-      map: loadMap(content, 'arena'),
+      maps: [loadMap(content, 'arena')],
       abilities: content.abilities,
       characters: content.characters,
       matchConfig: duelConfig(content),

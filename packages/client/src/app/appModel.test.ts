@@ -138,7 +138,7 @@ describe('reduceServerMessage', () => {
       tickRate: 30,
       snapshotRate: 15,
       matchConfig,
-      map: mapDocument,
+      maps: [mapDocument],
     });
     expect(next.screen).toBe('game');
   });

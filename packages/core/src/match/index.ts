@@ -3,3 +3,4 @@ export * from './teams';
 export * from './spawns';
 export * from './reset';
 export * from './matchSystem';
+export * from './roundMap';

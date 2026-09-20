@@ -1,5 +1,6 @@
-import type { MapDocument, MapIssue, RoomSettings } from '@ninjarena/core';
+import type { RoomSettings } from '@ninjarena/core';
 import type { StartBlocker } from '@ninjarena/protocol';
+import type { RoomMapStatus } from './roomMap';
 import type { RoomPlayer } from './roomPlayer';
 
 const MIN_PLAYERS_TO_START = 2;
@@ -7,8 +8,7 @@ const MIN_PLAYERS_TO_START = 2;
 export interface StartBlockerInput {
   players: readonly RoomPlayer[];
   settings: RoomSettings;
-  map: MapDocument | null;
-  mapIssues: MapIssue[];
+  map: RoomMapStatus;
 }
 
 export function computeStartBlockers(input: StartBlockerInput): StartBlocker[] {
@@ -29,8 +29,8 @@ export function computeStartBlockers(input: StartBlockerInput): StartBlocker[] {
   if (input.settings.ranked && input.players.some((player) => player.session.account === null)) {
     blockers.push('RANKED_NEEDS_ACCOUNT');
   }
-  if (input.map === null) blockers.push('MAP_MISSING');
-  else if (input.mapIssues.length > 0) blockers.push('MAP_INVALID');
+  if (input.map === 'missing') blockers.push('MAP_MISSING');
+  else if (input.map === 'invalid') blockers.push('MAP_INVALID');
   return blockers;
 }
 

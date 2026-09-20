@@ -90,8 +90,9 @@ client uses to grey out its Start button and explain why:
 - Otherwise, any combination of: `PLAYER_NOT_READY` (someone hasn't readied up), `INVALID_LOADOUT`
   (someone has a loadout on file that the current settings reject), `EMPTY_TEAM` (team mode only:
   some team index below `teamCount` has no player — uneven teams are fine, an empty one is not),
-  `MAP_MISSING` (the room's `mapId` did not resolve to a document), `MAP_INVALID` (the map resolved
-  but `validateMapDocument` plus `spawnIssues` for the current settings report at least one issue),
+  `MAP_MISSING` (the room's `mapId` did not resolve to a document, or the library has not been read
+  yet), `MAP_INVALID` (the map resolved but `validateMapDocument` plus `spawnIssues` for the current
+  settings report at least one issue — with the random map, no map of the library passes them),
   `RANKED_NEEDS_ACCOUNT` (the room is ranked and at least one seated player is a guest — possible
   when the host ticks `ranked` after guests joined, since a guest cannot join a ranked room),
   `TOURNAMENT_NOT_FULL` (a tournament room with fewer players than `tournamentSize`: a bracket with
@@ -133,6 +134,22 @@ nothing they send changes the outcome. When the count elapses, the room discards
 every player's `playerId`, sets `ready` back to `false`, and broadcasts `WAITING`; a client watching
 for that status change returns to the lobby on its own — there is no separate "return to lobby"
 message.
+
+## Maps and rounds
+
+`mapId` names one map of the library, or `RANDOM_MAP_ID` (`'random'`, the default of every room
+the server creates) to draw a different map for every round. `RoomMapCache` reads the whole
+library in that case (built-in maps first, then the player-saved ones) and keeps as _playable_
+those that pass `validateMapDocument` and `spawnIssues` for the current format; the lobby's
+`RoomView.map` is `null`, since there is no single map to show. On `startMatch` (or the auto-start
+of a matchmade room) the room draws `bestOf` maps with `drawRoundMaps` — the injected `randomInt`,
+never twice the same map in a row while the pool allows it, one map only for a practice room —
+and hands them to `startRoomMatch`, which builds a `GameSimulation` over the whole list. The
+simulation's `map` follows `world.match.round` (`mapForRound`), so `resetWorldForRound` respawns
+everyone on the next map and collisions switch with it; the client, which receives the same list in
+`matchStarted.maps`, predicts on the same map and redraws the tiles when its simulation moves on.
+Returning to the lobby after a random-map match reloads the pool, so maps saved during the match
+join the next draw.
 
 ## Practice rooms and map test runs
 
@@ -188,7 +205,7 @@ second producer of rooms next to `createRoom`. Every queued session receives `qu
 true, size }` each time the queue changes size. Once a second, on the server's tick loop, the
 tickets are sorted by rating and adjacent pairs whose gap is at most `50 + 10 × seconds waited`
 (by the one who has waited longer) are matched. A pair leaves the queue and lands in a room created
-with `QUEUE_ROOM_SETTINGS` (`ranked`, teams, 2 × 1, best of 3, the default map) and `locked: true`:
+with `QUEUE_ROOM_SETTINGS` (`ranked`, teams, 2 × 1, best of 3, a map drawn per round) and `locked: true`:
 the first of the two is the host in name only, `updateSettings` is refused with `WRONG_STATUS`,
 and `Room.tick()` starts the match by itself as soon as `startBlockers()` is empty — which is what
 `RoomManager.tick` now ticking every room, match or not, is for. Both players get `queueState {

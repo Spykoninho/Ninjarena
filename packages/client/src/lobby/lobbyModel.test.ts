@@ -170,7 +170,7 @@ describe('blockerText', () => {
     expect(blockerText('INVALID_LOADOUT')).toBe('chaque équipement doit être valide');
     expect(blockerText('EMPTY_TEAM')).toBe('chaque équipe a besoin d’un joueur');
     expect(blockerText('MAP_MISSING')).toBe('la carte choisie est introuvable');
-    expect(blockerText('MAP_INVALID')).toBe('la carte choisie ne convient pas à ces réglages');
+    expect(blockerText('MAP_INVALID')).toBe('aucune carte ne convient à ces réglages');
     expect(blockerText('RANKED_NEEDS_ACCOUNT')).toBe(
       'une partie classée demande un compte à chaque joueur',
     );
@@ -192,6 +192,7 @@ describe('settingsRows', () => {
     expect(map?.kind).toBe('select');
     expect(map?.value).toBe('arena');
     expect(map?.options).toEqual([
+      { value: 'random', label: 'Aléatoire (une carte différente à chaque manche)' },
       { value: 'arena', label: 'Arena (intégrée)' },
       { value: 'garden', label: 'Garden' },
     ]);
@@ -200,13 +201,22 @@ describe('settingsRows', () => {
   it('keeps the selected map listed even when the map list has not arrived', () => {
     const rows = settingsRows(settings, [], rules);
     expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
+      { value: 'random', label: 'Aléatoire (une carte différente à chaque manche)' },
       { value: 'arena', label: 'arena (introuvable)' },
+    ]);
+  });
+
+  it('never marks the random map as missing', () => {
+    const rows = settingsRows({ ...settings, mapId: 'random' }, [], rules);
+    expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
+      { value: 'random', label: 'Aléatoire (une carte différente à chaque manche)' },
     ]);
   });
 
   it('appends the selected map to the real list when it is missing from it', () => {
     const rows = settingsRows({ ...settings, mapId: 'dojo' }, maps, rules);
     expect(rows.find((row) => row.key === 'mapId')?.options).toEqual([
+      { value: 'random', label: 'Aléatoire (une carte différente à chaque manche)' },
       { value: 'arena', label: 'Arena (intégrée)' },
       { value: 'garden', label: 'Garden' },
       { value: 'dojo', label: 'dojo (introuvable)' },

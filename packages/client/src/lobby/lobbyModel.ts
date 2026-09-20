@@ -12,8 +12,10 @@ import {
   MAX_TEAM_COUNT,
   MIN_ROUND_DURATION_MS,
   MIN_TEAM_COUNT,
+  RANDOM_MAP_ID,
   TOURNAMENT_SIZES,
   buildPointRange,
+  isRandomMap,
   meanRating,
   ratingStakes,
   roomMaxPlayers,
@@ -63,7 +65,7 @@ const BLOCKER_TEXTS: Record<StartBlocker, string> = {
   INVALID_LOADOUT: 'chaque équipement doit être valide',
   EMPTY_TEAM: 'chaque équipe a besoin d’un joueur',
   MAP_MISSING: 'la carte choisie est introuvable',
-  MAP_INVALID: 'la carte choisie ne convient pas à ces réglages',
+  MAP_INVALID: 'aucune carte ne convient à ces réglages',
   RANKED_NEEDS_ACCOUNT: 'une partie classée demande un compte à chaque joueur',
   TOURNAMENT_NOT_FULL: 'le tournoi attend que toutes les places soient prises',
 };
@@ -339,10 +341,13 @@ function integerPatch(key: keyof RoomSettings, raw: string | boolean): RoomSetti
 
 // La carte choisie reste listée même absente de `maps`: sinon le select coincerait l'hôte dessus.
 function mapOptions(mapId: string, maps: MapSummary[]): SelectOption[] {
-  const known = maps.map((map) => ({
-    value: map.id,
-    label: map.builtin ? `${map.name} (intégrée)` : map.name,
-  }));
-  if (maps.some((map) => map.id === mapId)) return known;
+  const known = [
+    { value: RANDOM_MAP_ID, label: 'Aléatoire (une carte différente à chaque manche)' },
+    ...maps.map((map) => ({
+      value: map.id,
+      label: map.builtin ? `${map.name} (intégrée)` : map.name,
+    })),
+  ];
+  if (isRandomMap(mapId) || maps.some((map) => map.id === mapId)) return known;
   return [...known, { value: mapId, label: `${mapId} (introuvable)` }];
 }

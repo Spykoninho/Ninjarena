@@ -23,7 +23,8 @@ export interface RoomMatch {
 
 export interface StartMatchOptions {
   content: GameContent;
-  map: MapDocument;
+  // Une carte par manche, dans l'ordre; une seule carte sert à toutes les manches.
+  maps: readonly MapDocument[];
   settings: RoomSettings;
   players: readonly RoomPlayer[];
   // Les spectateurs reçoivent le match sans y jouer: le reste du tournoi regarde le duel en cours.
@@ -51,10 +52,10 @@ export function teamIdOf(settings: RoomSettings, player: RoomPlayer): TeamId {
 }
 
 export function startRoomMatch(options: StartMatchOptions): RoomMatch {
-  const { content, map, settings } = options;
+  const { content, maps, settings } = options;
   const matchConfig = toMatchConfig(settings, DEFAULT_MATCH_TIMING);
   const simulation = new GameSimulation({
-    map: LoadedMap.fromDocument(map, content.tilesets.get(map.tileset)),
+    maps: maps.map((map) => LoadedMap.fromDocument(map, content.tilesets.get(map.tileset))),
     abilities: content.abilities,
     characters: content.characters,
     matchConfig,
@@ -142,7 +143,7 @@ function announce(
       tickRate: options.tickRate,
       snapshotRate: options.tickRate / options.snapshotEveryTicks,
       matchConfig,
-      map: options.map,
+      maps: [...options.maps],
     });
   }
 }

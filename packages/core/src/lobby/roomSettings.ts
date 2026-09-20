@@ -11,6 +11,8 @@ export const MAX_TEAM_COUNT = 8;
 export const MAX_PLAYERS_PER_TEAM = 4;
 export const MIN_ROUND_DURATION_MS = 30_000;
 export const MAX_ROUND_DURATION_MS = 600_000;
+// Un `mapId` réservé: la salle tire une carte différente à chaque manche parmi celles qui conviennent.
+export const RANDOM_MAP_ID = 'random';
 
 const DEFAULT_ROUND_DURATION_MS = 240_000;
 const DEFAULT_BEST_OF: (typeof BEST_OF_OPTIONS)[number] = 3;
@@ -113,6 +115,10 @@ export function defaultRoomSettings(rules: StatRulesDefinition, mapId: string): 
     tournament: false,
     tournamentSize: DEFAULT_TOURNAMENT_SIZE,
   };
+}
+
+export function isRandomMap(mapId: string): boolean {
+  return mapId === RANDOM_MAP_ID;
 }
 
 export function roomMaxPlayers(settings: RoomSettings): number {

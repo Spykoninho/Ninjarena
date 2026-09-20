@@ -1,10 +1,11 @@
 import { randomInt as cryptoRandomInt } from 'node:crypto';
 import type { GameContent } from '@ninjarena/content';
-import type { RatingChange, RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
+import type { MapDocument, RatingChange, RoomSettings, TeamId, WorldEvent } from '@ninjarena/core';
 import {
   applySettingsPatch,
   createBracket,
   currentMatch,
+  isRandomMap,
   isTournamentOver,
   openNextMatch,
   resolveMatch,
@@ -24,7 +25,7 @@ import type { MapLibrary } from '../maps/mapLibrary';
 import type { MatchResult } from '../persistence/matchResultRepository';
 import type { ClientSession } from '../session/clientSession';
 import { passwordMatches } from './password';
-import { RoomMapCache } from './roomMap';
+import { RoomMapCache, drawRoundMaps } from './roomMap';
 import type { RoomMatch } from './roomMatch';
 import { inJoinOrder, matchResultOf, startRoomMatch } from './roomMatch';
 import type { RoomPlayer } from './roomPlayer';
@@ -264,8 +265,7 @@ export class Room {
     return computeStartBlockers({
       players: this.roster,
       settings: this.roomSettings,
-      map: this.mapCache.document,
-      mapIssues: this.mapCache.issues,
+      map: this.mapCache.status,
     });
   }
 
@@ -274,7 +274,7 @@ export class Room {
     if (denied !== null) return denied;
     const blockers = this.startBlockers();
     if (blockers.length > 0) return fail('CANNOT_START', blockers.join(', '));
-    if (this.mapCache.document === null) return fail('CANNOT_START', 'MAP_MISSING');
+    if (this.mapCache.status !== 'ready') return fail('CANNOT_START', 'MAP_MISSING');
 
     if (this.roomSettings.tournament) {
       this.tournament = this.drawTournament();
@@ -308,7 +308,7 @@ export class Room {
   // Une salle verrouillée n'attend pas son hôte: elle part seule dès que rien ne bloque.
   private autoStart(): void {
     if (!this.locked || this.roomStatus !== 'WAITING') return;
-    if (this.mapCache.document === null || this.startBlockers().length > 0) return;
+    if (this.mapCache.status !== 'ready' || this.startBlockers().length > 0) return;
     this.launch(this.roster);
   }
 
@@ -340,11 +340,11 @@ export class Room {
   }
 
   private launch(players: readonly RoomPlayer[]): void {
-    const map = this.mapCache.document;
-    if (map === null) return;
+    const maps = this.drawMaps();
+    if (maps.length === 0) return;
     this.activeMatch = startRoomMatch({
       content: this.content,
-      map,
+      maps,
       settings: this.roomSettings,
       players,
       spectators: this.roster.filter((player) => !players.includes(player)),
@@ -359,6 +359,15 @@ export class Room {
     this.roomStatus = 'STARTING';
     this.ticksSinceEnd = 0;
     this.broadcastState();
+  }
+
+  // En carte aléatoire chaque manche a la sienne, tirée au lancement; sinon la carte choisie sert partout.
+  private drawMaps(): MapDocument[] {
+    const playable = this.mapCache.playable;
+    if (!isRandomMap(this.roomSettings.mapId)) return playable.slice(0, 1);
+    // Un entraînement n'a qu'une manche, qui ne finit jamais.
+    const rounds = this.roomSettings.practice ? 1 : this.roomSettings.bestOf;
+    return drawRoundMaps(playable, rounds, this.randomInt);
   }
 
   // La salle se rediffuse une fois la carte lue: sa vue ne dépend pas de l'ordre des appels.
@@ -475,6 +484,8 @@ export class Room {
     this.roomStatus = 'WAITING';
     for (const player of this.roster) player.ready = false;
     this.broadcastState();
+    // Les cartes enregistrées pendant le match entrent dans le tirage de la suivante.
+    if (isRandomMap(this.roomSettings.mapId)) this.scheduleRefresh();
   }
 
   private requireHostInLobby(session: ClientSession): RoomResult | null {

@@ -5,6 +5,7 @@ import type {
   StatRulesDefinition,
 } from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
+import { mapForRound } from '../match/roundMap';
 import type { SimulationConfig } from '../time/simulationConfig';
 import { msToTicks, secondsPerTick } from '../time/simulationConfig';
 import type { DefinitionCatalog } from './catalog';
@@ -14,6 +15,8 @@ import type { WorldState } from './world';
 
 export interface SimulationContext {
   readonly world: WorldState;
+  readonly maps: readonly LoadedMap[];
+  // La carte de la manche en cours: elle change dès que `world.match.round` avance.
   readonly map: LoadedMap;
   readonly abilities: DefinitionCatalog<AbilityDefinition>;
   readonly characters: DefinitionCatalog<CharacterDefinition>;
@@ -27,12 +30,15 @@ export interface SimulationContext {
 }
 
 export function createSimulationContext(
-  deps: Omit<SimulationContext, 'events' | 'now' | 'dt' | 'ticks'>,
+  deps: Omit<SimulationContext, 'events' | 'now' | 'dt' | 'ticks' | 'map'>,
 ): SimulationContext {
   const config = deps.config;
   return {
     world: deps.world,
-    map: deps.map,
+    maps: deps.maps,
+    get map(): LoadedMap {
+      return mapForRound(deps.maps, deps.world.match.round);
+    },
     abilities: deps.abilities,
     characters: deps.characters,
     config,

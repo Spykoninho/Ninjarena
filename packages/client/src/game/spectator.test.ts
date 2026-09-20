@@ -15,7 +15,7 @@ const makeWorld = (
   players: ReadonlyArray<{ id: string; teamId: string }>,
 ): WorldState => {
   const sim = new GameSimulation({
-    map: loadMap(content, 'arena'),
+    maps: [loadMap(content, 'arena')],
     abilities: content.abilities,
     characters: content.characters,
     matchConfig: matchConfigFor(content, settings),
