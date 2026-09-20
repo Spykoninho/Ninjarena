@@ -1,3 +1,4 @@
+import { buildingCanvas } from '../rendering/art/buildingArt';
 import { shrubCanvas } from '../rendering/art/landscapeArt';
 import type { MapDocument, MapSpawn, TilesetDefinition } from '@ninjarena/core';
 import { hash, tile } from '../rendering/art/nativeArt';
@@ -145,11 +146,16 @@ export class MapCanvas {
   }
 
   private objectImage(id: number, name: string, variant: number, mask: number): HTMLCanvasElement {
-    const key = `object:${String(id)}:${String(mask)}`;
+    const key = `object:${String(id)}:${String(mask)}:${String(variant)}`;
     let image = this.textures.get(key);
     if (!image) {
       image =
-        decorObjectCanvas(name, variant, mask) ?? (name === 'bush' ? shrubCanvas() : tile(name));
+        decorObjectCanvas(name, variant, mask) ??
+        (this.tileset.tiles[String(id)]?.tags.includes('building')
+          ? buildingCanvas(32, 32, name)
+          : name === 'bush'
+            ? shrubCanvas()
+            : tile(name));
       this.textures.set(key, image);
     }
     return image;

@@ -199,18 +199,18 @@ export class MapArt {
           sprite.position.y = -size / 2;
           sprite.scale.set(size / 32);
           holder.addChild(sprite);
-        } else if (tile.name === 'building') {
+        } else if (tile.tags.includes('building')) {
           const bounds = buildingRectangle(
             x,
             y,
-            (xx, yy) => tileset.tiles[String(map.objectTileIdAt(xx, yy))]?.name === 'building',
+            (xx, yy) => map.objectTileIdAt(xx, yy) === map.objectTileIdAt(x, y),
             claimed,
           );
           for (let dy = 0; dy < bounds.height; dy++)
             for (let dx = 0; dx < bounds.width; dx++) claimed.add(`${x + dx}:${y + dy}`);
           castShadow(x * size, y * size, bounds.width * size, bounds.height * size, 15);
-          const texture = make(`building:${bounds.width}:${bounds.height}`, () =>
-            buildingCanvas(bounds.width * native, bounds.height * native),
+          const texture = make(`${tile.name}:${bounds.width}:${bounds.height}`, () =>
+            buildingCanvas(bounds.width * native, bounds.height * native, tile.name),
           );
           const sprite = new Sprite(texture);
           const geometry = buildingGeometry(bounds.width * native, bounds.height * native);

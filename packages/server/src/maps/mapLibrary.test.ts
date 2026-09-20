@@ -64,8 +64,11 @@ describe('MapLibrary', () => {
     await library.save(tinyMap({ name: 'Aardvark' }), 'kunoichi');
     const summaries = await library.list();
 
-    expect(summaries.map((summary) => summary.builtin)).toEqual([true, true, false]);
-    expect(summaries[2]).toMatchObject({ name: 'Aardvark', builtin: false });
+    expect(summaries.map((summary) => summary.builtin)).toEqual([
+      ...content.maps.all().map(() => true),
+      false,
+    ]);
+    expect(summaries.at(-1)).toMatchObject({ name: 'Aardvark', builtin: false });
   });
 
   it('refuses to save a document under a built-in id', async () => {

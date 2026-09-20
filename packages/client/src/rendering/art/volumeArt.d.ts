@@ -11,7 +11,7 @@ export interface BuildingGeometry {
   roofDepth: number;
 }
 export function buildingGeometry(width: number, depth: number): BuildingGeometry;
-export function buildingCanvas(width: number, depth: number): HTMLCanvasElement;
+export function buildingCanvas(width: number, depth: number, style?: string): HTMLCanvasElement;
 export function treeTrunkCanvas(): HTMLCanvasElement;
 export function treeCanopyCanvas(variant?: number): HTMLCanvasElement;
 export function projectedTree(

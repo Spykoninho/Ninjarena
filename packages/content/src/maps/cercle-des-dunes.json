@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "id": "cercle-des-dunes",
+  "name": "Cercle des dunes \u00b7 1v1",
+  "tileset": "default",
+  "width": 28,
+  "height": 22,
+  "layers": {
+    "ground": [
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 19, 19, 19, 17, 17],
+      [17, 17, 19, 19, 19, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 19, 19, 19, 17, 17],
+      [17, 17, 19, 19, 19, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 19, 19, 19, 17, 17],
+      [17, 17, 19, 19, 19, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17],
+      [17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17]
+    ],
+    "objects": [
+      [23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, 28, 28, 28, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, 28, 28, 28, null, 23, 23, 23, 23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, 23, 23, 23, 23, null, null, null, null, null, null, 23, 23, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 32, 23, 23, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23, 23, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 31, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, 31, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, 23, 23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, 23, 23, 32, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, 23, 23, null, null, null, null, null, null, 23, 23, 23, 23, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23, 23, 23, 23, null, 28, 28, 28, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 28, 28, 28, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 23],
+      [23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23]
+    ]
+  },
+  "colliders": [],
+  "spawns": [
+    {
+      "x": 3,
+      "y": 11
+    },
+    {
+      "x": 24,
+      "y": 10
+    }
+  ]
+}

@@ -29,6 +29,12 @@ import shurikenThrow from './abilities/shuriken-throw.json';
 import ninja from './characters/ninja.json';
 import arena from './maps/arena.json';
 import courtyard from './maps/cour-des-berges.json';
+import map0 from './maps/dojo-des-roseaux.json';
+import map1 from './maps/jardin-de-givre.json';
+import map2 from './maps/cercle-des-dunes.json';
+import map3 from './maps/village-des-canaux.json';
+import map4 from './maps/citadelle-des-sables.json';
+import map5 from './maps/vallee-des-pins.json';
 import statRules from './stat-rules.json';
 import defaultTileset from './tilesets/default.json';
 
@@ -70,6 +76,12 @@ export function loadContent(): GameContent {
     ]),
     maps: new DefinitionCatalog<MapDocument>([
       parseFile({ parse: migrateMapDocument }, 'maps/arena.json', arena),
+      parseFile({ parse: migrateMapDocument }, 'maps/dojo-des-roseaux.json', map0),
+      parseFile({ parse: migrateMapDocument }, 'maps/jardin-de-givre.json', map1),
+      parseFile({ parse: migrateMapDocument }, 'maps/cercle-des-dunes.json', map2),
+      parseFile({ parse: migrateMapDocument }, 'maps/village-des-canaux.json', map3),
+      parseFile({ parse: migrateMapDocument }, 'maps/citadelle-des-sables.json', map4),
+      parseFile({ parse: migrateMapDocument }, 'maps/vallee-des-pins.json', map5),
       parseFile({ parse: migrateMapDocument }, 'maps/cour-des-berges.json', courtyard),
     ]),
     statRules: parseFile(StatRulesDefinitionSchema, 'stat-rules.json', statRules),

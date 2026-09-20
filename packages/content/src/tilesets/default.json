@@ -97,6 +97,96 @@
       "color": "#B4442E",
       "solid": true,
       "layer": "objects"
+    },
+    "17": {
+      "name": "sand",
+      "color": "#C9AE79"
+    },
+    "18": {
+      "name": "snow",
+      "color": "#CEDDDF"
+    },
+    "19": {
+      "name": "gravel",
+      "color": "#8E9390"
+    },
+    "20": {
+      "name": "tatami",
+      "color": "#A6A575"
+    },
+    "21": {
+      "name": "basalt",
+      "color": "#535B65"
+    },
+    "22": {
+      "name": "mud",
+      "color": "#786348",
+      "speedMultiplier": 0.8
+    },
+    "23": {
+      "name": "sandstone-wall",
+      "color": "#BA9563",
+      "solid": true,
+      "layer": "objects"
+    },
+    "24": {
+      "name": "palisade",
+      "color": "#796343",
+      "solid": true,
+      "layer": "objects"
+    },
+    "25": {
+      "name": "ice-wall",
+      "color": "#9FC7D5",
+      "solid": true,
+      "layer": "objects"
+    },
+    "26": {
+      "name": "dojo",
+      "color": "#8C4741",
+      "solid": true,
+      "layer": "objects",
+      "tags": ["building"]
+    },
+    "27": {
+      "name": "tea-house",
+      "color": "#668257",
+      "solid": true,
+      "layer": "objects",
+      "tags": ["building"]
+    },
+    "28": {
+      "name": "warehouse",
+      "color": "#666B7A",
+      "solid": true,
+      "layer": "objects",
+      "tags": ["building"]
+    },
+    "29": {
+      "name": "bamboo",
+      "color": "#6A9051",
+      "solid": true,
+      "layer": "objects",
+      "tags": ["tree"]
+    },
+    "30": {
+      "name": "pine",
+      "color": "#40645F",
+      "solid": true,
+      "layer": "objects",
+      "tags": ["tree"]
+    },
+    "31": {
+      "name": "barrel",
+      "color": "#A67B51",
+      "solid": true,
+      "layer": "objects"
+    },
+    "32": {
+      "name": "statue",
+      "color": "#929F9D",
+      "solid": true,
+      "layer": "objects"
     }
   }
 }

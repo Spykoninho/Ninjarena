@@ -208,3 +208,47 @@ The map editor (`packages/client/src/ui/editorScreen.ts`, model in
 A new document starts as `id: "draft"`, `version: CURRENT_MAP_FORMAT_VERSION`, fully tiled with the
 lowest-id non-solid ground tile, and no spawns; painting a tile writes to the layer the tileset
 declares for it (`ground` or `objects`), so the palette decides which layer a click touches.
+
+## Biomes and arena collection
+
+The following append-only ids extend `default`; existing saved maps keep their original ids.
+All new ground tiles have normal movement speed except mud (0.8). Snow is a cosmetic surface,
+not sliding ice. Water retains its existing 0.6 speed multiplier. Objects are solid cover;
+buildings have closed façades and cannot be entered.
+
+| Id  | Name             | Layer   | Appearance / behavior                            |
+| --- | ---------------- | ------- | ------------------------------------------------ |
+| 17  | `sand`           | ground  | Warm sand with wind marks                        |
+| 18  | `snow`           | ground  | Pale snow and small drifts                       |
+| 19  | `gravel`         | ground  | Pebbled gravel                                   |
+| 20  | `tatami`         | ground  | Woven mats with dark borders                     |
+| 21  | `basalt`         | ground  | Dark stone slabs                                 |
+| 22  | `mud`            | ground  | Mud, speed ×0.8                                  |
+| 23  | `sandstone-wall` | objects | Joined sandstone masonry                         |
+| 24  | `palisade`       | objects | Pointed timber stakes                            |
+| 25  | `ice-wall`       | objects | Joined frost-blue masonry                        |
+| 26  | `dojo`           | objects | Red roof and entrance curtains; `building` tag   |
+| 27  | `tea-house`      | objects | Green roof and entrance curtains; `building` tag |
+| 28  | `warehouse`      | objects | Slate roof and shutter; `building` tag           |
+| 29  | `bamboo`         | objects | Bamboo stems; `tree` tag                         |
+| 30  | `pine`           | objects | Snow-tipped pine; `tree` tag                     |
+| 31  | `barrel`         | objects | Banded wooden barrel                             |
+| 32  | `statue`         | objects | Stone guardian on a plinth                       |
+
+Building cells merge only with the same tile id, so adjacent building styles stay distinct.
+The editor and match renderer share the new art recipes. All elements are available in the
+editor palette. Overhanging art fades when it would cover a fighter.
+
+| Map id                 | Size (tiles) | Intended players | Layout                                             |
+| ---------------------- | ------------ | ---------------- | -------------------------------------------------- |
+| `dojo-des-roseaux`     | 22 × 18      | 1v1              | Tatami court, bamboo cover and two dojos           |
+| `jardin-de-givre`      | 26 × 20      | 1v1              | Snow garden, paired pools and ice walls            |
+| `cercle-des-dunes`     | 28 × 22      | 1v1              | Basalt fighting ring and staggered sandstone cover |
+| `village-des-canaux`   | 48 × 40      | 4–8              | Three bridges, canal banks and village streets     |
+| `citadelle-des-sables` | 56 × 44      | 4–8              | Central plaza, four buildings and flank routes     |
+| `vallee-des-pins`      | 64 × 48      | 4–8              | River, three crossings and snowy groves            |
+
+New duel maps have two generic spawns, large maps have eight. They support FFA and team formats
+through the existing generic-spawn fallback (including 2v2 and 4v4 on large maps); they do not
+assign fixed team bases. Each spawn has a clear 3 × 3 area. Tests check advertised capacity,
+spawn clearance, border collisions and reachability. Competitive balance still needs playtesting.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSolidTile, validateMapDocument } from '@ninjarena/core';
+import { isSolidTile, spawnIssues, validateMapDocument } from '@ninjarena/core';
 import type { Effect } from '@ninjarena/core';
 import { loadContent, loadMap } from './index';
 
@@ -89,6 +89,37 @@ describe('content', () => {
   it('keeps every bundled map valid once the decor is placed', () => {
     for (const map of content.maps.all()) {
       expect(validateMapDocument(map, content.tilesets.get(map.tileset))).toEqual([]);
+    }
+  });
+
+  it('supports the advertised duel and multiplayer formats with clear spawn areas', () => {
+    const duels = ['dojo-des-roseaux', 'jardin-de-givre', 'cercle-des-dunes'];
+    const large = ['village-des-canaux', 'citadelle-des-sables', 'vallee-des-pins'];
+    for (const id of [...duels, ...large]) {
+      const doc = content.maps.get(id);
+      const map = loadMap(content, id);
+      const players = duels.includes(id) ? 2 : 8;
+      expect(spawnIssues(doc, { mode: 'ffa', teamCount: players, playersPerTeam: 1 })).toEqual([]);
+      expect(spawnIssues(doc, { mode: 'team', teamCount: 2, playersPerTeam: players / 2 })).toEqual(
+        [],
+      );
+      expect(doc.spawns).toHaveLength(players);
+      for (const spawn of doc.spawns) {
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            expect(map.tileAt(spawn.x + dx, spawn.y + dy).solid, `${id}: spawn clearance`).toBe(
+              false,
+            );
+          }
+      }
+      for (let x = 0; x < doc.width; x++) {
+        expect(map.tileAt(x, 0).solid).toBe(true);
+        expect(map.tileAt(x, doc.height - 1).solid).toBe(true);
+      }
+      for (let y = 0; y < doc.height; y++) {
+        expect(map.tileAt(0, y).solid).toBe(true);
+        expect(map.tileAt(doc.width - 1, y).solid).toBe(true);
+      }
     }
   });
 

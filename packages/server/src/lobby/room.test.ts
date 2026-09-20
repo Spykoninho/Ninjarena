@@ -468,6 +468,8 @@ describe('Room random map', () => {
     expect(room.startBlockers()).not.toContain('MAP_INVALID');
 
     room.updateSettings(host.session, { teamCount: 8 });
+    expect(room.startBlockers()).not.toContain('MAP_INVALID');
+    room.updateSettings(host.session, { mode: 'team', teamCount: 4, playersPerTeam: 4 });
     expect(room.startBlockers()).toContain('MAP_INVALID');
   });
 

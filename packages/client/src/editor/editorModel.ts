@@ -42,7 +42,17 @@ export interface PaletteEntry {
 export const PALETTE_CATEGORIES: readonly PaletteCategory[] = ['ground', 'walls', 'decor'];
 
 // Les objets structurels forment les murs: tout autre objet solide est un élément de décor.
-const WALL_NAMES: readonly string[] = ['wall', 'building', 'fence'];
+const WALL_NAMES: readonly string[] = [
+  'wall',
+  'building',
+  'fence',
+  'sandstone-wall',
+  'palisade',
+  'ice-wall',
+  'dojo',
+  'tea-house',
+  'warehouse',
+];
 
 export const DEFAULT_TOOL: EditorTool = { kind: 'tile', id: 0, layer: 'ground' };
 

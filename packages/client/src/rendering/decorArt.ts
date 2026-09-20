@@ -1,3 +1,4 @@
+import { BIOME_OBJECTS, biomeObject } from './art/biomeArt';
 import { Sprite } from 'pixi.js';
 import type { Container, Graphics, Texture } from 'pixi.js';
 import type { LoadedMap, TilesetDefinition } from '@ninjarena/core';
@@ -17,7 +18,7 @@ import {
 
 /** Art pixels per tile side; a tile is 32 art pixels wide whatever the world tile size. */
 const TILE_ART = 32;
-const DECOR_OBJECTS = ['lantern', 'rock', 'fence', 'well', 'crate', 'torii'];
+const DECOR_OBJECTS = ['lantern', 'rock', 'fence', 'well', 'crate', 'torii', ...BIOME_OBJECTS];
 const DECOR_FLOORS = ['path', 'flowers'];
 
 export function isDecorObject(name: string): boolean {
@@ -76,6 +77,7 @@ export function decorObjectCanvas(
   variant: number,
   neighbors: number,
 ): HTMLCanvasElement | null {
+  if (BIOME_OBJECTS.includes(name)) return biomeObject(name, variant, neighbors);
   switch (name) {
     case 'lantern':
       return lanternCanvas();
@@ -123,6 +125,24 @@ export class DecorPlacer {
 
   /** Returns false when the tile is not a decor object, leaving it to the caller's fallback. */
   place(name: string, x: number, y: number, holder: Container): boolean {
+    if (BIOME_OBJECTS.includes(name)) {
+      const mask = cardinalMask((xx, yy) => this.named(name, xx, yy), x, y);
+      const variant = hash(x, y) % 4;
+      this.cast(x, y, 1, 7);
+      const sprite = this.sprite(
+        holder,
+        this.target.make(`${name}:${mask}:${variant}`, () => biomeObject(name, variant, mask)!),
+        TILE_ART,
+      );
+      this.target.cover({
+        sprite,
+        x: x * this.size,
+        y: (y - 0.5) * this.size,
+        width: this.size,
+        height: this.size * 1.5,
+      });
+      return true;
+    }
     switch (name) {
       case 'lantern':
         return this.lantern(x, y, holder);

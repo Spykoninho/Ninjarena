@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "id": "jardin-de-givre",
+  "name": "Jardin de givre \u00b7 1v1",
+  "tileset": "default",
+  "width": 26,
+  "height": 20,
+  "layers": {
+    "ground": [
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 18, 18],
+      [18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 18, 18],
+      [18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 18, 18],
+      [18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 2, 2, 2, 2, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18]
+    ],
+    "objects": [
+      [25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, 12, null, null, null, null, null, null, null, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, 25, 25, 25, null, null, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, 25, 25, 25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, 32, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 32, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25, 25, 25, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, null, null, 25, 25, 25, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, 30, 30, null, null, null, null, null, null, null, null, null, null, null, null, null, 12, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 25],
+      [25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25]
+    ]
+  },
+  "colliders": [],
+  "spawns": [
+    {
+      "x": 3,
+      "y": 10
+    },
+    {
+      "x": 22,
+      "y": 9
+    }
+  ]
+}

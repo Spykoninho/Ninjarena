@@ -57,7 +57,15 @@ describe('fillTileId', () => {
 
 describe('paletteOf', () => {
   it('lists every tile sorted by id with its layer and category', () => {
-    expect(paletteOf(tileset)).toEqual([
+    const palette = paletteOf(tileset);
+    expect(palette).toHaveLength(Object.keys(tileset.tiles).length);
+    expect(palette.map((tile) => tile.id)).toEqual(
+      [...palette.map((tile) => tile.id)].sort((a, b) => a - b),
+    );
+    for (const entry of palette) expect(entry.layer).toBe(tileset.tiles[String(entry.id)]?.layer);
+    for (const id of [23, 24, 25, 26, 27, 28])
+      expect(palette.find((tile) => tile.id === id)?.category).toBe('walls');
+    expect(palette.slice(0, 17)).toEqual([
       { id: 0, name: 'ground', color: '#A7AA8B', layer: 'ground', category: 'ground' },
       { id: 1, name: 'grass', color: '#5C7D60', layer: 'ground', category: 'ground' },
       { id: 2, name: 'water', color: '#386C78', layer: 'ground', category: 'ground' },

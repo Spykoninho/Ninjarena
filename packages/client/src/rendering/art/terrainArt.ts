@@ -1,3 +1,4 @@
+import { biomeFloor } from './biomeArt';
 import { materialRelief, lawn, earth } from './landscapeArt';
 import { P, ellipse, hash, line, pen, rect, slab, surface } from './nativeArt';
 
@@ -29,6 +30,8 @@ export function terrainCanvas(
   worldX = variant * 32,
   worldY = 0,
 ): HTMLCanvasElement {
+  const biome = biomeFloor(kind, variant);
+  if (biome) return biome;
   const canvas = surface(32, 32),
     c = pen(canvas),
     L = P.landscape;

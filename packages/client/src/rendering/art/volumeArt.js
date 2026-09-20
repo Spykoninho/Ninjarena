@@ -24,7 +24,13 @@ export function buildingGeometry(width, depth) {
   };
 }
 
-export function buildingCanvas(width, depth) {
+export function buildingCanvas(width, depth, style = 'building') {
+  const roofs = {
+    dojo: ['#653E3E', '#99544A', '#BF7960'],
+    'tea-house': ['#3D5948', '#68825A', '#94A377'],
+    warehouse: ['#424C60', '#6B778B', '#9AA7B2'],
+  };
+  const roof = roofs[style] ?? P.water;
   const g = buildingGeometry(width, depth),
     cv = surface(g.width, g.height),
     c = pen(cv);
@@ -50,8 +56,7 @@ export function buildingCanvas(width, depth) {
       for (let v = 0; v < g.roofDepth; v++) {
         const seam = u % 9 === 0,
           row = (v + (Math.floor(u / 9) % 2) * 3) % 7;
-        const colors =
-          side < 0 ? [P.water[1], P.water[2], P.water[0]] : [P.water[0], P.water[1], P.ink];
+        const colors = side < 0 ? [roof[1], roof[2], roof[0]] : [roof[0], roof[1], P.ink];
         rect(c, x, back + v, 1, 1, seam ? colors[2] : row === 1 ? colors[1] : colors[0]);
       }
     }
@@ -77,7 +82,7 @@ export function buildingCanvas(width, depth) {
   line(c, mid, g.ridgeFront + 2, mid, g.eave, P.wood[0]);
   const ventW = Math.min(16, Math.floor(width / 4));
   rect(c, mid - Math.floor(ventW / 2), g.eave - 11, ventW, 7, P.wood[0]);
-  rect(c, mid - Math.floor(ventW / 2) + 2, g.eave - 10, ventW - 4, 3, P.water[0]);
+  rect(c, mid - Math.floor(ventW / 2) + 2, g.eave - 10, ventW - 4, 3, roof[0]);
   // Copper ridge follows the depth axis. Front bargeboards meet it at the gable.
   rect(c, mid - 1, g.ridgeBack, 3, g.roofDepth + 1, P.wood[2]);
   line(c, left, g.eave, mid, g.ridgeFront, P.wood[0]);
@@ -100,7 +105,7 @@ export function buildingCanvas(width, depth) {
   if (width >= 80)
     for (const x of [19, g.width - 42]) {
       rect(c, x, g.eave + 13, 23, 16, P.wood[0]);
-      rect(c, x + 2, g.eave + 15, 19, 11, P.water[0]);
+      rect(c, x + 2, g.eave + 15, 19, 11, roof[0]);
       for (let i = 4; i < 21; i += 4) rect(c, x + i, g.eave + 15, 1, 11, P.wood[1]);
       rect(c, x + 2, g.eave + 19, 19, 1, P.wood[1]);
       rect(c, x - 1, g.eave + 29, 25, 2, P.wood[2]);
@@ -117,9 +122,9 @@ export function buildingCanvas(width, depth) {
       [pl + pw, py + 10],
       [pl, py + 10],
     ],
-    P.water[1],
+    roof[1],
   );
-  for (let y = py + 2; y < py + 10; y += 3) line(c, pl + 3, y, pl + pw - 3, y, P.water[2]);
+  for (let y = py + 2; y < py + 10; y += 3) line(c, pl + 3, y, pl + pw - 3, y, roof[2]);
   rect(c, pl, py + 10, pw, 3, P.wood[0]);
   rect(c, pl, py + 10, pw, 1, P.wood[2]);
   for (const x of [pl + 1, pl + pw - 4]) {
@@ -131,6 +136,20 @@ export function buildingCanvas(width, depth) {
     const y = g.base + i * 3;
     rect(c, pl - i * 2, y, pw + i * 4, 3, P.stone[0]);
     rect(c, pl - i * 2, y, pw + i * 4, 1, P.stone[2]);
+  }
+  if (style === 'dojo' || style === 'tea-house') {
+    for (let i = 0; i < 3; i++) {
+      rect(
+        c,
+        door + (i * doorW) / 3,
+        g.eave + 12,
+        doorW / 3 - 1,
+        9,
+        style === 'dojo' ? '#D3BE8A' : '#93A77D',
+      );
+    }
+  } else if (style === 'warehouse') {
+    for (let y = g.eave + 13; y < g.base - 3; y += 4) rect(c, door, y, doorW, 2, '#9AA7B2');
   }
   return cv;
 }

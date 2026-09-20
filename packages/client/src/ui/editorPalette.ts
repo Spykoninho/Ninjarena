@@ -36,6 +36,22 @@ const TILE_LABELS: Record<string, string> = {
   well: 'puits',
   crate: 'caisse',
   torii: 'torii',
+  sand: 'sable',
+  snow: 'neige',
+  gravel: 'gravier',
+  tatami: 'tatami',
+  basalt: 'basalte',
+  mud: 'boue',
+  'sandstone-wall': 'mur de grès',
+  palisade: 'palissade',
+  'ice-wall': 'mur de glace',
+  dojo: 'dojo',
+  'tea-house': 'maison de thé',
+  warehouse: 'entrepôt',
+  bamboo: 'bambou',
+  pine: 'pin',
+  barrel: 'tonneau',
+  statue: 'statue',
 };
 
 const TABS: readonly PaletteTab[] = [...PALETTE_CATEGORIES, 'spawns'];
