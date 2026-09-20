@@ -384,18 +384,23 @@ milliseconds, an optional telegraph, and an effect tree that runs once at activa
 }
 ```
 
-The bricks are `projectile` (one, or a fan of `count` spread by `spreadDegrees`), `area`, `dash`,
-`melee`, `teleport`, `spawnEntity` (a wall), `shield`, `heal`, `delayedTrigger`, `damage`,
-`knockback`, `stun` and `applyStatus` (on the target hit, or on the caster with `target: "self"`);
+The bricks are `projectile` (one, or a fan of `count` spread by `spreadDegrees`; `pierce` makes
+it a wave that crosses every target once), `area` (at the caster, at the aim's full `range`,
+under the `cursor`, or `here`; a `count` scattered over `scatterRadius` makes a cluster, and
+`fragile` lets an enemy attack set it off, the whole cluster with it), `dash`, `melee`,
+`teleport`, `spawnEntity` (a wall), `shield`, `heal`, `sacrificeChakra`, `delayedTrigger`,
+`damage`, `knockback`, `stun` and `applyStatus` (on the target hit, or on the caster with
+`target: "self"`);
 the ones that carry sub-effects (`projectile.onHit`/`onExpire`, `area.onHit`, `dash.onContact`,
 `delayedTrigger.effects`) make the tree recursive, so an explosion can knock back into a stun into
 a slow. Damage `scaling` is `physical` (scales with the attacker's strength), `technique` (scales
 with power) or `none`. The roster is built so that every stat carries a strategy: five basic
 attacks (kunai, shuriken, staff sweep, iron fist, senbon) and seventeen techniques split between
 physical ones for strength builds (blade whirlwind, ram charge, pinning kunai, shuriken fan),
-technique-scaled ones for power builds (fireball, seismic slam, lightning dash, frost breath, sky
-strike, explosive mine), control (paralysis seal, pinning kunai, frost breath), self buffs
-(smoke veil, wind stride), sustain (meditation, chakra shield) and utility (earth wall, blink).
+technique-scaled ones for power builds (fireball, the seismic wave, lightning dash, frost breath,
+sky strike, the mine cluster), control (paralysis seal, pinning kunai, frost breath), self buffs
+(smoke veil, wind stride), sustain (meditation, which costs half the chakra pool for the round,
+and chakra shield) and utility (earth wall, blink).
 Adding a technique is JSON only — see
 [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-technique). A new kind of brick means one schema
 variant plus one handler — see

@@ -179,8 +179,21 @@ the tests that pin the formulas.
   the duel a pair lands in is `QUEUE_ROOM_SETTINGS` in `packages/server/src/server.ts`.
 - **Mines** — an `area` with `triggerRadius` fires when an enemy comes that close, or at
   `delayMs` otherwise; both are plain fields of the technique's file.
-- **Fans** — a `projectile` with `count` above 1 fires that many, evenly spread over
-  `spreadDegrees` and centred on the aim; each one carries the full `onHit` list.
+- **Fans and waves** — a `projectile` with `count` above 1 fires that many, evenly spread over
+  `spreadDegrees` and centred on the aim; each one carries the full `onHit` list. A `pierce`
+  projectile runs its `onHit` on every player it crosses, once each, and only a wall or its
+  `lifetimeMs` stops it: the seismic wave is one, slow and wide.
+- **Aiming** — an `area` with `origin: "cursor"` lands under the cursor, capped at its `range`;
+  `origin: "aim"` always lands at the full range. The client sends the cursor distance as
+  `aimDistance` next to the aim direction.
+- **Clusters** — an `area` with `count` above 1 and a `scatterRadius` is placed as a ring around
+  its centre (the first one at the centre, the next one in the aim direction); `fragile` makes
+  every one of them go off when an enemy projectile, melee swing or blast reaches its
+  `triggerRadius`, and the cluster goes off together. Overlapping blasts stack, so keep each
+  mine's `radius` under the `scatterRadius`.
+- **Sacrifices** — `sacrificeChakra` cuts the caster's maximum chakra by `fraction` until the
+  next round; `respawnPlayer` recomputes the stats from the build, so the price never outlives
+  the round.
 - **Buffs** — a self `applyStatus` is tuned by its `durationMs` and `magnitude`: `HASTED`
   multiplies the move speed (1.35 is +35 %, and it stacks with a `SLOWED` magnitude), `INVISIBLE`
   hides the player from the other teams. A `heal` scales with power unless `scaling: "none"`.

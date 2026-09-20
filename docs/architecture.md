@@ -224,12 +224,13 @@ nests more effects inside it, so a fireball is one `projectile` whose `onHit` is
 an `area` whose own `onHit` is another `damage` next to a `knockback`. The schema
 (`packages/core/src/definitions/ability.ts`) is declared with `z.lazy` to allow this.
 
-The thirteen bricks are `projectile` (`count` and `spreadDegrees` turn one into a fan), `area`
-(instant or delayed, `origin: 'caster' | 'aim' | 'here'`), `dash` (with optional
-`invulnerableTicks` and an `onContact` list), `melee`, `teleport`, `spawnEntity` (currently only
-`entity: 'wall'`), `shield`, `heal`, `delayedTrigger`, and the four target-bound bricks `damage`,
-`knockback`, `stun`, `applyStatus` (which `target: 'self'` turns into a self buff). All thirteen
-run through **one**
+The fourteen bricks are `projectile` (`count` and `spreadDegrees` turn one into a fan, `pierce`
+into a wave that crosses every target once), `area` (instant or delayed, `origin: 'caster' |
+'aim' | 'cursor' | 'here'`, scattered into a `fragile` cluster by `count` and `scatterRadius`),
+`dash` (with optional `invulnerableTicks` and an `onContact` list), `melee`, `teleport`,
+`spawnEntity` (currently only `entity: 'wall'`), `shield`, `heal`, `sacrificeChakra`,
+`delayedTrigger`, and the four target-bound bricks `damage`, `knockback`, `stun`, `applyStatus`
+(which `target: 'self'` turns into a self buff). All fourteen run through **one**
 executor (`packages/core/src/abilities/effects/executor.ts`) instead of the two lists the
 foundations step used: a single typed record, `effectHandlers: { [K in Effect['type']]:
 EffectHandler<K> }`, maps every discriminant to its handler file under
