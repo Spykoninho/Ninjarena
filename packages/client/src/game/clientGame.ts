@@ -37,9 +37,9 @@ import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import { gameCursorStyle } from '../ui/gameCursor';
-import type { Hud, HudExitAction } from '../ui/hud';
+import type { Hud, HudExitAction, HudMinimapTerrain } from '../ui/hud';
 import { routeEvents } from './eventRouter';
-import { buildHudView } from './hudView';
+import { buildHudView, minimapTerrain } from './hudView';
 import { buildRenderFrame } from './renderFrame';
 import { SpectatorController } from './spectatorController';
 
@@ -57,6 +57,12 @@ export interface ClientGameDeps {
 export type MatchStartedMessage = Extract<ServerMessage, { type: 'matchStarted' }>;
 export type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
 export type PongMessage = Extract<ServerMessage, { type: 'pong' }>;
+
+interface MatchRound {
+  map: LoadedMap;
+  tileset: TilesetDefinition;
+  terrain: HudMinimapTerrain;
+}
 
 const PAUSE_KEY = 'Escape';
 const MAX_FRAME_MS = 250;
@@ -76,6 +82,7 @@ export class ClientGame {
   private localPlayerId: PlayerId | null = null;
   private latestSnapshot: WorldState | null = null;
   private roomPlayers: RoomPlayerView[] = [];
+  private playerNames: Record<string, string> = {};
   private spectator = new SpectatorController();
   private previousLocalPosition: Vec2 | null = null;
   private cameraPosition: Vec2 = { x: 0, y: 0 };
@@ -93,8 +100,8 @@ export class ClientGame {
   private stage: HTMLElement | null = null;
   private exitAction: HudExitAction | null = null;
   // Les cartes du match, une par manche, avec leur jeu de tuiles; celle à l'écran suit la manche.
-  private rounds: { map: LoadedMap; tileset: TilesetDefinition }[] = [];
-  private shownMap: LoadedMap | null = null;
+  private rounds: MatchRound[] = [];
+  private shownRound: MatchRound | null = null;
 
   constructor(deps: ClientGameDeps) {
     this.deps = deps;
@@ -112,6 +119,7 @@ export class ClientGame {
 
   setRoomPlayers(players: RoomPlayerView[]): void {
     this.roomPlayers = players;
+    this.playerNames = Object.fromEntries(players.map((player) => [player.id, player.name]));
   }
 
   setTournament(view: TournamentView | null, localId: string): void {
@@ -148,7 +156,7 @@ export class ClientGame {
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
     this.simulation = null;
     this.rounds = [];
-    this.shownMap = null;
+    this.shownRound = null;
     this.accumulator = null;
     this.clock = null;
     this.localPlayerId = null;
@@ -172,15 +180,16 @@ export class ClientGame {
 
   beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void {
     const { content } = this.deps;
-    const rounds = message.maps.map((document) => {
+    const rounds = message.maps.map((document): MatchRound => {
       const tileset = content.tilesets.get(document.tileset);
-      return { map: LoadedMap.fromDocument(document, tileset), tileset };
+      const map = LoadedMap.fromDocument(document, tileset);
+      return { map, tileset, terrain: minimapTerrain(map, tileset) };
     });
     const map = rounds[0]?.map;
     if (map === undefined) throw new Error('a match needs at least one map');
     this.endMatch();
     this.rounds = rounds;
-    this.roomPlayers = roomPlayers;
+    this.setRoomPlayers(roomPlayers);
     this.simulation = new GameSimulation({
       maps: rounds.map((round) => round.map),
       abilities: content.abilities,
@@ -210,11 +219,11 @@ export class ClientGame {
 
   // Une nouvelle manche peut changer de carte: le décor suit la simulation dès qu'elle en change.
   private showMap(map: LoadedMap): void {
-    if (map === this.shownMap) return;
+    if (map === this.shownRound?.map) return;
     const round = this.rounds.find((candidate) => candidate.map === map);
     if (round === undefined) return;
     this.deps.renderer.setMap(map, round.tileset);
-    this.shownMap = map;
+    this.shownRound = round;
   }
 
   // La flèche du système n'a rien à faire sur un champ de bataille: le réticule la remplace.
@@ -380,6 +389,9 @@ export class ClientGame {
         abilities: this.deps.content.abilities,
         bindings: this.deps.bindings,
         match: this.latestSnapshot?.match ?? null,
+        world: this.latestSnapshot,
+        minimapTerrain: this.shownRound?.terrain ?? null,
+        playerNames: this.playerNames,
         tick: this.simulation?.world.tick ?? 0,
         tickDurationMs: this.tickMs,
         status: this.status,

@@ -1,7 +1,7 @@
 import type { MatchPhase, TeamId } from '@ninjarena/core';
 import type { MatchSummary, TournamentView } from '@ninjarena/protocol';
 import { toggleFullscreen } from '../input/fullscreen';
-import { P } from '../rendering/art/nativeArt';
+import { P, pen, rect, surface, text } from '../rendering/art/nativeArt';
 import { teamCodes } from '../rendering/art/presentation';
 import { abilityIconCanvas } from '../rendering/art/abilityIcons';
 import { setVisualSetting, visualSettings } from '../rendering/visualSettings';
@@ -37,6 +37,29 @@ export interface HudAbilityView {
   cooldownMs: number;
 }
 
+export interface HudMinimapTerrain {
+  mapId: string;
+  widthInTiles: number;
+  heightInTiles: number;
+  tileSize: number;
+  // Une couleur par tuile, ligne par ligne; null pour une case vide.
+  colors: readonly (string | null)[];
+}
+
+export interface HudMinimapMarker {
+  id: string;
+  name: string;
+  teamCode: number;
+  isLocal: boolean;
+  x: number;
+  y: number;
+}
+
+export interface HudMinimapView {
+  terrain: HudMinimapTerrain;
+  markers: HudMinimapMarker[];
+}
+
 export interface HudView {
   health: number;
   maxHealth: number;
@@ -56,6 +79,7 @@ export interface HudView {
   teamCode: number;
   skin: number;
   watching: boolean;
+  minimap: HudMinimapView | null;
 }
 
 const MS_PER_SECOND = 1000;
@@ -69,6 +93,11 @@ const PORTRAIT_SIZE = 48;
 const PLATE_SIZE = 9;
 const ICON_SIZE = 24;
 const MAX_FRAME_MS = 200;
+const MINIMAP_MAX_WIDTH = 128;
+const MINIMAP_MAX_HEIGHT = 96;
+const MINIMAP_NAME_LENGTH = 6;
+const GLYPH_HEIGHT = 7;
+const GLYPH_ADVANCE = 6;
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
   WAITING: 'En attente des joueurs',
@@ -92,6 +121,7 @@ export class Hud {
   private readonly corner: CornerPanel;
   private readonly vitals: VitalsPanel;
   private readonly abilities: AbilityBar;
+  private readonly minimap: MinimapPanel;
   private readonly summary: MatchSummaryPanel;
   private readonly pause: PauseMenu;
 
@@ -103,6 +133,7 @@ export class Hud {
     this.corner = new CornerPanel(root);
     this.vitals = new VitalsPanel(root);
     this.abilities = new AbilityBar(root);
+    this.minimap = new MinimapPanel(root);
     this.summary = new MatchSummaryPanel(root);
     this.pause = new PauseMenu(root, keys);
   }
@@ -140,6 +171,7 @@ export class Hud {
     this.corner.update(view);
     this.vitals.update(view, now);
     this.abilities.update(view);
+    this.minimap.update(view);
   }
 }
 
@@ -595,6 +627,107 @@ class Slot {
     this.frame.classList.remove('is-flash');
     void this.frame.offsetWidth;
     this.frame.classList.add('is-flash');
+  }
+}
+
+class MinimapPanel {
+  private readonly root: HTMLElement;
+  private readonly canvas: HTMLCanvasElement;
+  private terrain: HTMLCanvasElement | null = null;
+  private mapId = '';
+  private scale = 1;
+  private key = '';
+
+  constructor(root: HTMLElement) {
+    this.root = element('div', 'hud-minimap hud-ink', root);
+    this.root.hidden = true;
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'hud-minimap-canvas';
+    this.canvas.setAttribute('role', 'img');
+    this.canvas.setAttribute('aria-label', 'Minicarte');
+    this.root.appendChild(this.canvas);
+  }
+
+  update(view: HudView): void {
+    const hidden = view.minimap === null;
+    if (this.root.hidden !== hidden) this.root.hidden = hidden;
+    if (view.minimap === null) return;
+    if (this.mapId !== view.minimap.terrain.mapId) this.paintTerrain(view.minimap.terrain);
+    // Les marqueurs bougent chaque image, mais pas d'un pixel de carte: on ne repeint qu'alors.
+    const key = view.minimap.markers
+      .map(
+        (marker) =>
+          `${marker.id}:${this.pixel(marker.x)}:${this.pixel(marker.y)}:${marker.teamCode}`,
+      )
+      .join('|');
+    if (this.key === key) return;
+    this.key = key;
+    this.paintMarkers(view.minimap);
+  }
+
+  private pixel(units: number): number {
+    return Math.floor(units * this.scale);
+  }
+
+  // Un nombre entier de pixels par tuile, le plus grand qui tienne dans le cadre.
+  private paintTerrain(terrain: HudMinimapTerrain): void {
+    this.mapId = terrain.mapId;
+    this.key = '';
+    const tiles = Math.max(
+      1,
+      Math.min(
+        Math.floor(MINIMAP_MAX_WIDTH / terrain.widthInTiles),
+        Math.floor(MINIMAP_MAX_HEIGHT / terrain.heightInTiles),
+      ),
+    );
+    this.scale = tiles / terrain.tileSize;
+    const width = terrain.widthInTiles * tiles;
+    const height = terrain.heightInTiles * tiles;
+    const canvas = surface(width, height);
+    const context = pen(canvas);
+    rect(context, 0, 0, width, height, P.ink);
+    terrain.colors.forEach((color, index) => {
+      if (color === null) return;
+      const tx = index % terrain.widthInTiles;
+      const ty = Math.floor(index / terrain.widthInTiles);
+      rect(context, tx * tiles, ty * tiles, tiles, tiles, color);
+    });
+    this.terrain = canvas;
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+  }
+
+  private paintMarkers(view: HudMinimapView): void {
+    const context = pen(this.canvas);
+    context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.terrain !== null) context.drawImage(this.terrain, 0, 0);
+    for (const marker of view.markers) {
+      const x = this.pixel(marker.x);
+      const y = this.pixel(marker.y);
+      const color = teamColor(marker.teamCode);
+      if (marker.isLocal) rect(context, x - 3, y - 3, 7, 7, P.ivory);
+      rect(context, x - 2, y - 2, 5, 5, P.ink);
+      rect(context, x - 1, y - 1, 3, 3, color);
+      this.paintName(context, marker.name, x, y - 4, color);
+    }
+  }
+
+  // Le nom reste dans le cadre: il glisse plutôt que d'être coupé au bord.
+  private paintName(
+    context: CanvasRenderingContext2D,
+    name: string,
+    x: number,
+    bottom: number,
+    color: string,
+  ): void {
+    const label = name.slice(0, MINIMAP_NAME_LENGTH);
+    const width = label.length * GLYPH_ADVANCE - 1;
+    const left = Math.max(0, Math.min(this.canvas.width - width, x - Math.floor(width / 2)));
+    const baseline = Math.max(GLYPH_HEIGHT, bottom);
+    text(context, label, left + 1, baseline + 1, P.ink);
+    text(context, label, left, baseline, color);
   }
 }
 

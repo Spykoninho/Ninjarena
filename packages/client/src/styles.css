@@ -639,9 +639,29 @@ body {
   text-shadow: 1px 1px 0 var(--hud-deep);
 }
 
+/* La minicarte tient le coin bas droit, hors de la barre de techniques centrée. */
+.hud-minimap {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px;
+  border-top: 2px solid var(--hud-copper);
+}
+
+.hud-minimap-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
 @container (max-width: 760px) {
   .hud-gauge-track {
     width: 96px;
+  }
+  /* La barre de techniques prend le coin: la minicarte se range au-dessus, à demi-échelle. */
+  .hud-minimap {
+    bottom: 54px;
+    transform: scale(0.5);
+    transform-origin: bottom right;
   }
   .hud-gauge-read {
     min-width: 52px;

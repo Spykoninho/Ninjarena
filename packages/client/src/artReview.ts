@@ -8,13 +8,16 @@ import { Hud } from './ui/hud';
 import { KeyBindingsPanel } from './ui/keyBindingsPanel';
 import { BindingsStore } from './input/bindingsStore';
 import type { HudView } from './ui/hud';
+import { minimapTerrain } from './game/hudView';
 
 const stage = document.querySelector<HTMLElement>('#stage');
 if (!stage) throw new Error('Missing review stage');
 const content = loadContent(),
   renderer = new PixiRenderer({ zoom: 4 });
 await renderer.init(stage);
-renderer.setMap(loadMap(content, DEFAULT_MAP_ID), content.tilesets.get('default'));
+const reviewMap = loadMap(content, DEFAULT_MAP_ID);
+renderer.setMap(reviewMap, content.tilesets.get('default'));
+const reviewTerrain = minimapTerrain(reviewMap, content.tilesets.get('default'));
 const views = {
   dojo: { camera: { x: 208, y: 90 }, player: { x: 195, y: 113 } },
   forest: { camera: { x: 160, y: 185 }, player: { x: 77, y: 172 } },
@@ -135,6 +138,20 @@ function reviewHud(elapsedMs: number): HudView {
     teamId: 'team-0',
     teamCode: 0,
     skin: 1,
+    minimap: {
+      terrain: reviewTerrain,
+      markers: [
+        {
+          id: 'foe',
+          name: 'Kaede',
+          teamCode: 1,
+          isLocal: false,
+          x: 320 + 120 * Math.cos(elapsedMs / 1600),
+          y: 240 + 80 * Math.sin(elapsedMs / 1600),
+        },
+        { id: 'me', name: 'Ryu', teamCode: 0, isLocal: true, x: 195, y: 113 },
+      ],
+    },
   };
 }
 
