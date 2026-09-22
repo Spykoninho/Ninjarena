@@ -85,7 +85,8 @@ export class PauseMenu {
   private render(): void {
     this.tournamentButton.hidden = this.tournament === null;
     this.tournamentButton.classList.toggle('is-active', this.section === 'tournament');
-    if (this.section !== 'keys') this.keys.unmount();
+    // Le salon affiche le même panneau: le menu ne retire que celui qu'il montre lui-même.
+    if (this.section !== 'keys' && this.sectionRoot.contains(this.keys.root)) this.keys.unmount();
     this.sectionRoot.replaceChildren();
     this.sectionRoot.hidden = this.section === null;
     if (this.section === 'keys') this.keys.mount(this.sectionRoot);
