@@ -23,7 +23,8 @@ active match, if any.
 
 - **WAITING** — the lobby. Players join, leave, switch teams, edit their loadout and toggle ready;
   the host edits settings and starts the match. This is the only status `updateSettings`,
-  `setLoadout`, `setReady` and `switchTeam` accept.
+  `setLoadout`, `setReady` and `switchTeam` accept — except that a practice room also takes
+  `setLoadout` while its match runs (see [Practice rooms](#practice-rooms-and-map-test-runs)).
 - **STARTING** — `start()` has created the match and the round's countdown is running; inputs are
   accepted but the round proper has not opened.
 - **IN_GAME** — the round is live. `Room.handleEvents` flips WAITING → STARTING → IN_GAME on the
@@ -56,7 +57,7 @@ also require the session to be in a room (`NOT_IN_ROOM` otherwise).
 | `leaveQueue`                          | Introduced.                                                                                                                                      | — (always replies `queueState { queued: false, size }`)                                                                      |
 | `leaveRoom`                           | In a room.                                                                                                                                       | — (always succeeds; replies `roomLeft`)                                                                                      |
 | `updateSettings { patch }`            | Host; status `WAITING`; room not `locked`; patch produces valid settings that still fit the current roster.                                      | `NOT_HOST`, `WRONG_STATUS`, `INVALID_SETTINGS`                                                                               |
-| `setLoadout { loadout }`              | In a room; status `WAITING`.                                                                                                                     | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                                            |
+| `setLoadout { loadout }`              | In a room; status `WAITING`, or any status in a practice room (the running match re-equips the player).                                          | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                                            |
 | `setReady { ready }`                  | In a room; status `WAITING`; `ready: true` needs a valid loadout on file.                                                                        | `WRONG_STATUS`, `INVALID_LOADOUT`                                                                                            |
 | `switchTeam { team }`                 | In a room; status `WAITING`; team mode; `team` a valid index; target team not full.                                                              | `WRONG_STATUS`, `INVALID_SETTINGS`, `TEAM_FULL`                                                                              |
 | `startMatch`                          | Host; status `WAITING`; `startBlockers()` empty.                                                                                                 | `NOT_HOST`, `WRONG_STATUS`, `CANNOT_START`                                                                                   |
@@ -168,6 +169,18 @@ the HUD's exit button or the pause menu on Escape) returns to the editor with th
 The home menu's **Bac à sable** drives the very same run from a `createRoom { practice: true }`
 on the default map, the home screen staying up instead of the editor, and comes back to it on
 exit.
+
+A practice room also takes `setLoadout` while its match runs, so a build can be tried without
+leaving it. The loadout is validated against the room's `buildPoints` exactly as in the lobby,
+stored, broadcast, and handed to `GameSimulation.equipPlayer`, which rebuilds the player's slots
+and stats in the running world: a living player starts over where they stand, like a respawn (full
+health and chakra, no status, every slot ready, a cast in progress dropped), and a dead one keeps
+the new kit for the next round instead of coming back. The next snapshot carries the new kit, so
+the client's prediction picks it up on its own. The client offers it in every practice match it
+plays, spectators aside: **Personnage**, in the HUD corner or the Escape menu, opens the lobby's own
+loadout panel over the match and sends each change after the lobby's 300 ms debounce; the lobby
+takes the panel back, with the same picks, when it is shown again. Any other match keeps refusing
+`setLoadout` with `WRONG_STATUS` once it has started.
 
 ## Tournaments
 

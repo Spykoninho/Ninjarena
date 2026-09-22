@@ -178,7 +178,9 @@ A character (`CharacterDefinition`) no longer lists an `abilities` array: it onl
 player's own three picks (`techniqueIds`, validated by `validateLoadout` against
 `StatRulesDefinition.techniqueSlots`) fill the remaining ability slots — `createPlayerState`
 builds them in the fixed order `[basicAttackId, dashId, ...techniqueIds]`, five slots
-(`MAX_ABILITY_SLOTS = 5`) in total.
+(`MAX_ABILITY_SLOTS = 5`) in total. `GameSimulation.equipPlayer` swaps a player's build and slots
+mid-match in the same order and recomputes the stats — what a practice room uses to re-equip a
+player without leaving the match (see [rooms.md](rooms.md#practice-rooms-and-map-test-runs)).
 
 ## Abilities
 

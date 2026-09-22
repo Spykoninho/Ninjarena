@@ -35,7 +35,8 @@ What works today:
   Escape) brings the map back exactly where it was — see [docs/map-format.md](docs/map-format.md),
 - a **practice** room setting (`Entraînement`): the host can start alone and the round has no
   timer, for trying a build or a map without an opponent; **Bac à sable** on the home menu opens
-  one and starts it without showing the lobby,
+  one and starts it without showing the lobby, and **Personnage** (in the HUD corner or the Escape
+  menu) changes the build and the attacks mid-match, re-equipping the ninja on the spot,
 - a **tournament** room setting: 4 or 8 players, drawn into a single-elimination bracket at kick-off,
   play their duels one after the other while everyone else in the room watches the current one;
   the bracket is a lobby tab and a page of the in-game Escape menu — see
@@ -43,8 +44,9 @@ What works today:
 - a **ranked queue** (`Partie classée` on the home menu): logged-in players are paired by rating,
   with a gap that widens as they wait, into a locked ranked duel room that starts by itself once
   both are ready — see [docs/rooms.md](docs/rooms.md#the-ranked-queue),
-- an in-game **Escape menu**: resume, quit the match, read the tournament bracket, and rebind the
-  five attack keys (kept in `localStorage`; the lobby's character tab shows the current ones),
+- an in-game **Escape menu**: resume, quit the match, read the tournament bracket, change the
+  character in a practice match, and rebind the five attack keys (kept in `localStorage`; the
+  lobby's character tab shows the current ones),
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
@@ -169,13 +171,15 @@ The game's UI is in French. Open two browser tabs:
   tab joins the same room.
 
 **Créer une partie** offers four kinds. **Bac à sable** opens a practice room and starts it alone,
-without a lobby, to walk around a map and try a build; Escape then **Quitter le bac à sable**
-comes back to the menu. **Tournoi** asks for 4 or 8 players and opens a room whose code the others
-join; once every seat is taken and everyone is ready, the host launches it and the bracket is
-drawn. **Partie classée** joins the ranked queue (an account is required): the home screen shows
-how many players are waiting, with **Annuler**, until the server pairs two close ratings into a
-locked ranked room that starts as soon as both are ready. **Partie personnalisée** is the plain
-room with every setting in the host's hands.
+without a lobby, to walk around a map and try a build. **Personnage**, in the HUD corner or the
+Escape menu, opens the lobby's build and attack panel over the match: every change re-equips the
+ninja where it stands, with full gauges and every attack ready, and the same picks carry over to
+the next lobby. **Quitter le bac à sable** comes back to the menu. **Tournoi** asks for 4 or 8
+players and opens a room whose code the others join; once every seat is taken and everyone is
+ready, the host launches it and the bracket is drawn. **Partie classée** joins the ranked queue
+(an account is required): the home screen shows how many players are waiting, with **Annuler**,
+until the server pairs two close ratings into a locked ranked room that starts as soon as both are
+ready. **Partie personnalisée** is the plain room with every setting in the host's hands.
 
 The home menu also carries the account bar: **Se connecter** opens the login form (a name and a
 password), and its **Pas encore de compte ? En créer un** link turns the same form into the
@@ -435,8 +439,9 @@ are the same keys without any setting.
 The five attack slots can be rebound from the pause menu (**Touches**) or the lobby's character
 tab: click a slot, press a key or a mouse button, and the new binding is saved in the browser; a
 key already used by another slot swaps places with it. Escape opens the pause menu in any match:
-**Reprendre**, **Tournoi** (the bracket, in a tournament room), **Touches**, and **Quitter la
-partie** — which leaves the room, forfeiting the match if it is still running.
+**Reprendre**, **Tournoi** (the bracket, in a tournament room), **Personnage** (the build and the
+attacks, in a practice match), **Touches**, and **Quitter la partie** — which leaves the room,
+forfeiting the match if it is still running.
 
 Every ninja shares the same basic attack (Kunai Strike, a free melee arc) and dash (Shadow Step,
 which walls still stop); the three technique slots are whatever the player picked on the setup

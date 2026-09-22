@@ -169,7 +169,8 @@ the tests that pin the formulas.
   match — they are the fixed `DEFAULT_MATCH_TIMING` (3 seconds each) in the same file.
 - **Practice** — `practice` is the one room setting that reaches `MatchConfig` without
   changing a number: it only disables the round timer, so a solo test run lasts until the player
-  leaves.
+  leaves. The room itself also lets its players change their loadout mid-match (`setLoadout`,
+  applied through `GameSimulation.equipPlayer`), so a build is tuned without leaving the match.
 - **Tournaments** — `tournamentSize` (4 or 8, `TOURNAMENT_SIZES` in
   `packages/core/src/tournament/bracket.ts`) is the whole room; every duel of the bracket is played
   with the room's `bestOf`, `roundDurationMs` and map, as a `ffa-2x1` match config
