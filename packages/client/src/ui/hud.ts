@@ -1,4 +1,4 @@
-import type { MatchPhase, TeamId } from '@ninjarena/core';
+import type { Loadout, MatchPhase, TeamId } from '@ninjarena/core';
 import type { MatchSummary, TournamentView } from '@ninjarena/protocol';
 import { toggleFullscreen } from '../input/fullscreen';
 import { P, pen, rect, surface, text } from '../rendering/art/nativeArt';
@@ -14,6 +14,7 @@ import {
   teamPlateCanvas,
 } from './hudGlyphs';
 import type { KeyBindingsPanel } from './keyBindingsPanel';
+import type { LoadoutPanel } from './loadoutPanel';
 import { MatchSummaryPanel } from './matchSummaryPanel';
 import { PauseMenu } from './pauseMenu';
 import { PixelText } from './pixelText';
@@ -23,6 +24,12 @@ export type HudAbilityBlock = 'chakra' | 'control';
 export interface HudExitAction {
   label: string;
   run: () => void;
+}
+
+// Le personnage modifiable en jeu, en entraînement: le budget de la salle et l'envoi au serveur.
+export interface HudLoadoutAction {
+  budget: number;
+  equip: (loadout: Loadout) => void;
 }
 
 export interface HudAbilityView {
@@ -125,17 +132,17 @@ export class Hud {
   private readonly summary: MatchSummaryPanel;
   private readonly pause: PauseMenu;
 
-  constructor(root: HTMLElement, keys: KeyBindingsPanel) {
+  constructor(root: HTMLElement, keys: KeyBindingsPanel, loadout: LoadoutPanel) {
     root.replaceChildren();
     root.classList.add('hud');
     this.match = new MatchPanel(root);
     this.banner = new Banner(root);
-    this.corner = new CornerPanel(root);
+    this.corner = new CornerPanel(root, () => this.pause.show('loadout'));
     this.vitals = new VitalsPanel(root);
     this.abilities = new AbilityBar(root);
     this.minimap = new MinimapPanel(root);
     this.summary = new MatchSummaryPanel(root);
-    this.pause = new PauseMenu(root, keys);
+    this.pause = new PauseMenu(root, keys, loadout);
   }
 
   showSummary(summary: MatchSummary, localPlayerId: string | null): void {
@@ -145,6 +152,11 @@ export class Hud {
   setExitAction(action: HudExitAction | null): void {
     this.corner.setExitAction(action);
     this.pause.setExitAction(action);
+  }
+
+  setLoadoutAction(action: HudLoadoutAction | null): void {
+    this.corner.setLoadoutAction(action);
+    this.pause.setLoadoutAction(action);
   }
 
   setTournament(view: TournamentView | null, localId: string): void {
@@ -298,17 +310,14 @@ class Banner {
 class CornerPanel {
   private readonly ping: HTMLElement;
   private readonly value = new PixelText({ scale: 2 });
+  private readonly loadout: HTMLButtonElement;
   private readonly exit: HTMLButtonElement;
   private exitAction: HudExitAction | null = null;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, openLoadout: () => void) {
     const corner = element('div', 'hud-corner', root);
-    this.exit = document.createElement('button');
-    this.exit.type = 'button';
-    this.exit.className = 'hud-exit hud-ink';
-    this.exit.hidden = true;
-    this.exit.addEventListener('click', () => this.exitAction?.run());
-    corner.appendChild(this.exit);
+    this.loadout = cornerButton(corner, 'Personnage', openLoadout);
+    this.exit = cornerButton(corner, '', () => this.exitAction?.run());
     this.ping = element('div', 'hud-ping hud-ink', corner);
     const unit = new PixelText({ scale: 2, color: P.edge });
     unit.set('MS');
@@ -320,6 +329,10 @@ class CornerPanel {
     this.exitAction = action;
     this.exit.hidden = action === null;
     if (action !== null) this.exit.textContent = action.label;
+  }
+
+  setLoadoutAction(action: HudLoadoutAction | null): void {
+    this.loadout.hidden = action === null;
   }
 
   update(view: HudView): void {
@@ -729,6 +742,17 @@ class MinimapPanel {
     text(context, label, left + 1, baseline + 1, P.ink);
     text(context, label, left, baseline, color);
   }
+}
+
+function cornerButton(parent: HTMLElement, label: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'hud-corner-button hud-ink';
+  button.hidden = true;
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  parent.appendChild(button);
+  return button;
 }
 
 // Un spectateur sans cible (personne en vie encore) reste annoncé comme tel.

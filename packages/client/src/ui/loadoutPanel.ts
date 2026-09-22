@@ -60,7 +60,7 @@ export class LoadoutPanel {
   private budget: number;
   private state: LoadoutState | null = null;
   private active: SlotId = { kind: 'technique', index: 0 };
-  private changeHandler: ((loadout: Loadout | null) => void) | null = null;
+  private readonly changeHandlers: ((loadout: Loadout | null) => void)[] = [];
 
   constructor(
     rules: StatRulesDefinition,
@@ -133,7 +133,7 @@ export class LoadoutPanel {
   }
 
   onChange(handler: (loadout: Loadout | null) => void): void {
-    this.changeHandler = handler;
+    this.changeHandlers.push(handler);
   }
 
   setServerVerdict(valid: boolean, message: string | null): void {
@@ -300,8 +300,9 @@ export class LoadoutPanel {
 
   private notify(): void {
     const state = this.state;
-    if (state === null || this.changeHandler === null) return;
-    this.changeHandler(toLoadout(state));
+    if (state === null) return;
+    const loadout = toLoadout(state);
+    for (const handler of this.changeHandlers) handler(loadout);
   }
 
   private refresh(): void {

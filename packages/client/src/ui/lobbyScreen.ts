@@ -58,6 +58,7 @@ export class LobbyScreen implements Screen {
   private readonly linkInput: HTMLInputElement;
   private readonly tabs = new Map<LobbyTab, HTMLButtonElement>();
   private readonly pages = new Map<LobbyTab, HTMLElement>();
+  private readonly panelHolder: HTMLElement;
   private readonly roster: LobbyRoster;
   private readonly settingsForm: SettingsForm;
   private readonly settingsNote: HTMLElement;
@@ -141,7 +142,8 @@ export class LobbyScreen implements Screen {
     this.bracketNote = element('p', 'lobby-settings-note', tournament);
     this.bracket = element('div', 'bracket', tournament);
 
-    panel.mount(this.page('loadout'));
+    this.panelHolder = element('div', 'lobby-loadout', this.page('loadout'));
+    panel.mount(this.panelHolder);
     panel.onChange((loadout) => {
       this.onLoadoutChanged(loadout);
     });
@@ -175,6 +177,8 @@ export class LobbyScreen implements Screen {
     this.errorLine.textContent = '';
     // Le budget est oublié pour que la première mise à jour renvoie le loadout à la nouvelle salle.
     this.budget = NO_BUDGET;
+    // Le menu de pause d'un entraînement emprunte le panneau du personnage: il revient ici.
+    this.panel.mount(this.panelHolder);
     root.appendChild(this.root);
     this.roster.start();
   }

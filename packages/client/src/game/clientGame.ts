@@ -37,7 +37,7 @@ import { SnapshotInterpolator } from '../netcode/snapshotInterpolator';
 import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import { gameCursorStyle } from '../ui/gameCursor';
-import type { Hud, HudExitAction, HudMinimapTerrain } from '../ui/hud';
+import type { Hud, HudExitAction, HudLoadoutAction, HudMinimapTerrain } from '../ui/hud';
 import { routeEvents } from './eventRouter';
 import { buildHudView, minimapTerrain } from './hudView';
 import { buildRenderFrame } from './renderFrame';
@@ -138,6 +138,10 @@ export class ClientGame {
     if (!this.stopped) this.deps.hud.setExitAction(action);
   }
 
+  setLoadoutAction(action: HudLoadoutAction | null): void {
+    if (!this.stopped) this.deps.hud.setLoadoutAction(action);
+  }
+
   showSummary(summary: MatchSummary): void {
     if (this.stopped || this.simulation === null) return;
     this.deps.hud.showSummary(summary, this.localPlayerId);
@@ -152,6 +156,7 @@ export class ClientGame {
       this.deps.hud.hidePause();
     }
     this.setExitAction(null);
+    this.setLoadoutAction(null);
     this.setCursor(false);
     // Le rendu reste initialisé: seule la partie disparaît, la prochaine repart d'un état vierge.
     this.simulation = null;

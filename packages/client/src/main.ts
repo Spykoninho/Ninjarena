@@ -51,12 +51,32 @@ window.addEventListener('keydown', (event) => {
 // Les touches d'attaque se règlent en jeu et survivent au rechargement de la page.
 const bindings = new BindingsStore(localStorageOrNull());
 const keysPanel = new KeyBindingsPanel(bindings);
+
+const rules = content.statRules;
+const techniques = techniqueOptions(content.abilities);
+const basics = basicOptions(content.abilities);
+// L'esquive n'est pas un choix: le salon la montre pour que la touche soit connue avant le combat.
+const dash = abilityOption(
+  content.abilities.get(content.characters.get(DEFAULT_CHARACTER_ID).dashId),
+);
+const loadoutPanel = new LoadoutPanel(
+  rules,
+  content.characters.get(DEFAULT_CHARACTER_ID).baseStats,
+  techniques,
+  basics,
+  dash,
+  slotBindings(bindings.current, rules.techniqueSlots),
+);
+bindings.subscribe((current) => {
+  loadoutPanel.setKeys(slotBindings(current, rules.techniqueSlots));
+});
+
 const network = new NetworkClient();
 const game = new ClientGame({
   content,
   network,
   renderer: new PixiRenderer({ zoom: config.zoom }),
-  hud: new Hud(hudRoot, keysPanel),
+  hud: new Hud(hudRoot, keysPanel, loadoutPanel),
   audio: new WebAudioSynth(),
   inputState,
   bindings: bindings.current,
@@ -106,25 +126,6 @@ const home = new HomeScreen(
   },
   { name: config.playerName, roomCode: config.roomCode },
 );
-
-const rules = content.statRules;
-const techniques = techniqueOptions(content.abilities);
-const basics = basicOptions(content.abilities);
-// L'esquive n'est pas un choix: le salon la montre pour que la touche soit connue avant le combat.
-const dash = abilityOption(
-  content.abilities.get(content.characters.get(DEFAULT_CHARACTER_ID).dashId),
-);
-const loadoutPanel = new LoadoutPanel(
-  rules,
-  content.characters.get(DEFAULT_CHARACTER_ID).baseStats,
-  techniques,
-  basics,
-  dash,
-  slotBindings(bindings.current, rules.techniqueSlots),
-);
-bindings.subscribe((current) => {
-  loadoutPanel.setKeys(slotBindings(current, rules.techniqueSlots));
-});
 
 const lobby = new LobbyScreen(
   {

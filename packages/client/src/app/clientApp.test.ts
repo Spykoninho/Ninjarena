@@ -12,7 +12,7 @@ import type {
 } from '@ninjarena/protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
-import type { HudExitAction } from '../ui/hud';
+import type { HudExitAction, HudLoadoutAction } from '../ui/hud';
 import { loadClientConfig } from '../config/clientConfig';
 import { ClientApp } from './clientApp';
 import type {
@@ -159,6 +159,7 @@ class FakeGame implements ClientAppGame {
   readonly snapshots: SnapshotMessage[] = [];
   readonly summaries: MatchSummary[] = [];
   readonly exits: (HudExitAction | null)[] = [];
+  readonly loadoutActions: (HudLoadoutAction | null)[] = [];
   roomPlayers: RoomPlayerView[] = [];
   active = false;
 
@@ -190,6 +191,11 @@ class FakeGame implements ClientAppGame {
   setExitAction(action: HudExitAction | null): void {
     this.calls.push('setExitAction');
     this.exits.push(action);
+  }
+
+  setLoadoutAction(action: HudLoadoutAction | null): void {
+    this.calls.push('setLoadoutAction');
+    this.loadoutActions.push(action);
   }
 
   setRoomPlayers(roomPlayers: RoomPlayerView[]): void {
@@ -708,6 +714,40 @@ describe('ClientApp sandbox and ranked queue', () => {
     // Une salle rejointe ensuite reprend le chemin normal du salon.
     h.network.deliver({ type: 'roomState', room: room('WAITING') });
     expect(h.app.state.screen).toBe('lobby');
+  });
+
+  it('re-equips the ninja of a sandbox match without ever leaving the game', async () => {
+    h.network.deliver({ type: 'welcome', sessionId: 'c1' });
+    h.app.createSandbox('kage');
+    await flush();
+    h.network.deliver({ type: 'roomState', room: room('WAITING', { players: [me({})] }) });
+    h.network.deliver({ ...matchStarted, matchConfig: { ...matchConfig, practice: true } });
+    const action = h.game.loadoutActions.at(-1);
+    expect(action?.budget).toBe(10);
+
+    const sturdy: Loadout = { ...loadout, techniqueIds: ['fireball', 'earth-wall', 'blink'] };
+    action?.equip(sturdy);
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setLoadout', loadout: sturdy });
+    h.network.deliver({
+      type: 'roomState',
+      room: room('IN_GAME', { players: [me({ loadout: sturdy })] }),
+    });
+    h.network.deliver({ type: 'error', code: 'INVALID_LOADOUT', message: 'nope' });
+    expect(h.app.state.screen).toBe('game');
+    expect(h.lobby.mounted).toBe(false);
+    expect(h.network.sent.at(-1)).toEqual({ type: 'setLoadout', loadout: sturdy });
+  });
+
+  it('keeps the loadout of a regular match fixed, and a spectator has none to change', () => {
+    h.network.deliver({ type: 'roomState', room: room('STARTING') });
+    h.network.deliver(matchStarted);
+    expect(h.game.loadoutActions.at(-1)).toBeNull();
+    h.network.deliver({
+      ...matchStarted,
+      spectator: true,
+      matchConfig: { ...matchConfig, practice: true },
+    });
+    expect(h.game.loadoutActions.at(-1)).toBeNull();
   });
 
   it('joins the queue, reflects its size on the home screen and lands in the found room', async () => {

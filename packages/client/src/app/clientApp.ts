@@ -12,7 +12,7 @@ import type {
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
 import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
-import type { HudExitAction } from '../ui/hud';
+import type { HudExitAction, HudLoadoutAction } from '../ui/hud';
 import { serverErrorText } from './errorText';
 import { initialAppState, reduceServerMessage, screenFor } from './appModel';
 import type { AppState, ReduceIntent } from './appModel';
@@ -41,6 +41,7 @@ export interface ClientAppGame {
   handlePong(message: PongMessage): void;
   showSummary(summary: MatchSummary): void;
   setExitAction(action: HudExitAction | null): void;
+  setLoadoutAction(action: HudLoadoutAction | null): void;
   setRoomPlayers(players: RoomPlayerView[]): void;
   setTournament(view: TournamentView | null, localId: string): void;
   setStatus(status: string): void;
@@ -361,6 +362,7 @@ export class ClientApp {
           label: this.solo === null ? EXIT_MATCH_LABEL : SOLO_TEXTS[this.solo.mode].exit,
           run: () => this.send({ type: 'leaveRoom' }),
         });
+        game.setLoadoutAction(this.loadoutAction(message));
         return;
       case 'matchSummary':
         if (game.active) game.showSummary(message.summary);
@@ -393,6 +395,13 @@ export class ClientApp {
       default:
         return;
     }
+  }
+
+  // Un entraînement se rééquipe en jeu: le personnage choisi part à la salle, qui l'applique sur place.
+  private loadoutAction(message: MatchStartedMessage): HudLoadoutAction | null {
+    const budget = message.matchConfig.buildPoints ?? this.appState.room?.settings.buildPoints;
+    if (!message.matchConfig.practice || message.spectator || budget === undefined) return null;
+    return { budget, equip: (loadout) => this.send({ type: 'setLoadout', loadout }) };
   }
 
   private beginSolo(mode: SoloMode): void {

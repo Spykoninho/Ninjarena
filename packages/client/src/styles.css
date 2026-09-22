@@ -203,7 +203,7 @@ body {
   gap: 6px;
 }
 
-.hud-exit {
+.hud-corner-button {
   padding: 5px 8px;
   pointer-events: auto;
   color: var(--hud-text);
@@ -212,7 +212,7 @@ body {
   cursor: pointer;
 }
 
-.hud-exit:hover {
+.hud-corner-button:hover {
   background: rgba(117, 220, 228, 0.18);
 }
 
@@ -656,6 +656,21 @@ body {
 @container (max-width: 760px) {
   .hud-gauge-track {
     width: 96px;
+  }
+  /* En vue 640 px, les boutons du coin passent sous le ping: le panneau de manche reste dégagé. */
+  .hud-corner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    justify-items: end;
+  }
+  .hud-ping {
+    grid-area: 1 / 1;
+  }
+  .hud-settings {
+    grid-area: 1 / 2;
+  }
+  .hud-corner-button {
+    grid-column: 1 / -1;
   }
   /* La barre de techniques prend le coin: la minicarte se range au-dessus, à demi-échelle. */
   .hud-minimap {
@@ -2511,6 +2526,31 @@ body {
 
 .hud-pause-section {
   width: 100%;
+}
+
+/* Le personnage d'un entraînement s'étale sur la largeur et garde l'allure du salon. */
+.hud-pause-panel.has-loadout {
+  width: min(960px, calc(100% - 32px));
+}
+
+.hud-pause-section .loadout {
+  font:
+    13px/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.hud-pause-section .loadout button {
+  font: inherit;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.hud-pause-section .loadout button:disabled {
+  cursor: not-allowed;
 }
 
 .hud-pause-hint {

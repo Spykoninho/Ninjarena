@@ -1,11 +1,13 @@
 // Local art review uses the real renderer and map, without a multiplayer session.
-import { DEFAULT_MAP_ID, loadContent, loadMap } from '@ninjarena/content';
+import { DEFAULT_CHARACTER_ID, DEFAULT_MAP_ID, loadContent, loadMap } from '@ninjarena/content';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import type { PlayerView, RenderFrame } from './rendering/renderer';
 import { drawIconSheet, drawPoseSheet, showcasePlayers, showcaseProjectiles } from './poseReview';
 import './styles.css';
 import { Hud } from './ui/hud';
 import { KeyBindingsPanel } from './ui/keyBindingsPanel';
+import { abilityOption, basicOptions, slotBindings, techniqueOptions } from './ui/loadoutModel';
+import { LoadoutPanel } from './ui/loadoutPanel';
 import { BindingsStore } from './input/bindingsStore';
 import type { HudView } from './ui/hud';
 import { minimapTerrain } from './game/hudView';
@@ -40,8 +42,18 @@ if (sheet) drawPoseSheet(sheet);
 const icons = document.querySelector<HTMLCanvasElement>('#icons');
 if (icons) drawIconSheet(icons, content.abilities.all());
 const hudRoot = document.querySelector<HTMLElement>('#hud');
+const bindings = new BindingsStore(null);
+const ninja = content.characters.get(DEFAULT_CHARACTER_ID);
+const loadoutPanel = new LoadoutPanel(
+  content.statRules,
+  ninja.baseStats,
+  techniqueOptions(content.abilities),
+  basicOptions(content.abilities),
+  abilityOption(content.abilities.get(ninja.dashId)),
+  slotBindings(bindings.current, content.statRules.techniqueSlots),
+);
 const hud =
-  hudRoot === null ? null : new Hud(hudRoot, new KeyBindingsPanel(new BindingsStore(null)));
+  hudRoot === null ? null : new Hud(hudRoot, new KeyBindingsPanel(bindings), loadoutPanel);
 const started = performance.now();
 let previous = performance.now();
 let frameId = 0;
