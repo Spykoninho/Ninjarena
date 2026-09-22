@@ -1,3 +1,5 @@
+import type { Loadout } from '../abilities/loadout';
+import { loadoutAbilityIds } from '../abilities/loadout';
 import type {
   AbilityDefinition,
   CharacterDefinition,
@@ -6,6 +8,7 @@ import type {
 } from '../definitions';
 import type { LoadedMap } from '../map/loadedMap';
 import { matchPostStep, matchPreStep, startMatch } from '../match/matchSystem';
+import { respawnPlayer } from '../match/reset';
 import { mapForRound } from '../match/roundMap';
 import { spawnPositionFor } from '../match/spawns';
 import type { Vec2 } from '../math/vec2';
@@ -13,6 +16,7 @@ import type { PlayerState } from '../player/state';
 import { createPlayerState } from '../player/state';
 import type { Build } from '../stats/build';
 import { emptyBuild } from '../stats/build';
+import { computeStats } from '../stats/formulas';
 import type { SimulationConfig } from '../time/simulationConfig';
 import { DEFAULT_SIMULATION_CONFIG } from '../time/simulationConfig';
 import type { DefinitionCatalog } from './catalog';
@@ -107,12 +111,10 @@ export class GameSimulation {
       character,
       position: params.position ?? { x: 0, y: 0 },
       build: params.build ?? emptyBuild(),
-      // L'ordre des slots est figé: attaque de base, esquive, puis les techniques choisies.
-      abilityIds: [
-        params.basicAttackId ?? character.basicAttackId,
-        character.dashId,
-        ...(params.techniqueIds ?? []),
-      ],
+      abilityIds: loadoutAbilityIds(character, {
+        basicAttackId: params.basicAttackId ?? character.basicAttackId,
+        techniqueIds: params.techniqueIds ?? [],
+      }),
       rules: this.statRules,
     });
     if (params.position === undefined) {
@@ -120,6 +122,24 @@ export class GameSimulation {
     }
     this.worldState.players[params.id] = player;
     return player;
+  }
+
+  // Change l'équipement d'un joueur en plein match: un vivant repart sur place comme à une renaissance.
+  equipPlayer(id: PlayerId, loadout: Loadout): void {
+    const player = this.worldState.players[id];
+    if (player === undefined) return;
+    const character = this.characterCatalog.get(player.characterId);
+    player.build = { ...loadout.build };
+    player.abilities = loadoutAbilityIds(character, loadout).map((abilityId) => ({
+      abilityId,
+      readyAt: 0,
+    }));
+    player.stats = computeStats(character.baseStats, player.build, this.statRules);
+    // Un mort ne revient pas en se rééquipant: il attend la manche suivante comme les autres.
+    if (player.phase.kind === 'DEAD') return;
+    const ctx = this.createContext();
+    respawnPlayer(ctx, player, player.position);
+    this.pendingEvents.push(...ctx.events);
   }
 
   removePlayer(id: PlayerId): void {

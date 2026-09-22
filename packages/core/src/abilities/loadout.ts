@@ -64,7 +64,7 @@ export function validateLoadout(
 
 export function loadoutAbilityIds(
   character: CharacterDefinition,
-  loadout: Pick<Loadout, 'basicAttackId' | 'techniqueIds'>,
+  loadout: { basicAttackId: string; techniqueIds: readonly string[] },
 ): string[] {
   // L'ordre des slots est figé: attaque de base, esquive, puis les techniques choisies.
   return [loadout.basicAttackId, character.dashId, ...loadout.techniqueIds];
