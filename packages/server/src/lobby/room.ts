@@ -217,7 +217,9 @@ export class Room {
   setLoadout(session: ClientSession, raw: unknown): RoomResult {
     const player = this.playerOf(session);
     if (player === undefined) return fail('WRONG_STATUS', 'the player is not in this room');
-    if (this.roomStatus !== 'WAITING') return fail('WRONG_STATUS', 'the lobby is closed');
+    // Seul l'entraînement laisse changer d'équipement une fois la partie lancée.
+    const live = this.roomStatus !== 'WAITING';
+    if (live && !this.roomSettings.practice) return fail('WRONG_STATUS', 'the lobby is closed');
 
     const validation = validateLoadout(
       raw,
@@ -228,6 +230,7 @@ export class Room {
     if (!validation.ok) return fail('INVALID_LOADOUT', validation.reason);
     player.loadout = validation.loadout;
     player.loadoutValid = true;
+    if (live) this.activeMatch?.simulation.equipPlayer(session.id, validation.loadout);
     this.broadcastState();
     return { ok: true };
   }

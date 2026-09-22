@@ -513,6 +513,55 @@ describe('Room practice', () => {
     room.setReady(one.session, true);
     expect(room.startBlockers()).toEqual(['NOT_ENOUGH_PLAYERS']);
   });
+
+  it('re-equips a player in the middle of a practice match', async () => {
+    const { room } = createRoom({ practice: true });
+    await room.refreshMap();
+    const one = createSession('c1');
+    room.join(one.session, undefined);
+    room.setLoadout(one.session, loadoutOf());
+    room.setReady(one.session, true);
+    room.start(one.session);
+    tickUntil(room, () => room.status === 'IN_GAME');
+
+    const sturdy = {
+      build: { ...emptyBuild(), vitality: 5 },
+      basicAttackId: 'staff-sweep',
+      techniqueIds: ['fireball', 'earth-wall', 'blink'],
+    };
+    expect(room.setLoadout(one.session, sturdy)).toEqual({ ok: true });
+    expect(lastRoomView(one.connection).players[0]?.loadout).toEqual(sturdy);
+    room.tick();
+    const player = lastSnapshot(one.connection).world.players['c1'];
+    expect(player?.abilities.map((slot) => slot.abilityId)).toEqual([
+      'staff-sweep',
+      'shadow-step',
+      'fireball',
+      'earth-wall',
+      'blink',
+    ]);
+    expect(player?.health).toBe(160);
+
+    expect(room.setLoadout(one.session, { ...sturdy, techniqueIds: ['fireball'] })).toEqual({
+      ok: false,
+      error: { code: 'INVALID_LOADOUT', message: expect.any(String) },
+    });
+    expect(room.match?.simulation.world.players['c1']?.abilities).toHaveLength(5);
+    expect(room.status).toBe('IN_GAME');
+  });
+
+  it('keeps every loadout locked once a match that is not a practice one has started', async () => {
+    const { room } = createRoom();
+    await room.refreshMap();
+    const { one } = seatReadyPair(room);
+    room.start(one.session);
+
+    expect(room.setLoadout(one.session, loadoutOf(2))).toEqual({
+      ok: false,
+      error: { code: 'WRONG_STATUS', message: expect.any(String) },
+    });
+    expect(room.match?.simulation.world.players['c1']?.build.speed).toBe(0);
+  });
 });
 
 describe('Room ranked play', () => {
