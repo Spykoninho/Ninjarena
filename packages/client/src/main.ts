@@ -1,4 +1,5 @@
 import { loadContent } from '@ninjarena/content';
+import { INSTALLED_APP_QUERY, isOutdated } from './app/appVersion';
 import { ClientApp } from './app/clientApp';
 import { SessionStore } from './app/sessionStore';
 import { WebAudioSynth } from './audio/webAudioSynth';
@@ -232,12 +233,30 @@ window.addEventListener('beforeunload', () => {
   app().stop();
 });
 
+// L'app de l'écran d'accueil reprend sa page en mémoire: une nouvelle version la recharge dès l'accueil.
+if (touch !== null && window.matchMedia(INSTALLED_APP_QUERY).matches) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && app().state.screen === 'home') {
+      void reloadIfOutdated();
+    }
+  });
+}
+
 function localStorageOrNull(): Storage | null {
   try {
     return window.localStorage;
   } catch {
     return null;
   }
+}
+
+async function reloadIfOutdated(): Promise<void> {
+  const running = document.querySelector('script[type="module"][src]')?.getAttribute('src');
+  if (!running) return;
+  const served = await fetch(import.meta.env.BASE_URL, { cache: 'no-store' })
+    .then((response) => (response.ok ? response.text() : ''))
+    .catch(() => '');
+  if (isOutdated(running, served)) window.location.reload();
 }
 
 // Pas de `await` au niveau module: en build, les chunks Pixi importent celui-ci et un top-level await bloquerait leur chargement.

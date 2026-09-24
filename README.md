@@ -490,7 +490,10 @@ and a hint suggests turning the phone to landscape, where the arena reads best.
 The page goes fullscreen at the first tap wherever the browser allows it (Android, iPad). An iPhone
 keeps its browser bars on any web page, so there the game is meant to be added to the home screen
 (Share, then **Sur l'écran d'accueil**): it then opens fullscreen with its own icon, and an
-installed Android copy also locks itself to landscape.
+installed Android copy also locks itself to landscape. The phone keeps an installed copy's page
+alive in the background, so when it comes back on the home screen it asks the server for the
+current build and reloads if a deployment replaced it; in a room or a match it waits for the next
+return to the home screen.
 
 When the match ends, a result panel names the winner or winners and lists every player's damage
 dealt, damage taken, eliminations and deaths — plus, in a ranked room, the new rating and how much
