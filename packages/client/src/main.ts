@@ -105,7 +105,7 @@ const network = new NetworkClient();
 const game = new ClientGame({
   content,
   network,
-  renderer: new PixiRenderer({ zoom: config.zoom }),
+  renderer: new PixiRenderer({ zoom: config.zoom, clampToMap: touch === null }),
   hud,
   audio: new WebAudioSynth(),
   inputState,

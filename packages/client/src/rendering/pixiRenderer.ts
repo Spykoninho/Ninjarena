@@ -15,6 +15,7 @@ const DASH_TRAIL_INTERVAL_MS = 65;
 
 export class PixiRenderer implements Renderer {
   private readonly zoom: number;
+  private readonly clampToMap: boolean;
   private readonly worldContainer = new Container();
   private readonly art = new SpriteArt();
   private readonly entityLayer = new EntityLayer(this.art);
@@ -32,8 +33,9 @@ export class PixiRenderer implements Renderer {
   private translation: Vec2 = { x: 0, y: 0 };
   private dashTrailMs = 0;
 
-  constructor(options: { zoom: number }) {
+  constructor(options: { zoom: number; clampToMap?: boolean }) {
     this.zoom = options.zoom;
+    this.clampToMap = options.clampToMap ?? true;
   }
 
   async init(container: HTMLElement): Promise<void> {
@@ -97,7 +99,7 @@ export class PixiRenderer implements Renderer {
     // Demi-vue en unités monde: la caméra s'arrête au bord de la map, ou se centre si elle est plus petite.
     const halfWidth = fit.width / ART_SCALE / 2,
       halfHeight = fit.height / ART_SCALE / 2;
-    const center = {
+    const clamped = {
       x: Math.max(
         Math.min(halfWidth, this.mapBounds.x / 2),
         Math.min(this.mapBounds.x - halfWidth, frame.camera.x),
@@ -107,6 +109,8 @@ export class PixiRenderer implements Renderer {
         Math.min(this.mapBounds.y - halfHeight, frame.camera.y),
       ),
     };
+    // Au doigt, la caméra reste sur le ninja jusqu'au bord: calée sur la carte, elle le mettrait sous le pouce.
+    const center = this.clampToMap ? clamped : frame.camera;
     const camera = cameraTranslation(center, ART_SCALE, { x: fit.width, y: fit.height });
     this.translation = { x: fit.x + camera.x * fit.zoom, y: fit.y + camera.y * fit.zoom };
     this.worldContainer.position.set(
