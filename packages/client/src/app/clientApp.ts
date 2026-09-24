@@ -11,7 +11,7 @@ import type {
 } from '@ninjarena/protocol';
 import { PROTOCOL_VERSION } from '@ninjarena/protocol';
 import type { ClientConfig } from '../config/clientConfig';
-import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
+import type { MatchStartedMessage, SnapshotMessage } from '../game/clientGame';
 import type { HudExitAction, HudLoadoutAction } from '../ui/hud';
 import { serverErrorText } from './errorText';
 import { initialAppState, reduceServerMessage, screenFor } from './appModel';
@@ -38,7 +38,6 @@ export interface ClientAppGame {
   readonly active: boolean;
   beginMatch(message: MatchStartedMessage, roomPlayers: RoomPlayerView[]): void;
   handleSnapshot(message: SnapshotMessage): void;
-  handlePong(message: PongMessage): void;
   showSummary(summary: MatchSummary): void;
   setExitAction(action: HudExitAction | null): void;
   setLoadoutAction(action: HudLoadoutAction | null): void;
@@ -320,10 +319,6 @@ export class ClientApp {
     const { game } = this.deps;
     if (message.type === 'snapshot') {
       if (game.active) game.handleSnapshot(message);
-      return;
-    }
-    if (message.type === 'pong') {
-      if (game.active) game.handlePong(message);
       return;
     }
     if (message.type === 'accountState' || message.type === 'error') this.resumeSettled();

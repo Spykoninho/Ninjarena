@@ -1,12 +1,9 @@
 import type { Loadout, MatchPhase, TeamId } from '@ninjarena/core';
 import type { MatchSummary, TournamentView } from '@ninjarena/protocol';
-import { toggleFullscreen } from '../input/fullscreen';
 import { P, pen, rect, surface, text } from '../rendering/art/nativeArt';
 import { teamCodes } from '../rendering/art/presentation';
 import { abilityIconCanvas } from '../rendering/art/abilityIcons';
-import { setVisualSetting, visualSettings } from '../rendering/visualSettings';
 import {
-  gearCanvas,
   lockCanvas,
   portraitCanvas,
   shieldGlyphCanvas,
@@ -80,7 +77,6 @@ export interface HudView {
   roundTimer: string | null;
   buildSummary: string;
   status: string;
-  rttMs: number | null;
   spectating: string | null;
   teamId: TeamId | null;
   teamCode: number;
@@ -185,7 +181,6 @@ export class Hud {
     const now = performance.now();
     this.match.update(view);
     this.banner.update(view, now);
-    this.corner.update(view);
     this.vitals.update(view, now);
     this.abilities.update(view);
     this.minimap.update(view);
@@ -314,8 +309,6 @@ class Banner {
 
 class CornerPanel {
   private readonly root: HTMLElement;
-  private readonly ping: HTMLElement;
-  private readonly value = new PixelText({ scale: 2 });
   private readonly loadout: HTMLButtonElement;
   private readonly exit: HTMLButtonElement;
   private menu: HTMLButtonElement | null = null;
@@ -326,11 +319,6 @@ class CornerPanel {
     this.root = corner;
     this.loadout = cornerButton(corner, 'Personnage', openLoadout);
     this.exit = cornerButton(corner, '', () => this.exitAction?.run());
-    this.ping = element('div', 'hud-ping hud-ink', corner);
-    const unit = new PixelText({ scale: 2, color: P.edge });
-    unit.set('MS');
-    this.ping.append(this.value.canvas, unit.canvas);
-    this.addSettings(corner);
   }
 
   setExitAction(action: HudExitAction | null): void {
@@ -349,50 +337,6 @@ class CornerPanel {
     this.menu = cornerButton(this.root, 'Menu', onClick);
     this.menu.classList.add('hud-menu-button');
     this.menu.hidden = this.exitAction === null;
-  }
-
-  update(view: HudView): void {
-    const hidden = view.rttMs === null;
-    if (this.ping.hidden !== hidden) this.ping.hidden = hidden;
-    if (view.rttMs !== null) this.value.set(String(Math.round(view.rttMs)));
-  }
-
-  private addSettings(root: HTMLElement): void {
-    const details = document.createElement('details');
-    details.className = 'hud-settings';
-    root.appendChild(details);
-    const summary = document.createElement('summary');
-    summary.className = 'hud-settings-button hud-ink';
-    summary.title = 'Visuels';
-    const gear = document.createElement('canvas');
-    gear.className = 'hud-settings-gear';
-    gear.width = 11;
-    gear.height = 11;
-    gear.getContext('2d')?.drawImage(gearCanvas(), 0, 0);
-    summary.appendChild(gear);
-    details.appendChild(summary);
-    const list = element('div', 'hud-settings-list hud-ink', details);
-    for (const [key, label] of [
-      ['motion', 'Vent et eau animés'],
-      ['flashes', 'Flashs d’impact'],
-      ['shake', 'Secousses'],
-    ] as const) {
-      const row = document.createElement('label'),
-        input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = visualSettings()[key];
-      input.addEventListener('change', () => setVisualSetting(key, input.checked));
-      row.append(input, document.createTextNode(label));
-      list.appendChild(row);
-    }
-    const fullscreen = document.createElement('button');
-    fullscreen.type = 'button';
-    fullscreen.className = 'hud-settings-action';
-    fullscreen.textContent = 'Plein écran (F)';
-    fullscreen.addEventListener('click', () => {
-      void toggleFullscreen();
-    });
-    list.appendChild(fullscreen);
   }
 }
 

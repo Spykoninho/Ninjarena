@@ -145,7 +145,6 @@ function reviewHud(elapsedMs: number): HudView {
     roundTimer: `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`,
     buildSummary: 'VIT 2 · STR 1 · POW 3 · SPD 0 · CHK 1 · REG 0 · DEF 1',
     status: 'Art review — fake data',
-    rttMs: 24,
     spectating: null,
     teamId: 'team-0',
     teamCode: 0,

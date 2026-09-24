@@ -11,7 +11,7 @@ import type {
   ServerMessage,
 } from '@ninjarena/protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { MatchStartedMessage, PongMessage, SnapshotMessage } from '../game/clientGame';
+import type { MatchStartedMessage, SnapshotMessage } from '../game/clientGame';
 import type { HudExitAction, HudLoadoutAction } from '../ui/hud';
 import { loadClientConfig } from '../config/clientConfig';
 import { ClientApp } from './clientApp';
@@ -177,10 +177,6 @@ class FakeGame implements ClientAppGame {
   handleSnapshot(message: SnapshotMessage): void {
     this.calls.push('handleSnapshot');
     this.snapshots.push(message);
-  }
-
-  handlePong(_message: PongMessage): void {
-    this.calls.push('handlePong');
   }
 
   showSummary(summary: MatchSummary): void {

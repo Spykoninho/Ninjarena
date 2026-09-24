@@ -62,7 +62,6 @@ export interface ClientGameDeps {
 
 export type MatchStartedMessage = Extract<ServerMessage, { type: 'matchStarted' }>;
 export type SnapshotMessage = Extract<ServerMessage, { type: 'snapshot' }>;
-export type PongMessage = Extract<ServerMessage, { type: 'pong' }>;
 
 interface MatchRound {
   map: LoadedMap;
@@ -73,7 +72,6 @@ interface MatchRound {
 const PAUSE_KEY = 'Escape';
 const MAX_FRAME_MS = 250;
 const MS_PER_SECOND = 1000;
-const PING_INTERVAL_MS = 1000;
 
 export class ClientGame {
   private readonly deps: ClientGameDeps;
@@ -100,9 +98,7 @@ export class ClientGame {
   private tickMs = 0;
   private seq = 0;
   private frameHandle: number | null = null;
-  private pingHandle: number | null = null;
   private lastFrameMs: number | null = null;
-  private rttMs: number | null = null;
   private stopped = false;
   private status = '';
   private stage: HTMLElement | null = null;
@@ -158,7 +154,6 @@ export class ClientGame {
   endMatch(): void {
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
-    this.stopPing();
     if (!this.stopped) {
       this.deps.hud.hideSummary();
       this.deps.hud.hidePause();
@@ -181,7 +176,6 @@ export class ClientGame {
     this.spectator.reset();
     this.serverEvents = [];
     this.lastFrameMs = null;
-    this.rttMs = null;
     this.seq = 0;
     this.setStatus('');
   }
@@ -230,7 +224,6 @@ export class ClientGame {
     this.showMap(map);
     this.setCursor(true);
     this.deps.touch?.show();
-    this.startPing();
     this.startLoop();
   }
 
@@ -267,10 +260,6 @@ export class ClientGame {
     this.latestSnapshot = message.world;
     // Les événements attendent la prochaine image: le routage a besoin des ticks prédits du tour.
     this.serverEvents.push(...message.events);
-  }
-
-  handlePong(message: PongMessage): void {
-    this.rttMs = performance.now() - message.sentAt;
   }
 
   private startLoop(): void {
@@ -432,7 +421,6 @@ export class ClientGame {
       tick: this.simulation?.world.tick ?? 0,
       tickDurationMs: this.tickMs,
       status: this.status,
-      rttMs: this.rttMs,
       spectating: this.spectatingName(),
     });
     this.deps.hud.update(view);
@@ -459,17 +447,5 @@ export class ClientGame {
     const localPlayerId = this.localPlayerId;
     if (this.simulation === null || localPlayerId === null) return undefined;
     return this.simulation.world.players[localPlayerId];
-  }
-
-  private startPing(): void {
-    this.stopPing();
-    this.pingHandle = window.setInterval(() => {
-      this.deps.network.send({ type: 'ping', sentAt: performance.now() });
-    }, PING_INTERVAL_MS);
-  }
-
-  private stopPing(): void {
-    if (this.pingHandle !== null) window.clearInterval(this.pingHandle);
-    this.pingHandle = null;
   }
 }

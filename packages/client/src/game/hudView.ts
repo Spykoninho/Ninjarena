@@ -36,7 +36,6 @@ export interface HudViewInput {
   tick: number;
   tickDurationMs: number;
   status: string;
-  rttMs: number | null;
   spectating: string | null;
 }
 
@@ -72,7 +71,6 @@ export function buildHudView(input: HudViewInput): HudView {
     roundTimer: roundTimer(input),
     buildSummary: local === undefined ? '' : buildSummary(local.build),
     status: input.status,
-    rttMs: input.rttMs,
     spectating: input.spectating,
     teamId: local?.teamId ?? null,
     teamCode: teamCode(local, input.match),

@@ -1,5 +1,5 @@
 import type { Ramp } from '../rendering/art/nativeArt';
-import { P, ellipse, ninja, pen, rect, surface, symbol, teams } from '../rendering/art/nativeArt';
+import { P, ninja, pen, rect, surface, symbol, teams } from '../rendering/art/nativeArt';
 
 const PORTRAIT_SIZE = 48;
 const PORTRAIT_SCALE = 2;
@@ -71,15 +71,5 @@ export function shieldGlyphCanvas(): HTMLCanvasElement {
     const inset = Math.max(0, y - 4);
     rect(context, inset, y, 7 - inset * 2, 1, y === 0 ? P.ivory : P.mint);
   }
-  return canvas;
-}
-
-export function gearCanvas(): HTMLCanvasElement {
-  const canvas = surface(11, 11);
-  const context = pen(canvas);
-  rect(context, 4, 0, 3, 11, P.ivory);
-  rect(context, 0, 4, 11, 3, P.ivory);
-  ellipse(context, 5, 5, 4, 4, P.ivory, true);
-  ellipse(context, 5, 5, 2, 2, P.ink, false);
   return canvas;
 }

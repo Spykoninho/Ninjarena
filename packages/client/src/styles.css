@@ -216,71 +216,6 @@ body {
   background: rgba(117, 220, 228, 0.18);
 }
 
-.hud-ping {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-}
-
-.hud-settings {
-  position: relative;
-  pointer-events: auto;
-}
-
-.hud-settings-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.hud-settings-button::-webkit-details-marker {
-  display: none;
-}
-
-.hud-settings-gear {
-  display: block;
-  width: 11px;
-  height: 11px;
-  image-rendering: pixelated;
-}
-
-.hud-settings-list {
-  position: absolute;
-  top: 28px;
-  right: 0;
-  width: 176px;
-  padding: 6px 8px;
-}
-
-.hud-settings-list label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 0;
-  letter-spacing: normal;
-}
-
-.hud-settings-action {
-  width: 100%;
-  margin-top: 4px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--hud-edge);
-  color: var(--hud-text);
-  font: inherit;
-  letter-spacing: normal;
-  cursor: pointer;
-}
-
-.hud-settings-action:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
 /* Bilan de fin de partie: le verdict en gros, puis le tableau des joueurs, vainqueurs en tête. */
 
 .hud-summary {
@@ -657,20 +592,10 @@ body {
   .hud-gauge-track {
     width: 96px;
   }
-  /* En vue 640 px, les boutons du coin passent sous le ping: le panneau de manche reste dégagé. */
+  /* En vue 640 px, les boutons du coin s'empilent: le panneau de manche reste dégagé. */
   .hud-corner {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    justify-items: end;
-  }
-  .hud-ping {
-    grid-area: 1 / 1;
-  }
-  .hud-settings {
-    grid-area: 1 / 2;
-  }
-  .hud-corner-button {
-    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: flex-end;
   }
   /* La barre de techniques prend le coin: la minicarte se range au-dessus, à demi-échelle. */
   .hud-minimap {
@@ -3019,20 +2944,10 @@ body {
 
 .is-touch .hud-corner {
   right: calc(8px + env(safe-area-inset-right, 0px));
-  align-items: center;
 }
 
 .is-touch .hud-menu-button {
   padding: 10px 16px;
-}
-
-.is-touch .hud-settings-button {
-  width: 36px;
-  height: 36px;
-}
-
-.is-touch .hud-settings-list {
-  top: 40px;
 }
 
 /* En paysage, la colonne de droite appartient aux attaques: la minicarte passe sous la vie. */
@@ -3062,7 +2977,7 @@ body {
     display: block;
   }
   .is-touch .hud-minimap {
-    top: 92px;
+    top: 52px;
     left: auto;
     right: calc(8px + env(safe-area-inset-right, 0px));
     transform-origin: top right;
