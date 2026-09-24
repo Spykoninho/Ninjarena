@@ -458,8 +458,10 @@ Holding a button does not repeat the cast: only the press matters. Tab only does
 the local player is dead and the match is `IN_ROUND` — or from the start, for a tournament
 spectator: it cycles the camera through living teammates (or every living player in a free-for-all
 mode). F toggles fullscreen from any screen
-(except while typing in a field), and the HUD's gear menu has the same button; during a match the
-system pointer is replaced by a pixel reticle drawn at load like the rest of the art.
+(except while typing in a field); during a match the system pointer is replaced by a pixel reticle
+drawn at load like the rest of the art. The visual effects — wind and water, impact flashes, screen
+shake — are always on and have no setting; only the system's reduced-motion preference turns them
+off.
 
 ### Touch controls
 
@@ -482,8 +484,13 @@ sees no difference. During a match:
 - **Menu**, in the top corner, opens the pause menu (resume, character in practice, quit), and
   **Joueur suivant** replaces Tab while spectating.
 
-The vitals move to the top-left corner, the minimap under the menu, and a hint suggests turning
-the phone to landscape, where the arena reads best.
+The vitals move to the top-left corner with the minimap under them (under the menu in portrait),
+and a hint suggests turning the phone to landscape, where the arena reads best.
+
+The page goes fullscreen at the first tap wherever the browser allows it (Android, iPad). An iPhone
+keeps its browser bars on any web page, so there the game is meant to be added to the home screen
+(Share, then **Sur l'écran d'accueil**): it then opens fullscreen with its own icon, and an
+installed Android copy also locks itself to landscape.
 
 When the match ends, a result panel names the winner or winners and lists every player's damage
 dealt, damage taken, eliminations and deaths — plus, in a ranked room, the new rating and how much
