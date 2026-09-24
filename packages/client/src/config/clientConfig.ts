@@ -11,6 +11,7 @@ export interface ClientConfig {
   techniqueIds: string[];
   roomCode: string;
   editor: boolean;
+  touch: boolean | null;
 }
 
 const DEFAULT_SERVER_URL = 'ws://localhost:8080';
@@ -49,6 +50,8 @@ export function loadClientConfig(
     roomCode: text(params.get('room'))?.toUpperCase() ?? '',
     // Le drapeau vaut par sa présence: `?editor` seul doit suffire.
     editor: params.has('editor'),
+    // Absent, l'appareil décide; `?touch` force les commandes tactiles, `?touch=0` les retire.
+    touch: params.has('touch') ? params.get('touch') !== '0' : null,
   };
 }
 

@@ -2777,3 +2777,307 @@ body {
     opacity: 0.45;
   }
 }
+
+/* Commandes tactiles — un stick sous le pouce gauche, les attaques sous le droit; rien sur ordinateur */
+
+.touch {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch[hidden] {
+  display: none;
+}
+
+.touch-guide {
+  position: absolute;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.touch-stick-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+/* Un octogone plein et un octogone creusé: un cercle en pixels, sans arrondi ni flou. */
+.touch-stick,
+.touch-stick::before,
+.touch-stick-knob,
+.touch-aim,
+.touch-aim::before,
+.touch-aim-knob {
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+}
+
+.touch-stick {
+  position: absolute;
+  left: calc(96px + env(safe-area-inset-left, 0px));
+  top: calc(100% - 96px - env(safe-area-inset-bottom, 0px));
+  width: 104px;
+  height: 104px;
+  transform: translate(-50%, -50%);
+  background: rgba(245, 237, 205, 0.3);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.touch-stick::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: rgba(23, 38, 49, 0.45);
+}
+
+.touch-stick.is-active {
+  opacity: 1;
+}
+
+.touch-stick-knob {
+  position: absolute;
+  left: calc(50% - 22px);
+  top: calc(50% - 22px);
+  width: 44px;
+  height: 44px;
+  background: var(--hud-text);
+  box-shadow: inset -3px -3px 0 #b8c2bc;
+}
+
+.touch-button {
+  position: absolute;
+  right: calc(var(--touch-x) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--touch-y) + env(safe-area-inset-bottom, 0px));
+  padding: 4px;
+  transform: translate(50%, 50%);
+  opacity: 0.92;
+}
+
+.touch-button[data-slot='0'] {
+  --touch-x: 80px;
+  --touch-y: 76px;
+}
+
+.touch-button[data-slot='1'] {
+  --touch-x: 190px;
+  --touch-y: 56px;
+}
+
+.touch-button[data-slot='2'] {
+  --touch-x: 172px;
+  --touch-y: 140px;
+}
+
+.touch-button[data-slot='3'] {
+  --touch-x: 112px;
+  --touch-y: 192px;
+}
+
+.touch-button[data-slot='4'] {
+  --touch-x: 44px;
+  --touch-y: 188px;
+}
+
+.touch-button.is-pressed {
+  opacity: 1;
+}
+
+.touch-button .hud-slot {
+  width: auto;
+}
+
+.touch-button .hud-slot-key,
+.touch-button .hud-slot-name {
+  display: none;
+}
+
+.touch-button[data-slot='0'] .hud-slot-frame,
+.touch-button[data-slot='0'] .hud-slot-icon {
+  width: 72px;
+  height: 72px;
+}
+
+.touch-button.is-pressed .hud-slot-frame {
+  border-color: var(--hud-text);
+}
+
+.touch-aim {
+  position: absolute;
+  left: calc(50% - 72px);
+  top: calc(50% - 72px);
+  width: 144px;
+  height: 144px;
+  background: rgba(245, 237, 205, 0.45);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.touch-aim::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: rgba(23, 38, 49, 0.2);
+}
+
+.touch-aim-knob {
+  position: absolute;
+  left: calc(50% - 12px);
+  top: calc(50% - 12px);
+  width: 24px;
+  height: 24px;
+  background: var(--hud-text);
+}
+
+.touch-button.is-aiming .touch-aim,
+.touch-button.is-cancel .touch-aim {
+  visibility: visible;
+}
+
+.touch-button.is-cancel .touch-aim {
+  background: rgba(255, 120, 103, 0.7);
+}
+
+.touch-button.is-cancel .touch-aim-knob {
+  background: var(--hud-health);
+}
+
+.touch.is-spectating .touch-stick-zone,
+.touch.is-spectating .touch-button {
+  display: none;
+}
+
+.touch-next {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 14px;
+  color: var(--hud-text);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+/* Le combat se lit mal en portrait: le conseil s'efface de lui-même après quelques secondes. */
+.touch-rotate {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  display: none;
+  margin: 0;
+  padding: 6px 10px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+  animation: touch-rotate-fade 6s steps(6, end) forwards;
+}
+
+@media (orientation: portrait) {
+  .touch-rotate {
+    display: block;
+  }
+}
+
+@keyframes touch-rotate-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.is-touch .hud-abilities {
+  display: none;
+}
+
+.is-touch .hud-vitals {
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  left: calc(8px + env(safe-area-inset-left, 0px));
+}
+
+/* Personnage et Quitter restent dans le menu: le coin ne garde que le ping, les réglages et Menu. */
+.is-touch .hud-corner > .hud-corner-button:not(.hud-menu-button) {
+  display: none !important;
+}
+
+.is-touch #hud {
+  touch-action: manipulation;
+}
+
+.is-touch .hud-corner {
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  align-items: center;
+}
+
+.is-touch .hud-menu-button {
+  padding: 10px 16px;
+}
+
+.is-touch .hud-settings-button {
+  width: 36px;
+  height: 36px;
+}
+
+.is-touch .hud-settings-list {
+  top: 40px;
+}
+
+/* En paysage, la colonne de droite appartient aux attaques: la minicarte passe sous la vie. */
+.is-touch .hud-minimap {
+  top: 77px;
+  bottom: auto;
+  left: calc(8px + env(safe-area-inset-left, 0px));
+  right: auto;
+  transform: scale(0.5);
+  transform-origin: top left;
+}
+
+@container (max-width: 760px) {
+  .is-touch .hud-portrait {
+    display: none;
+  }
+  .is-touch .hud-minimap {
+    top: 65px;
+  }
+}
+
+@container (max-width: 520px) {
+  .is-touch .hud-vitals {
+    top: 96px;
+  }
+  .is-touch .hud-portrait {
+    display: block;
+  }
+  .is-touch .hud-minimap {
+    top: 92px;
+    left: auto;
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    transform-origin: top right;
+  }
+}
+
+.is-touch .hud-pause-hint,
+.is-touch .hud-pause-button.is-keys,
+.is-touch .lobby-keys,
+.is-touch .loadout-slot-key,
+.is-touch .ability-card-key,
+.is-touch .ability-tip-key {
+  display: none !important;
+}
+
+.is-touch .hud-pause-button {
+  padding: 10px 14px;
+}

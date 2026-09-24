@@ -9,6 +9,8 @@ import { BindingsStore } from './input/bindingsStore';
 import { DomInputAdapter } from './input/domInputAdapter';
 import { isFullscreenShortcut, toggleFullscreen } from './input/fullscreen';
 import { createInputState } from './input/inputState';
+import { usesTouchControls } from './input/touchDevice';
+import { createTouchState } from './input/touchInput';
 import { NetworkClient } from './network/networkClient';
 import { PixiRenderer } from './rendering/pixiRenderer';
 import './styles.css';
@@ -25,6 +27,7 @@ import {
 } from './ui/loadoutModel';
 import { LoadoutPanel } from './ui/loadoutPanel';
 import { LobbyScreen } from './ui/lobbyScreen';
+import { TouchControls } from './ui/touchControls';
 
 const stage = document.querySelector<HTMLElement>('#app');
 const hudRoot = document.querySelector<HTMLElement>('#hud');
@@ -71,15 +74,30 @@ bindings.subscribe((current) => {
   loadoutPanel.setKeys(slotBindings(current, rules.techniqueSlots));
 });
 
+const hud = new Hud(hudRoot, keysPanel, loadoutPanel);
+// Un téléphone joue au doigt: le calque tactile n'existe que là, l'ordinateur ne voit rien de plus.
+const touch = usesTouchControls(config.touch, (query) => window.matchMedia(query).matches)
+  ? new TouchControls(createTouchState(), () => {
+      inputState.pressedOnce.add(bindings.current.spectateNext);
+    })
+  : null;
+if (touch !== null) {
+  // Sous le HUD: le coin, le menu de pause et le bilan restent touchables par-dessus les commandes.
+  document.body.insertBefore(touch.root, hudRoot);
+  document.documentElement.classList.add('is-touch');
+  hud.enableMenuButton();
+}
+
 const network = new NetworkClient();
 const game = new ClientGame({
   content,
   network,
   renderer: new PixiRenderer({ zoom: config.zoom }),
-  hud: new Hud(hudRoot, keysPanel, loadoutPanel),
+  hud,
   audio: new WebAudioSynth(),
   inputState,
   bindings: bindings.current,
+  touch,
   interpolationDelayTicks: config.interpolationDelayTicks,
 });
 

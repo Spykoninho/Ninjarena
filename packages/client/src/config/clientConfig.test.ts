@@ -69,6 +69,13 @@ describe('loadClientConfig', () => {
     expect(loadClientConfig('').editor).toBe(false);
   });
 
+  it('leaves the touch controls to the device unless the query forces them', () => {
+    expect(loadClientConfig('').touch).toBeNull();
+    expect(loadClientConfig('?touch').touch).toBe(true);
+    expect(loadClientConfig('?touch=1').touch).toBe(true);
+    expect(loadClientConfig('?touch=0').touch).toBe(false);
+  });
+
   it('reads the requested basic attack', () => {
     expect(loadClientConfig('?basic=shuriken-throw').basicAttackId).toBe('shuriken-throw');
     expect(loadClientConfig('').basicAttackId).toBeNull();

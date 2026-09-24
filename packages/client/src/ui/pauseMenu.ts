@@ -44,7 +44,7 @@ export class PauseMenu {
     button('Reprendre', actions, () => this.hide());
     this.tournamentButton = button('Tournoi', actions, () => this.showSection('tournament'));
     this.loadoutButton = button('Personnage', actions, () => this.showSection('loadout'));
-    button('Touches', actions, () => this.showSection('keys'));
+    button('Touches', actions, () => this.showSection('keys')).classList.add('is-keys');
     this.exitButton = button('Quitter la partie', actions, () => this.exitAction?.run());
     this.exitButton.classList.add('is-exit');
     this.sectionRoot = element('div', 'hud-pause-section', this.panel);

@@ -1,6 +1,7 @@
 import type { GameContent } from '@ninjarena/content';
 import type {
   PlayerId,
+  PlayerInput,
   PlayerState,
   TilesetDefinition,
   Vec2,
@@ -28,6 +29,7 @@ import { FeedbackController } from '../feedback/feedbackController';
 import type { InputBindings } from '../input/bindings';
 import { buildPlayerInput } from '../input/buildPlayerInput';
 import type { InputState } from '../input/inputState';
+import { readySlots, touchPlayerInput } from '../input/touchInput';
 import { CorrectionSmoother } from '../netcode/correctionSmoother';
 import { PredictionBuffer } from '../netcode/predictionBuffer';
 import { reconcile } from '../netcode/reconcile';
@@ -38,10 +40,12 @@ import type { NetworkClient } from '../network/networkClient';
 import type { Renderer } from '../rendering/renderer';
 import { gameCursorStyle } from '../ui/gameCursor';
 import type { Hud, HudExitAction, HudLoadoutAction, HudMinimapTerrain } from '../ui/hud';
+import type { TouchControls, TouchGuideFrame } from '../ui/touchControls';
 import { routeEvents } from './eventRouter';
 import { buildHudView, minimapTerrain } from './hudView';
 import { buildRenderFrame } from './renderFrame';
 import { SpectatorController } from './spectatorController';
+import { touchSlots, visibleEnemies } from './touchView';
 
 export interface ClientGameDeps {
   content: GameContent;
@@ -51,6 +55,8 @@ export interface ClientGameDeps {
   audio: AudioPort;
   inputState: InputState;
   bindings: InputBindings;
+  // Les commandes d'un écran tactile; sans elles, le clavier et la souris pilotent seuls.
+  touch: TouchControls | null;
   interpolationDelayTicks: number;
 }
 
@@ -81,6 +87,8 @@ export class ClientGame {
   private clock: ServerClock | null = null;
   private localPlayerId: PlayerId | null = null;
   private latestSnapshot: WorldState | null = null;
+  private remotes: InterpolatedWorld | null = null;
+  private touchEnemies: Vec2[] = [];
   private roomPlayers: RoomPlayerView[] = [];
   private playerNames: Record<string, string> = {};
   private spectator = new SpectatorController();
@@ -154,6 +162,7 @@ export class ClientGame {
     if (!this.stopped) {
       this.deps.hud.hideSummary();
       this.deps.hud.hidePause();
+      this.deps.touch?.hide();
     }
     this.setExitAction(null);
     this.setLoadoutAction(null);
@@ -166,6 +175,8 @@ export class ClientGame {
     this.clock = null;
     this.localPlayerId = null;
     this.latestSnapshot = null;
+    this.remotes = null;
+    this.touchEnemies = [];
     this.previousLocalPosition = null;
     this.spectator.reset();
     this.serverEvents = [];
@@ -218,6 +229,7 @@ export class ClientGame {
     this.localRenderPosition = { ...this.cameraPosition };
     this.showMap(map);
     this.setCursor(true);
+    this.deps.touch?.show();
     this.startPing();
     this.startLoop();
   }
@@ -277,6 +289,7 @@ export class ClientGame {
     const elapsed = Math.min(MAX_FRAME_MS, timestamp - (this.lastFrameMs ?? timestamp));
     this.lastFrameMs = timestamp;
     const steps = accumulator.advance(elapsed);
+    if (this.deps.touch !== null) this.syncTouch(this.deps.touch);
     const predicted: WorldEvent[] = [];
     for (let step = 0; step < steps; step++) predicted.push(...this.runTick());
     this.applyFeedback(predicted);
@@ -323,14 +336,7 @@ export class ClientGame {
     if (simulation === null || localPlayerId === null) return [];
     const local = simulation.world.players[localPlayerId];
     this.previousLocalPosition = local === undefined ? null : { ...local.position };
-    // La visée part de l'endroit où le joueur est dessiné, pas de sa position simulée.
-    const screenPosition = this.deps.renderer.worldToScreen(this.localRenderPosition);
-    const input = buildPlayerInput(
-      this.deps.inputState,
-      this.deps.bindings,
-      screenPosition,
-      this.deps.renderer.pixelsPerUnit(),
-    );
+    const input = this.playerInput(simulation, localPlayerId);
     this.seq += 1;
     // Un spectateur n'a personne à piloter: il ne pousse rien vers le serveur.
     if (!this.watching) {
@@ -338,6 +344,32 @@ export class ClientGame {
       this.buffer.push(this.seq, input);
     }
     return simulation.step({ [localPlayerId]: input });
+  }
+
+  private playerInput(simulation: GameSimulation, localPlayerId: PlayerId): PlayerInput {
+    const touch = this.deps.touch;
+    if (touch !== null) {
+      return touchPlayerInput(touch.state, {
+        position: simulation.world.players[localPlayerId]?.position ?? this.cameraPosition,
+        enemies: this.touchEnemies,
+        ready: readySlots(simulation.world, localPlayerId, this.deps.content.abilities),
+        tickMs: this.tickMs,
+      });
+    }
+    // La visée part de l'endroit où le joueur est dessiné, pas de sa position simulée.
+    const screenPosition = this.deps.renderer.worldToScreen(this.localRenderPosition);
+    return buildPlayerInput(
+      this.deps.inputState,
+      this.deps.bindings,
+      screenPosition,
+      this.deps.renderer.pixelsPerUnit(),
+    );
+  }
+
+  private syncTouch(touch: TouchControls): void {
+    const local = this.localPlayer();
+    touch.state.slots = touchSlots(local, this.deps.content.abilities);
+    this.touchEnemies = visibleEnemies(local, this.remotes);
   }
 
   private renderFrame(alpha: number, offset: Vec2, elapsedMs: number): void {
@@ -355,6 +387,7 @@ export class ClientGame {
       this.localRenderPosition = add(this.cameraPosition, offset);
     }
     const remotes = this.sampleRemotes();
+    this.remotes = remotes;
     this.deps.renderer.render(
       buildRenderFrame({
         localPlayerId,
@@ -388,22 +421,32 @@ export class ClientGame {
   }
 
   private updateHud(): void {
-    this.deps.hud.update(
-      buildHudView({
-        localPlayer: this.localPlayer(),
-        abilities: this.deps.content.abilities,
-        bindings: this.deps.bindings,
-        match: this.latestSnapshot?.match ?? null,
-        world: this.latestSnapshot,
-        minimapTerrain: this.shownRound?.terrain ?? null,
-        playerNames: this.playerNames,
-        tick: this.simulation?.world.tick ?? 0,
-        tickDurationMs: this.tickMs,
-        status: this.status,
-        rttMs: this.rttMs,
-        spectating: this.spectatingName(),
-      }),
-    );
+    const view = buildHudView({
+      localPlayer: this.localPlayer(),
+      abilities: this.deps.content.abilities,
+      bindings: this.deps.bindings,
+      match: this.latestSnapshot?.match ?? null,
+      world: this.latestSnapshot,
+      minimapTerrain: this.shownRound?.terrain ?? null,
+      playerNames: this.playerNames,
+      tick: this.simulation?.world.tick ?? 0,
+      tickDurationMs: this.tickMs,
+      status: this.status,
+      rttMs: this.rttMs,
+      spectating: this.spectatingName(),
+    });
+    this.deps.hud.update(view);
+    this.deps.touch?.update(view, this.touchGuideFrame());
+  }
+
+  private touchGuideFrame(): TouchGuideFrame {
+    return {
+      player:
+        this.localPlayer() === undefined
+          ? null
+          : this.deps.renderer.worldToScreen(this.localRenderPosition),
+      pixelsPerUnit: this.deps.renderer.pixelsPerUnit(),
+    };
   }
 
   private spectatingName(): string | null {

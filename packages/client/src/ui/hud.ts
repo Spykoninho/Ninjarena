@@ -167,6 +167,11 @@ export class Hud {
     this.pause.toggle();
   }
 
+  // Sans touche Échap, un bouton du coin ouvre le menu de pause.
+  enableMenuButton(): void {
+    this.corner.addMenuButton(() => this.pause.toggle());
+  }
+
   hidePause(): void {
     this.pause.hide();
   }
@@ -308,14 +313,17 @@ class Banner {
 }
 
 class CornerPanel {
+  private readonly root: HTMLElement;
   private readonly ping: HTMLElement;
   private readonly value = new PixelText({ scale: 2 });
   private readonly loadout: HTMLButtonElement;
   private readonly exit: HTMLButtonElement;
+  private menu: HTMLButtonElement | null = null;
   private exitAction: HudExitAction | null = null;
 
   constructor(root: HTMLElement, openLoadout: () => void) {
     const corner = element('div', 'hud-corner', root);
+    this.root = corner;
     this.loadout = cornerButton(corner, 'Personnage', openLoadout);
     this.exit = cornerButton(corner, '', () => this.exitAction?.run());
     this.ping = element('div', 'hud-ping hud-ink', corner);
@@ -328,11 +336,19 @@ class CornerPanel {
   setExitAction(action: HudExitAction | null): void {
     this.exitAction = action;
     this.exit.hidden = action === null;
+    // Le menu ne vaut qu'en match: comme la sortie, il arrive au coup d'envoi et part à la fin.
+    if (this.menu !== null) this.menu.hidden = action === null;
     if (action !== null) this.exit.textContent = action.label;
   }
 
   setLoadoutAction(action: HudLoadoutAction | null): void {
     this.loadout.hidden = action === null;
+  }
+
+  addMenuButton(onClick: () => void): void {
+    this.menu = cornerButton(this.root, 'Menu', onClick);
+    this.menu.classList.add('hud-menu-button');
+    this.menu.hidden = this.exitAction === null;
   }
 
   update(view: HudView): void {
@@ -519,19 +535,20 @@ class Gauge {
 
 class AbilityBar {
   private readonly root: HTMLElement;
-  private readonly slots: Slot[] = [];
+  private readonly slots: HudAbilitySlot[] = [];
 
   constructor(root: HTMLElement) {
     this.root = element('div', 'hud-abilities', root);
   }
 
   update(view: HudView): void {
-    while (this.slots.length < view.abilities.length) this.slots.push(new Slot(this.root));
+    while (this.slots.length < view.abilities.length)
+      this.slots.push(new HudAbilitySlot(this.root));
     for (let i = 0; i < this.slots.length; i++) this.slots[i]?.update(view.abilities[i]);
   }
 }
 
-class Slot {
+export class HudAbilitySlot {
   private readonly root: HTMLElement;
   private readonly frame: HTMLElement;
   private readonly icon: HTMLCanvasElement;
