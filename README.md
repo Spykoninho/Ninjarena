@@ -247,7 +247,8 @@ clone in `~/ninjarena` to the pushed commit and rebuilds the containers.
 [docker-compose.prod.yml](docker-compose.prod.yml) describes the two containers, both built from
 the root [Dockerfile](Dockerfile):
 
-- `ninjarena-web`: the Vite build (base path `/ninjarena/`) served by nginx.
+- `ninjarena-web`: the Vite build (base path `/ninjarena/`) served by nginx, which caches the
+  hashed bundles for a year and makes browsers revalidate `index.html` on every load.
 - `ninjarena-server`: the bundled Node server, listening on every interface, with player-saved maps
   in the `maps` volume and the accounts file in the `accounts` volume.
 
