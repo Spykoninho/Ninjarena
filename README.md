@@ -47,6 +47,9 @@ What works today:
 - an in-game **Escape menu**: resume, quit the match, read the tournament bracket, change the
   character in a practice match, and rebind the five attack keys (kept in `localStorage`; the
   lobby's character tab shows the current ones),
+- **touch controls** on phones and tablets: a floating joystick under the left thumb, and five
+  attack buttons under the right one that fire at the nearest enemy on a tap or aim along a drag,
+  with a guide drawn from the ninja; a computer never sees any of it — see [Controls](#controls),
 - an authoritative WebSocket server with a 60 Hz tick loop, 30 snapshots per second, and one
   independent room per code — see [docs/rooms.md](docs/rooms.md),
 - a browser client with prediction, reconciliation, entity interpolation, correction smoothing,
@@ -109,6 +112,9 @@ returns the events of the tick. Every second tick the server broadcasts a `snaps
 lastProcessedSeq, world, events }`. The client restores that world, replays the inputs the server
 has not processed yet (reconciliation), and the `Renderer` draws the local player from the
 predicted state and everyone else from the interpolator, a few ticks in the past.
+
+On a touch screen, `touchPlayerInput` builds the same `PlayerInput` from the joystick and the
+attack buttons instead, so everything downstream is unchanged.
 
 ```
   key / mouse
@@ -290,6 +296,7 @@ The client is configured through query parameters:
 | `techniques` | none                | Prefills the loadout panel's technique picks: a comma-separated list of ability ids.                         |
 | `delay`      | `6`                 | Interpolation delay for remote entities, in ticks (100 ms).                                                  |
 | `zoom`       | `3`                 | Maximum integer display zoom for the fixed 640×360 view; 2 art pixels per world unit.                        |
+| `touch`      | the device decides  | `?touch` forces the touch controls, `?touch=0` removes them; absent, only a touch-only screen gets them.     |
 
 The server also writes to `data/` (the `NINJARENA_MAPS_DIR` and `NINJARENA_ACCOUNTS_FILE`
 defaults): player-saved maps land there as one JSON file per map, created on first save, and the
@@ -453,6 +460,30 @@ spectator: it cycles the camera through living teammates (or every living player
 mode). F toggles fullscreen from any screen
 (except while typing in a field), and the HUD's gear menu has the same button; during a match the
 system pointer is replaced by a pixel reticle drawn at load like the rest of the art.
+
+### Touch controls
+
+A phone or a tablet — a screen whose only pointer is a finger, with no hover — plays with touch
+controls instead; a computer, even one with a touch screen, keeps the keyboard and the mouse and
+sees no difference. During a match:
+
+- the **left half** of the screen is a joystick: it appears under the thumb and runs at full speed
+  in the direction pushed; the ninja faces where it walks,
+- the **attack buttons** sit in an arc under the right thumb (the basic attack is the big one, the
+  dash on its left, the three techniques above) and show the same cooldown, chakra cost and lock
+  as the keyboard HUD,
+- a **tap** fires at once: an attack turns toward the nearest visible enemy in range, a dash or a
+  blink goes where the joystick points, a self buff, a shield or a whirlwind simply goes off,
+- a **drag** out of a button aims by hand: a dotted guide leaves the ninja (a line, a cone, a
+  wall or the circle where a strike lands, at the share of its range dragged), the shot leaves on
+  release, and sliding back to the button's centre cancels it,
+- a pressed attack that cannot go yet (another cast, a cooldown about to end) waits a quarter of a
+  second rather than being lost,
+- **Menu**, in the top corner, opens the pause menu (resume, character in practice, quit), and
+  **Joueur suivant** replaces Tab while spectating.
+
+The vitals move to the top-left corner, the minimap under the menu, and a hint suggests turning
+the phone to landscape, where the arena reads best.
 
 When the match ends, a result panel names the winner or winners and lists every player's damage
 dealt, damage taken, eliminations and deaths — plus, in a ranked room, the new rating and how much

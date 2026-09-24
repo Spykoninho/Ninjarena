@@ -412,6 +412,12 @@ Steps 3 and 4 happen in the same tick: the client does not wait for the server t
 the correction, and because the world is plain data it costs a clone and a handful of replayed
 steps.
 
+On a touch screen, steps 1 and 2 change hands: `TouchControls` writes the joystick and the attack
+button drags into a `TouchState`, and `touchPlayerInput` turns it into the same `PlayerInput`. A
+tap is played as one tick that only turns the ninja, then a press held for three ticks, so the
+cast leaves in the intended direction even when `abilitySystem` runs before `movementSystem`.
+Everything from step 3 on is identical.
+
 ## Seams left open on purpose
 
 | Seam                      | Today                                                                    | Meant for                                                                                                           |
