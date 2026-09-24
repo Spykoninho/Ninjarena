@@ -21,6 +21,7 @@ export class PixiRenderer implements Renderer {
   private readonly entityLayer = new EntityLayer(this.art);
   private readonly effectsLayer = new EffectsLayer();
   private app: Application | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private mapLayer: MapArt | null = null;
   private target: RenderTexture | null = null;
   private screen: Sprite | null = null;
@@ -50,6 +51,9 @@ export class PixiRenderer implements Renderer {
       background: BACKGROUND_COLOR,
     });
     container.appendChild(app.canvas);
+    // iOS signale parfois le redimensionnement avant la fin d'une rotation: la taille réelle du conteneur fait foi.
+    this.resizeObserver = new ResizeObserver(() => app.queueResize());
+    this.resizeObserver.observe(container);
     this.host = container.parentElement;
     this.worldContainer.scale.set(ART_SCALE);
     this.entityLayer.onMelee = (position, angle, arc, color) =>
@@ -181,6 +185,8 @@ export class PixiRenderer implements Renderer {
   }
 
   dispose(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     for (const name of ['--combat-top', '--combat-bottom', '--combat-side'])
       this.host?.style.removeProperty(name);
     this.mapLayer?.dispose();
