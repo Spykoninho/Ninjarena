@@ -7,7 +7,7 @@ import { ClientGame } from './game/clientGame';
 import { DEFAULT_BINDINGS } from './input/bindings';
 import { BindingsStore } from './input/bindingsStore';
 import { DomInputAdapter } from './input/domInputAdapter';
-import { isFullscreenShortcut, toggleFullscreen } from './input/fullscreen';
+import { enterFullscreen, isFullscreenShortcut, toggleFullscreen } from './input/fullscreen';
 import { createInputState } from './input/inputState';
 import { usesTouchControls } from './input/touchDevice';
 import { createTouchState } from './input/touchInput';
@@ -86,6 +86,19 @@ if (touch !== null) {
   document.body.insertBefore(touch.root, hudRoot);
   document.documentElement.classList.add('is-touch');
   hud.enableMenuButton();
+  // Le manifeste n'est posé qu'au doigt: sur ordinateur, le navigateur proposerait d'installer le jeu.
+  const manifest = document.createElement('link');
+  manifest.rel = 'manifest';
+  manifest.href = `${import.meta.env.BASE_URL}manifest.webmanifest`;
+  document.head.appendChild(manifest);
+  // Le plein écran exige un geste: chaque toucher le redemande tant que la page n'y est pas.
+  document.addEventListener(
+    'pointerup',
+    () => {
+      void enterFullscreen();
+    },
+    { capture: true },
+  );
 }
 
 const network = new NetworkClient();

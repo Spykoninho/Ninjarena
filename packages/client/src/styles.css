@@ -2928,9 +2928,8 @@ body {
 }
 
 .is-touch .hud-vitals {
-  top: calc(8px + env(safe-area-inset-top, 0px));
+  top: 8px;
   bottom: auto;
-  left: calc(8px + env(safe-area-inset-left, 0px));
 }
 
 /* Personnage et Quitter restent dans le menu: le coin ne garde que le ping, les réglages et Menu. */
@@ -2938,12 +2937,21 @@ body {
   display: none !important;
 }
 
+/* Le jeu couvre tout l'écran; le HUD et les menus se rangent dans la zone sûre, loin de l'encoche. */
 .is-touch #hud {
+  inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   touch-action: manipulation;
 }
 
-.is-touch .hud-corner {
-  right: calc(8px + env(safe-area-inset-right, 0px));
+.is-touch #ui,
+.is-touch .screen.lobby {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+.is-touch .home {
+  max-height: calc(100% - 32px);
 }
 
 .is-touch .hud-menu-button {
@@ -2954,7 +2962,7 @@ body {
 .is-touch .hud-minimap {
   top: 77px;
   bottom: auto;
-  left: calc(8px + env(safe-area-inset-left, 0px));
+  left: 8px;
   right: auto;
   transform: scale(0.5);
   transform-origin: top left;
@@ -2979,7 +2987,7 @@ body {
   .is-touch .hud-minimap {
     top: 52px;
     left: auto;
-    right: calc(8px + env(safe-area-inset-right, 0px));
+    right: 8px;
     transform-origin: top right;
   }
 }

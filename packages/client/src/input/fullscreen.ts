@@ -17,6 +17,17 @@ export function toggleFullscreen(
   return request.catch(() => {});
 }
 
+// L'iPhone réserve l'API aux vidéos: sans elle, c'est l'écran d'accueil qui ouvre le jeu sans barres.
+export function enterFullscreen(
+  doc: FullscreenDocument = document,
+  target: Partial<FullscreenTarget> = document.documentElement,
+): Promise<void> {
+  if (doc.fullscreenElement !== null || target.requestFullscreen === undefined) {
+    return Promise.resolve();
+  }
+  return target.requestFullscreen().catch(() => {});
+}
+
 export function isFullscreenShortcut(event: KeyboardEvent, binding: string): boolean {
   if (event.code !== binding || event.repeat) return false;
   if (event.ctrlKey || event.metaKey || event.altKey) return false;

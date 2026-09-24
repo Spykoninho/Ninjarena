@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isFullscreenShortcut, toggleFullscreen } from './fullscreen';
+import { enterFullscreen, isFullscreenShortcut, toggleFullscreen } from './fullscreen';
 
 function key(overrides: Partial<KeyboardEvent> = {}): KeyboardEvent {
   return {
@@ -48,5 +48,36 @@ describe('toggleFullscreen', () => {
     const doc = { fullscreenElement: null, exitFullscreen: () => Promise.resolve() };
     const target = { requestFullscreen: () => Promise.reject(new Error('not allowed')) };
     await expect(toggleFullscreen(doc, target)).resolves.toBeUndefined();
+  });
+});
+
+describe('enterFullscreen', () => {
+  it('asks for fullscreen only when the page is not already in it', async () => {
+    const calls: string[] = [];
+    const target = {
+      requestFullscreen: () => {
+        calls.push('request');
+        return Promise.resolve();
+      },
+    };
+    const doc = {
+      fullscreenElement: null as Element | null,
+      exitFullscreen: () => Promise.resolve(),
+    };
+    await enterFullscreen(doc, target);
+    doc.fullscreenElement = {} as Element;
+    await enterFullscreen(doc, target);
+    expect(calls).toEqual(['request']);
+  });
+
+  it('does nothing where the page cannot go fullscreen, like an iPhone', async () => {
+    const doc = { fullscreenElement: null, exitFullscreen: () => Promise.resolve() };
+    await expect(enterFullscreen(doc, {})).resolves.toBeUndefined();
+  });
+
+  it('swallows a refused request rather than breaking the tap', async () => {
+    const doc = { fullscreenElement: null, exitFullscreen: () => Promise.resolve() };
+    const target = { requestFullscreen: () => Promise.reject(new Error('not allowed')) };
+    await expect(enterFullscreen(doc, target)).resolves.toBeUndefined();
   });
 });
